@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8e4ee6514fa64ab848d1e55cd751af6e96f00c1c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fa8f1763c3d9b690fcc0a6ee0119d76f0023556c")]
 [assembly: System.Reflection.AssemblyProductAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
