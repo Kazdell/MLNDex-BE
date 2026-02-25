@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
+using Application.Interfaces;
+using Application.Services;
 
 namespace mlndex_backend
 {
@@ -32,8 +34,10 @@ namespace mlndex_backend
 
 			builder.Services.AddHttpClient();
 
-			// Add Service vao day
-			//builder.Services.AddScoped<Interfaces, Services>();
+			// === Moderation Service (Person #3 Content Policy Engine) ===
+			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+			builder.Services.AddSingleton(new BlacklistProvider(moderationConfigPath));
+			builder.Services.AddScoped<IModerationService, ModerationService>();
 			// ============================
 
 			// Add SignalR
