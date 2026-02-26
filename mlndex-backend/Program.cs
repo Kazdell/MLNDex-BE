@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Mlndex.Data;
 using mlndex_backend.Extension;
 
 namespace mlndex_backend
@@ -27,8 +28,10 @@ namespace mlndex_backend
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
-			//builder.Services.AddDbContext<>(options =>
-				//options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+			builder.Services.AddDbContext<MlndexDbContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
+				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+				));
 
 			builder.Services.AddHttpClient();
 

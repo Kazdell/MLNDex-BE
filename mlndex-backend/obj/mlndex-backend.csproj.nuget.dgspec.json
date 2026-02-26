@@ -192,6 +192,9 @@
             "projectReferences": {
               "D:\\Do an\\MLNDex-BE\\Application\\Application.csproj": {
                 "projectPath": "D:\\Do an\\MLNDex-BE\\Application\\Application.csproj"
+              },
+              "D:\\Do an\\MLNDex-BE\\Domain\\Domain.csproj": {
+                "projectPath": "D:\\Do an\\MLNDex-BE\\Domain\\Domain.csproj"
               }
             }
           }

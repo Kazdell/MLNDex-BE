@@ -2205,6 +2205,7 @@
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
           "Application": "1.0.0",
+          "Domain": "1.0.0",
           "Microsoft.AspNetCore.Http": "2.3.9",
           "Microsoft.AspNetCore.SignalR": "1.2.9",
           "payOS": "2.0.1"
