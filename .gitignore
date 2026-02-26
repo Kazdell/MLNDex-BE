@@ -186,3 +186,11 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+
+# Môi trường chạy và biến bảo mật
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
