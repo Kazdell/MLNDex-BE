@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Mlndex.Data;
 using mlndex_backend.Extension;
 using Application.Interfaces;
-using Application.Services;
+
 
 namespace mlndex_backend
 {
@@ -29,15 +30,15 @@ namespace mlndex_backend
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
-			//builder.Services.AddDbContext<>(options =>
-				//options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+			builder.Services.AddDbContext<MlndexDbContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
+				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+				));
 
 			builder.Services.AddHttpClient();
 
 			// === Moderation Service (Person #3 Content Policy Engine) ===
-			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-			builder.Services.AddSingleton(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<IModerationService, ModerationService>();
+
 			// ============================
 
 			// Add SignalR
