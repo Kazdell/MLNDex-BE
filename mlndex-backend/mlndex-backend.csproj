@@ -25,10 +25,10 @@
 
   <ItemGroup>
     <Folder Include="Controllers\" />
-    <None Update="..\Infrastructure\ModerationConfig\**\*.json">
+    <Content Include="..\Infrastructure\ModerationConfig\**\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>ModerationConfig\%(Filename)%(Extension)</Link>
-    </None>
+    </Content>
 
   </ItemGroup>
 
