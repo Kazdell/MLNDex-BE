@@ -22,11 +22,16 @@ namespace Domain.Entities
 
 	public enum ModerationActionType
 	{
-		APPROVED,
-		REJECTED,
-		BANNED,
-		WARNED,
-		ESCALATED,
-		DISMISSED
+		/// <summary>Content is clean, publish immediately.</summary>
+		AutoPass,
+
+		/// <summary>Content is suspicious, queue for human moderator review.</summary>
+		FlagForReview,
+
+		/// <summary>Content clearly violates policy, reject automatically.</summary>
+		AutoReject,
+
+		/// <summary>Content triggers zero-tolerance rule (CSAM), ban user instantly.</summary>
+		InstantBan
 	}
 }

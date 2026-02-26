@@ -12,7 +12,7 @@ using Mlndex.Data;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    [Migration("20260226160857_mlndexdb")]
+    [Migration("20260226172856_mlndexdb")]
     partial class mlndexdb
     {
         /// <inheritdoc />

@@ -46,10 +46,10 @@ namespace Domain.Entities
 	}
 
 	public enum SeriesStatus
-	{
-		ONGOING,
-		COMPLETED,
-		HIATUS,
-		DROPPED
-	}
+    {
+        ONGOING,
+        COMPLETED,
+        HALTED,
+        DROPPED
+    }
 }
