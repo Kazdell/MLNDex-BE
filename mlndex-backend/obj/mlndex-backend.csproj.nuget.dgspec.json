@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {}
+    "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+    "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
+        "projectUniqueName": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
         "projectName": "Application",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
+        "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
         "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\obj\\",
+        "outputPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -33,8 +33,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj"
+              "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
+                "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj"
               }
             }
           }
@@ -80,14 +80,14 @@
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
+    "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
+        "projectUniqueName": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
         "projectName": "Domain",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
+        "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
         "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\obj\\",
+        "outputPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -164,14 +164,14 @@
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
+    "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
+        "projectUniqueName": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
         "projectName": "Infrastructure",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
+        "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
         "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\obj\\",
+        "outputPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -193,8 +193,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
+              "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+                "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
               }
             }
           }
@@ -248,14 +248,14 @@
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {
+    "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
+        "projectUniqueName": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
         "projectName": "mlndex-backend",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
+        "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
         "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\obj\\",
+        "outputPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -277,11 +277,11 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
+              "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+                "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
               },
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj"
+              "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
+                "projectPath": "c:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj"
               }
             }
           }
