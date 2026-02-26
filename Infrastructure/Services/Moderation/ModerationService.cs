@@ -1,19 +1,14 @@
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
-using Domain.Enums;
+using Domain.Entities;
 
 namespace Infrastructure.Services.Moderation
 {
-    /// <summary>
-    /// Core moderation engine implementing Person #3's Content Policy rules.
-    /// Handles: text pre-check (blacklist), OpenAI score analysis, age rating assignment.
-    /// Designed to be Mock-ready: works independently without OCR/OpenAI/Queue modules.
-    /// </summary>
+    // Core moderation engine: blacklist pre-check, OpenAI score analysis, age rating.
     public class ModerationService : IModerationService
     {
         private readonly BlacklistProvider _blacklist;
 
-        // Teencode mapping for Vietnamese text normalization
         private static readonly Dictionary<char, char> TeencodeMap = new()
         {
             { '@', 'a' }, { '1', 'i' }, { '0', 'o' }, { '3', 'e' },
@@ -25,23 +20,21 @@ namespace Infrastructure.Services.Moderation
             _blacklist = blacklist;
         }
 
-        #region Text Pre-Check (Blacklist/Teencode)
-
-        /// <inheritdoc />
+        // Pre-check text against blacklist with teencode normalization.
         public TextCheckResponse PreCheckText(TextCheckRequest request)
         {
             var cleanedText = CleanText(request.Text);
             int penaltyScore = 0;
             var flagReasons = new List<string>();
 
-            // Check illegal content first (CSAM, drugs, gambling) -> Instant action
+            // Illegal content -> Instant ban
             foreach (var entry in _blacklist.IllegalContentList)
             {
                 if (ContainsWord(cleanedText, entry))
                 {
                     return new TextCheckResponse
                     {
-                        Action = ModerationAction.InstantBan.ToString(),
+                        Action = ModerationActionType.InstantBan.ToString(),
                         Reasons = new List<string> { $"Illegal content: {entry.Word}" },
                         PenaltyPoints = 100,
                         TemplateId = "REJ_005",
@@ -50,7 +43,7 @@ namespace Infrastructure.Services.Moderation
                 }
             }
 
-            // Check hate speech -> Auto reject
+            // Hate speech -> Auto reject if extreme
             foreach (var entry in _blacklist.HateSpeechList)
             {
                 if (ContainsWord(cleanedText, entry))
@@ -60,7 +53,7 @@ namespace Infrastructure.Services.Moderation
                     {
                         return new TextCheckResponse
                         {
-                            Action = ModerationAction.AutoReject.ToString(),
+                            Action = ModerationActionType.AutoReject.ToString(),
                             Reasons = new List<string> { $"Hate speech: {entry.Word}" },
                             PenaltyPoints = points,
                             TemplateId = "REJ_008",
@@ -72,7 +65,7 @@ namespace Infrastructure.Services.Moderation
                 }
             }
 
-            // Check profanity -> Accumulate penalty
+            // Profanity -> Accumulate penalty
             foreach (var entry in _blacklist.ProfanityList)
             {
                 if (ContainsWord(cleanedText, entry))
@@ -82,20 +75,17 @@ namespace Infrastructure.Services.Moderation
                 }
             }
 
-            // Apply reputation multiplier: low-rep users get harsher penalties
+            // Low-rep users get harsher penalties
             if (request.UserReputation < 50 && !request.IsComment)
-            {
                 penaltyScore = (int)(penaltyScore * 1.5);
-            }
 
-            // Threshold: comments are more lenient than story content
             int threshold = request.IsComment ? 30 : 15;
 
             if (penaltyScore >= threshold)
             {
                 return new TextCheckResponse
                 {
-                    Action = ModerationAction.FlagForReview.ToString(),
+                    Action = ModerationActionType.FlagForReview.ToString(),
                     Reasons = flagReasons,
                     PenaltyPoints = penaltyScore,
                     TemplateId = "REJ_010"
@@ -104,25 +94,20 @@ namespace Infrastructure.Services.Moderation
 
             return new TextCheckResponse
             {
-                Action = ModerationAction.AutoPass.ToString(),
+                Action = ModerationActionType.AutoPass.ToString(),
                 Reasons = new List<string>(),
                 PenaltyPoints = penaltyScore
             };
         }
 
-        #endregion
-
-        #region OpenAI Score Analysis
-
-        /// <inheritdoc />
+        // Analyze OpenAI scores against thresholds. Zero-tolerance for CSAM.
         public OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request)
         {
-            // Zero-tolerance check for CSAM
             if (request.Scores.TryGetValue("sexual/minors", out double csamScore) && csamScore >= 0.3)
             {
                 return new OpenAiScoreResponse
                 {
-                    Action = ModerationAction.InstantBan.ToString(),
+                    Action = ModerationActionType.InstantBan.ToString(),
                     WorstCategory = "sexual/minors",
                     WorstScore = csamScore,
                     TemplateId = "REJ_005",
@@ -131,22 +116,21 @@ namespace Infrastructure.Services.Moderation
                 };
             }
 
-            // Worst-score-wins logic
             string? worstCategory = null;
             double worstScore = 0;
-            ModerationAction worstAction = ModerationAction.AutoPass;
+            ModerationActionType worstAction = ModerationActionType.AutoPass;
 
             foreach (var kvp in request.Scores)
             {
                 if (!_blacklist.Thresholds.TryGetValue(kvp.Key, out var rule)) continue;
 
-                ModerationAction currentAction;
+                ModerationActionType currentAction;
                 if (kvp.Value >= rule.AUTO_REJECT)
-                    currentAction = ModerationAction.AutoReject;
+                    currentAction = ModerationActionType.AutoReject;
                 else if (kvp.Value >= rule.FLAG_FOR_REVIEW)
-                    currentAction = ModerationAction.FlagForReview;
+                    currentAction = ModerationActionType.FlagForReview;
                 else
-                    currentAction = ModerationAction.AutoPass;
+                    currentAction = ModerationActionType.AutoPass;
 
                 if (currentAction > worstAction || (currentAction == worstAction && kvp.Value > worstScore))
                 {
@@ -161,35 +145,20 @@ namespace Infrastructure.Services.Moderation
                 Action = worstAction.ToString(),
                 WorstCategory = worstCategory,
                 WorstScore = worstScore,
-                ReputationDeduction = worstAction == ModerationAction.AutoReject ? 30 : 0
+                ReputationDeduction = worstAction == ModerationActionType.AutoReject ? 30 : 0
             };
 
-            // Assign template based on worst category
-            if (worstAction == ModerationAction.AutoReject && worstCategory != null)
-            {
+            if (worstAction == ModerationActionType.AutoReject && worstCategory != null)
                 response.TemplateId = GetTemplateForCategory(worstCategory);
-            }
 
-            // Assign age rating if content passes
-            if (worstAction == ModerationAction.AutoPass || worstAction == ModerationAction.FlagForReview)
-            {
+            if (worstAction == ModerationActionType.AutoPass || worstAction == ModerationActionType.FlagForReview)
                 response.SuggestedAgeRating = AssignAgeRating(request.Scores).ToString();
-            }
 
             return response;
         }
 
-        #endregion
+        public List<RejectionTemplateDto> GetRejectionTemplates() => _blacklist.RejectionTemplates;
 
-        #region Templates & Tags
-
-        /// <inheritdoc />
-        public List<RejectionTemplateDto> GetRejectionTemplates()
-        {
-            return _blacklist.RejectionTemplates;
-        }
-
-        /// <inheritdoc />
         public List<BannedTagDto> GetBannedTags()
         {
             var all = new List<BannedTagDto>();
@@ -198,31 +167,21 @@ namespace Infrastructure.Services.Moderation
             return all;
         }
 
-        #endregion
+        // --- Private Helpers ---
 
-        #region Private Helpers
-
-        /// <summary>
-        /// Clean text by normalizing teencode and removing obfuscation spaces.
-        /// E.g., "v c l" -> "vcl", "đ!t" -> "đit"
-        /// </summary>
+        // Normalize teencode and collapse obfuscation spacing.
         private static string CleanText(string raw)
         {
             var normalized = raw.ToLower();
 
-            // Step 1: Map teencode characters
             var chars = normalized.ToCharArray();
             for (int i = 0; i < chars.Length; i++)
             {
                 if (TeencodeMap.TryGetValue(chars[i], out char replacement))
-                {
                     chars[i] = replacement;
-                }
             }
             normalized = new string(chars);
 
-            // Step 2: Collapse suspicious single-char spacing (e.g. "v c l" -> "vcl")
-            // Only collapse when we see single chars separated by spaces
             var parts = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var result = new List<string>();
             var singleCharBuffer = new List<string>();
@@ -236,13 +195,9 @@ namespace Infrastructure.Services.Moderation
                 else
                 {
                     if (singleCharBuffer.Count > 1)
-                    {
                         result.Add(string.Join("", singleCharBuffer));
-                    }
                     else if (singleCharBuffer.Count == 1)
-                    {
                         result.Add(singleCharBuffer[0]);
-                    }
                     singleCharBuffer.Clear();
                     result.Add(part);
                 }
@@ -256,28 +211,19 @@ namespace Infrastructure.Services.Moderation
             return string.Join(" ", result);
         }
 
-        /// <summary>
-        /// Check if cleaned text contains any variant of a blacklist entry.
-        /// </summary>
         private static bool ContainsWord(string text, BlacklistEntry entry)
         {
-            // Check the main word
             if (text.Contains(entry.Word, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            // Check all variants
             foreach (var variant in entry.Variants)
             {
                 if (text.Contains(variant, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
-
             return false;
         }
 
-        /// <summary>
-        /// Convert severity string to penalty points.
-        /// </summary>
         private static int SeverityToPoints(string severity) => severity.ToLower() switch
         {
             "low" => 3,
@@ -287,9 +233,6 @@ namespace Infrastructure.Services.Moderation
             _ => 5
         };
 
-        /// <summary>
-        /// Get rejection template ID based on OpenAI category.
-        /// </summary>
         private static string GetTemplateForCategory(string category) => category switch
         {
             "violence" => "REJ_001",
@@ -301,23 +244,17 @@ namespace Infrastructure.Services.Moderation
             _ => "REJ_001"
         };
 
-        /// <summary>
-        /// Assign age rating based on the highest OpenAI scores.
-        /// </summary>
         private static AgeRating AssignAgeRating(Dictionary<string, double> scores)
         {
             double maxViolence = scores.GetValueOrDefault("violence", 0);
             double maxSexual = scores.GetValueOrDefault("sexual", 0);
             double maxHate = scores.GetValueOrDefault("hate", 0);
-
             double overallMax = Math.Max(maxViolence, Math.Max(maxSexual, maxHate));
 
-            if (overallMax >= 0.6) return AgeRating.Adult18;
-            if (overallMax >= 0.4) return AgeRating.Mature16;
-            if (overallMax >= 0.2) return AgeRating.Teen13;
-            return AgeRating.AllAges;
+            if (overallMax >= 0.6) return AgeRating.ADULT;
+            if (overallMax >= 0.4) return AgeRating.MATURE;
+            if (overallMax >= 0.2) return AgeRating.TEEN;
+            return AgeRating.ALL;
         }
-
-        #endregion
     }
 }

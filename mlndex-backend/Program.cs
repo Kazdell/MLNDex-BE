@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Mlndex.Data;
 using mlndex_backend.Extension;
-using Application.Interfaces;
-using Application.Services;
+using Application.Interfaces.Moderation;
+using Infrastructure.Services.Moderation;
 
 namespace mlndex_backend
 {
@@ -14,34 +14,27 @@ namespace mlndex_backend
 
 			var PORT = Environment.GetEnvironmentVariable("PORT") ?? "8888";
 
-			if(builder.Environment.IsProduction())
-			{
+			if (builder.Environment.IsProduction())
 				builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-			}
 			else
-			{
 				builder.WebHost.UseUrls($"http://localhost:{PORT}");
-			}
 
-				// Add services to the container.
-
-				builder.Services.AddControllers();
-			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+			builder.Services.AddControllers();
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
 			builder.Services.AddDbContext<MlndexDbContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
-				));
+			));
 
 			builder.Services.AddHttpClient();
 
-			// === Moderation Service (Person #3 Content Policy Engine) ===
+			// Moderation Service (Person #3)
+			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+			builder.Services.AddSingleton(new BlacklistProvider(moderationConfigPath));
+			builder.Services.AddScoped<IModerationService, ModerationService>();
 
-			// ============================
-
-			// Add SignalR
 			builder.Services.AddSignalR();
 
 			builder.Services.AddCors(options =>
@@ -49,18 +42,15 @@ namespace mlndex_backend
 				options.AddPolicy("AllowSpecificOrigin", policy =>
 				{
 					policy
-					// Only allow these origins
-					.WithOrigins("http://localhost:3000", "https://learnlinkk.vercel.app") // Thêm các origin khác ở đây
+					.WithOrigins("http://localhost:3000", "https://learnlinkk.vercel.app")
 					.AllowAnyHeader()
 					.AllowAnyMethod()
 					.AllowCredentials();
 				});
 			});
 
-
 			var app = builder.Build();
 
-			// Configure the HTTP request pipeline.
 			if (app.Environment.IsDevelopment())
 			{
 				app.UseSwagger();
@@ -69,26 +59,13 @@ namespace mlndex_backend
 			}
 
 			app.UseGlobalExceptionHandling();
-
 			app.UseCors("AllowSpecificOrigin");
-
 			app.UseAuthentication();
 			app.UseAuthorization();
 			app.UseStaticFiles();
 
-
-			// Add cac HUB cua signalR vao day
-			//app.MapHub<SignalRHub>("/signalrhub");
-
 			app.MapControllers();
-
 			app.Run();
 		}
 	}
 }
-
-
-
-
-
-
