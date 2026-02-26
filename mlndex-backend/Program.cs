@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
-using Application.Interfaces;
-using Application.Services;
+using Application.Interfaces.Moderation;
+using Infrastructure.Services.Moderation;
 
 namespace mlndex_backend
 {

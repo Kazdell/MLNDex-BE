@@ -1,8 +1,8 @@
 using Application.DTOs.Moderation;
-using Application.Interfaces;
+using Application.Interfaces.Moderation;
 using Domain.Enums;
 
-namespace Application.Services
+namespace Infrastructure.Services.Moderation
 {
     /// <summary>
     /// Core moderation engine implementing Person #3's Content Policy rules.

@@ -1,7 +1,7 @@
 using Application.DTOs.Moderation;
 using Domain.Entities.Moderation;
 
-namespace Application.Interfaces
+namespace Application.Interfaces.Moderation
 {
     /// <summary>
     /// Core moderation service interface.

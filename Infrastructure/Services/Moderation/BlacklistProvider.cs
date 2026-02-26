@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Application.DTOs.Moderation;
 
-namespace Application.Services
+namespace Infrastructure.Services.Moderation
 {
     /// <summary>
     /// Loads and caches moderation config files (blacklist, templates, banned tags, thresholds).

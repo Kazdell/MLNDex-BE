@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d01eb9a80d349d68d2596a043f3d12c8387093aa")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3c46b7aa9fb24c1b46e296ea9ad7a291d4e422c7")]
 [assembly: System.Reflection.AssemblyProductAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("mlndex-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

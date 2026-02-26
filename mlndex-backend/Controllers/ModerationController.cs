@@ -1,5 +1,5 @@
 using Application.DTOs.Moderation;
-using Application.Interfaces;
+using Application.Interfaces.Moderation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers
