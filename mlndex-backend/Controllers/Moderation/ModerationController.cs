@@ -1,5 +1,5 @@
 using Application.DTOs.Moderation;
-using Application.Interfaces.Moderation;
+using Application.Interfaces.AIModeration;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using mlndex_backend.Controllers;
