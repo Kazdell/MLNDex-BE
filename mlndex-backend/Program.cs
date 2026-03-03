@@ -4,7 +4,7 @@ using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
 using Application.Services.Chapter;
 using Application.Services.Translation;
-using Application.Services.Moderation;
+using Application.Interfaces.AIModeration;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
@@ -50,7 +50,7 @@ namespace mlndex_backend
 			// Core Moderation Engine
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
 			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<Application.Interfaces.Moderation.IModerationService, Application.Services.Moderation.ModerationService>();
+			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 			
 			// AI & Chapter Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
@@ -59,6 +59,7 @@ namespace mlndex_backend
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			builder.Services.AddCors(options =>

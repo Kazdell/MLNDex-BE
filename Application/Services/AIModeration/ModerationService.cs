@@ -1,7 +1,8 @@
 ﻿using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
+using Application.Interfaces.Moderation;
+using Application.Interfaces.Data;
 using Domain.Entities;
-using Infrastructure.Services.Moderation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -17,7 +18,7 @@ namespace Application.Services.AIModeration
 		private readonly IMlndexDbContext _db;
 		private readonly IAiModerationClient _aiClient;
 		private readonly ILogger<ModerationService> _logger;
-		private readonly BlacklistProvider _blacklist;
+		private readonly IBlacklistProvider _blacklist;
 
 		private static readonly Dictionary<char, char> TeencodeMap = new()
 		{
@@ -29,7 +30,7 @@ namespace Application.Services.AIModeration
 			IMlndexDbContext db,
 			IAiModerationClient aiClient,
 			ILogger<ModerationService> logger,
-			BlacklistProvider blacklist)
+			IBlacklistProvider blacklist)
 		{
 			_db = db;
 			_aiClient = aiClient;
