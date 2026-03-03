@@ -12,8 +12,8 @@ using Mlndex.Data;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    [Migration("20260226172856_mlndexdb")]
-    partial class mlndexdb
+    [Migration("20260301140848_mlndexdb1")]
+    partial class mlndexdb1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -428,6 +428,25 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QueueId"));
 
+                    b.Property<bool?>("AiFlagged")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AiFlaggedReason")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("AiProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("AppealCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("AppealReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime?>("AssignedAt")
                         .HasColumnType("datetime2");
 
@@ -450,6 +469,10 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ReportCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
