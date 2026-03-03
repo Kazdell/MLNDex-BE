@@ -8,13 +8,13 @@ using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.AIModeration
 {
-	[Route("api/Moderation")]
+	[Route("api/[controller]")]
 	[ApiController]
-	public class ModerationController : BaseController
+	public class AiModerationController : BaseController
 	{
 		private readonly IModerationService _moderationService;
 
-		public ModerationController(IModerationService moderationService)
+		public AiModerationController(IModerationService moderationService)
 		{
 			_moderationService = moderationService;
 		}

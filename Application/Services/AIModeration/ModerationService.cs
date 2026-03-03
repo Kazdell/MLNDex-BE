@@ -1,24 +1,24 @@
-﻿using Application.Interfaces.AIModeration;
+﻿using Application.Interfaces.Data;
+using Application.Interfaces.AIModeration;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Mlndex.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Services.AIModeration
+namespace Application.Services.AIModeration
 {
 	public class ModerationService : IModerationService
 	{
-		private readonly MlndexDbContext _db;
+		private readonly IMlndexDbContext _db;
 		private readonly IAiModerationClient _aiClient;
 		private readonly ILogger<ModerationService> _logger;
 
 		public ModerationService(
-			MlndexDbContext db,
+			IMlndexDbContext db,
 			IAiModerationClient aiClient,
 			ILogger<ModerationService> logger)
 		{

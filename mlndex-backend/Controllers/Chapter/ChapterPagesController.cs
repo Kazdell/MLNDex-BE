@@ -1,7 +1,8 @@
 ﻿using Application.DTOs.Chapter;
-using Application.Interfaces;
+using Application.DTOs.Chapter;
 using Application.Interfaces.Chapter;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using mlndex_backend.Controllers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers;

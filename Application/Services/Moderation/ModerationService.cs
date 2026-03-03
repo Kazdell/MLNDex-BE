@@ -2,12 +2,12 @@ using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
 using Domain.Entities;
 
-namespace Infrastructure.Services.Moderation
+namespace Application.Services.Moderation
 {
     // Core moderation engine: blacklist pre-check, OpenAI score analysis, age rating.
     public class ModerationService : IModerationService
     {
-        private readonly BlacklistProvider _blacklist;
+        private readonly IBlacklistProvider _blacklist;
 
         private static readonly Dictionary<char, char> TeencodeMap = new()
         {
@@ -15,7 +15,7 @@ namespace Infrastructure.Services.Moderation
             { '!', 'i' }, { '$', 's' }, { '4', 'a' }
         };
 
-        public ModerationService(BlacklistProvider blacklist)
+        public ModerationService(IBlacklistProvider blacklist)
         {
             _blacklist = blacklist;
         }

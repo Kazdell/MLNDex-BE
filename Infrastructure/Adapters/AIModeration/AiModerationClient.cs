@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace Infrastructure.Services.AIModeration
+namespace Infrastructure.Adapters.AIModeration
 {
 	public class AiModerationClient : IAiModerationClient
 	{

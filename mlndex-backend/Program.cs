@@ -1,15 +1,18 @@
 ﻿using Application.Interfaces.AIModeration;
 using Application.Interfaces.Chapter;
-using Infrastructure.Services.AIModeration;
-using Infrastructure.Services.Chapter;
-using Microsoft.EntityFrameworkCore;
-using Mlndex.Data;
-using mlndex_backend.Extension;
 using Application.Interfaces.Translation;
-using Infrastructure.Services.Translation;
-
-using CoreModeration = Application.Interfaces.Moderation;
-using CoreModerationImpl = Infrastructure.Services.Moderation;
+using Application.Services.AIModeration;
+using Application.Services.Chapter;
+using Application.Services.Translation;
+using Application.Services.Moderation;
+using Infrastructure.Persistence.Data;
+using Infrastructure.Adapters.AIModeration;
+using Infrastructure.Adapters.Cloudinary;
+using Infrastructure.Adapters.Moderation;
+using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
+using Microsoft.EntityFrameworkCore;
+using mlndex_backend.Extension;
 
 namespace mlndex_backend
 {
@@ -39,20 +42,20 @@ namespace mlndex_backend
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
 			));
+			builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
 			// Storage & Content Services
 			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-			// Moderation Service (Person #3 Content Policy Engine)
+			// Core Moderation Engine
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-			builder.Services.AddSingleton(new CoreModerationImpl.BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<CoreModeration.IModerationService, CoreModerationImpl.ModerationService>();
+			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+			builder.Services.AddScoped<Application.Interfaces.Moderation.IModerationService, Application.Services.Moderation.ModerationService>();
 			
-			// AI Moderation (Automation Layer)
+			// AI & Chapter Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Infrastructure.Services.AIModeration.ModerationService>();
+			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
