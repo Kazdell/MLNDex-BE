@@ -5,7 +5,6 @@ using Infrastructure.Services.Chapter;
 using Microsoft.EntityFrameworkCore;
 using Mlndex.Data;
 using mlndex_backend.Extension;
-using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
 using Infrastructure.Services.Moderation;
 using Infrastructure.Services.Translation;
@@ -44,14 +43,19 @@ namespace mlndex_backend
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
 			));
 
-			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+			
 
 			builder.Services.AddHttpClient();
 
-			// === Moderation Service (Person #3 Content Policy Engine) ===
+			// === Service ===
+			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 			builder.Services.AddScoped<IModerationService, ModerationService>();
 			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
+			// Translation Team Service
+			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 			// ============================
 
 
@@ -62,12 +66,6 @@ namespace mlndex_backend
 			// Moderation Service (Person #3)
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
 			builder.Services.AddSingleton(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<IModerationService, ModerationService>();
-
-			// Translation Team Service (Person Dung)
-			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			builder.Services.AddSignalR();
 
