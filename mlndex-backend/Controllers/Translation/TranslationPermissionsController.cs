@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
+using mlndex_backend.Controllers;
 
 namespace mlndex_backend.Controllers.Translation
 {
     [Route("api/translation-permissions")]
-    [ApiController]
-    public class TranslationPermissionsController : ControllerBase
+    public class TranslationPermissionsController : BaseController
     {
         private readonly ITranslationPermissionService _service;
 
@@ -17,33 +17,35 @@ namespace mlndex_backend.Controllers.Translation
             _service = service;
         }
 
+        // Request permission from series creator to translate a chapter.
         [HttpPost("request")]
         public async Task<IActionResult> RequestPermission([FromBody] RequestPermissionDto dto)
         {
             try
             {
-                int requesterId = 1; // MOCK ONLY
+                int requesterId = 1; // TODO: Get from Auth claims
                 var permission = await _service.RequestPermissionAsync(requesterId, dto);
-                return Ok(permission);
+                return OkResponse(permission);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequestResponse(ex.Message);
             }
         }
 
+        // Series creator reviews (Approve/Reject) a translation request.
         [HttpPut("{id}/status")]
         public async Task<IActionResult> ReviewPermission(int id, [FromBody] ReviewPermissionDto dto)
         {
             try
             {
-                int creatorId = 1; // MOCK ONLY
+                int creatorId = 1; // TODO: Get from Auth claims
                 var permission = await _service.ReviewPermissionAsync(id, creatorId, dto);
-                return Ok(permission);
+                return OkResponse(permission);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequestResponse(ex.Message);
             }
         }
     }

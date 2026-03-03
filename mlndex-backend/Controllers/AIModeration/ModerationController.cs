@@ -3,6 +3,7 @@ using Application.Interfaces.AIModeration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using mlndex_backend.Controllers;
 using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.AIModeration
@@ -18,25 +19,16 @@ namespace mlndex_backend.Controllers.AIModeration
 			_moderationService = moderationService;
 		}
 
-		// ─────────────────────────────────────────────────────────────
-		// POST /api/moderation/chapters/{chapterId}/run
-		// Trigger AI kiểm duyệt - gọi nội bộ sau khi upload chapter xong
-		// Chỉ Creator hoặc System mới được gọi
-		// ─────────────────────────────────────────────────────────────
+		// Trigger AI moderation for a chapter. Called internally after upload.
 		[HttpPost("chapters/{chapterId}/run")]
-		//[Authorize(Roles = "CREATOR")]
 		public async Task<IActionResult> RunAiModeration(int chapterId)
 		{
 			await _moderationService.RunAiModerationAsync(chapterId);
 			return OkResponse<object>(null, "Kiểm duyệt hoàn tất");
 		}
 
-		// ─────────────────────────────────────────────────────────────
-		// POST /api/moderation/chapters/{chapterId}/appeal
-		// Tác giả gửi yêu cầu review lại sau khi bị AI flag
-		// ─────────────────────────────────────────────────────────────
+		// Submit an appeal for a chapter flagged by AI.
 		[HttpPost("chapters/{chapterId}/appeal")]
-		//[Authorize(Roles = "CREATOR")]
 		public async Task<IActionResult> SubmitAppeal(int chapterId, [FromBody] SubmitAppealRequestDto request)
 		{
 			if (string.IsNullOrWhiteSpace(request.AppealReason))
@@ -48,7 +40,6 @@ namespace mlndex_backend.Controllers.AIModeration
 				return UnauthorizedResponse();
 
 			var userId = int.Parse(userIdClaim);
-			//var userId = 1;
 
 			await _moderationService.SubmitAppealAsync(chapterId, userId, request.AppealReason);
 

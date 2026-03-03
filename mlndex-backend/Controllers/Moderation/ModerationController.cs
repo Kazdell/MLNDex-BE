@@ -1,12 +1,13 @@
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using mlndex_backend.Controllers;
 
 namespace mlndex_backend.Controllers.Moderation
 {
-    [ApiController]
     [Route("api/[controller]")]
-    public class ModerationController : ControllerBase
+    public class ModerationController : BaseController
     {
         private readonly IModerationService _moderationService;
 
@@ -17,38 +18,38 @@ namespace mlndex_backend.Controllers.Moderation
 
         // Check text against blacklist and profanity filter.
         [HttpPost("check-text")]
-        public ActionResult<TextCheckResponse> CheckText([FromBody] TextCheckRequest request)
+        public IActionResult CheckText([FromBody] TextCheckRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Text))
-                return BadRequest(new { message = "Text content is required." });
+                return BadRequestResponse("Text content is required.");
 
             var result = _moderationService.PreCheckText(request);
-            return Ok(result);
+            return OkResponse(result);
         }
 
         // Analyze OpenAI moderation scores against thresholds.
         [HttpPost("analyze-scores")]
-        public ActionResult<OpenAiScoreResponse> AnalyzeScores([FromBody] OpenAiScoreRequest request)
+        public IActionResult AnalyzeScores([FromBody] OpenAiScoreRequest request)
         {
             if (request.Scores == null || request.Scores.Count == 0)
-                return BadRequest(new { message = "At least one category score is required." });
+                return BadRequestResponse("At least one category score is required.");
 
             var result = _moderationService.AnalyzeOpenAiScores(request);
-            return Ok(result);
+            return OkResponse(result);
         }
 
         // Get all rejection templates for moderators.
         [HttpGet("templates")]
-        public ActionResult<List<RejectionTemplateDto>> GetTemplates()
+        public IActionResult GetTemplates()
         {
-            return Ok(_moderationService.GetRejectionTemplates());
+            return OkResponse(_moderationService.GetRejectionTemplates());
         }
 
         // Get all banned and restricted content tags.
         [HttpGet("banned-tags")]
-        public ActionResult<List<BannedTagDto>> GetBannedTags()
+        public IActionResult GetBannedTags()
         {
-            return Ok(_moderationService.GetBannedTags());
+            return OkResponse(_moderationService.GetBannedTags());
         }
     }
 }
