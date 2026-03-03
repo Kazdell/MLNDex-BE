@@ -1,9 +1,10 @@
-﻿using Domain.Entities;
+﻿using Application.Interfaces.Data;
+using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Mlndex.Data
+namespace Infrastructure.Persistence.Data
 {
-	public class MlndexDbContext : DbContext
+	public class MlndexDbContext : DbContext, IMlndexDbContext
 	{
 		public MlndexDbContext(DbContextOptions<MlndexDbContext> options) : base(options) { }
 

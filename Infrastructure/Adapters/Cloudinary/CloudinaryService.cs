@@ -9,13 +9,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Services.Chapter
+namespace Infrastructure.Adapters.Cloudinary
 {
 	/// Implement IStorageService dùng Cloudinary.
 	/// Tự động convert ảnh sang WebP và tối ưu chất lượng.
 	public class CloudinaryService : IStorageService
 	{
-		private readonly Cloudinary _cloudinary;
+		private readonly CloudinaryDotNet.Cloudinary _cloudinary;
 		private readonly ILogger<CloudinaryService> _logger;
 
 		public CloudinaryService(IConfiguration config, ILogger<CloudinaryService> logger)
@@ -30,7 +30,7 @@ namespace Infrastructure.Services.Chapter
 				?? throw new InvalidOperationException("Thiếu Cloudinary:ApiSecret trong appsettings");
 
 			var account = new Account(cloudName, apiKey, apiSecret);
-			_cloudinary = new Cloudinary(account)
+			_cloudinary = new CloudinaryDotNet.Cloudinary(account)
 			{
 				Api = { Secure = true } // luôn dùng HTTPS
 			};

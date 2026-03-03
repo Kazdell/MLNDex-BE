@@ -1,20 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Application.Interfaces.Data;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Mlndex.Data;
 
-namespace Infrastructure.Services.Translation
+namespace Application.Services.Translation
 {
     public class TranslationTeamService : ITranslationTeamService
     {
-        private readonly MlndexDbContext _context;
+        private readonly IMlndexDbContext _context;
 
-        public TranslationTeamService(MlndexDbContext context)
+        public TranslationTeamService(IMlndexDbContext context)
         {
             _context = context;
         }

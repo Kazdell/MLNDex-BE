@@ -1,5 +1,4 @@
 ﻿using Application.DTOs.Common;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers

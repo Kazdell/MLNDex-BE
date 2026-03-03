@@ -1,35 +1,35 @@
 ﻿using Application.DTOs.Chapter;
-using Application.Interfaces.AIModeration;
+using Application.Interfaces.Data;
 using Application.Interfaces.Chapter;
+using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Mlndex.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Services.Chapter
+namespace Application.Services.Chapter
 {
 	/// Orchestrator điều phối toàn bộ luồng upload trang truyện:
 	/// 1. Upload ảnh lên Cloudinary → nhận URL
-	/// 2. Lưu URL vào bảng ChapterPages trong DB
-	/// 3. Gửi URL cho AI kiểm duyệt → cập nhật moderation_status
+	/// 2. Lưu DB (ChapterPage)
+	/// 3. Trigger AI Moderation (Async)
 	public class ChapterPageService : IChapterPageService
 	{
+		private readonly IMlndexDbContext _db;
 		private readonly IStorageService _storage;
-		private readonly MlndexDbContext _db;
 		private readonly ILogger<ChapterPageService> _logger;
 
 		public ChapterPageService(
+			IMlndexDbContext db,
 			IStorageService storage,
-			MlndexDbContext db,
 			ILogger<ChapterPageService> logger)
 		{
-			_storage = storage;
 			_db = db;
+			_storage = storage;
 			_logger = logger;
 		}
 

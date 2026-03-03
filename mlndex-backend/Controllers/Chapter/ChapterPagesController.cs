@@ -1,33 +1,27 @@
 ﻿using Application.DTOs.Chapter;
-using Application.Interfaces;
+using Application.DTOs.Chapter;
 using Application.Interfaces.Chapter;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using mlndex_backend.Controllers;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlcdex_backend.Controllers;
+namespace mlndex_backend.Controllers;
 
 [ApiController]
 [Route("api/chapters/{chapterId:int}/pages")]
-//[Authorize]
 public class ChapterPagesController : ControllerBase
 {
 	private readonly IChapterPageService _service;
 
 	private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
-	private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB mỗi file
+	private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
 	public ChapterPagesController(IChapterPageService service)
 		=> _service = service;
 
-	/// <summary>
-	/// Upload nhiều trang truyện cho một chapter.
-	/// 
-	/// Request: multipart/form-data
-	/// Field name: "pages" (có thể gửi nhiều file cùng lúc)
-	/// Thứ tự trang = thứ tự file trong request
-	/// 
-	/// Response trả về danh sách URL ảnh đã upload + kết quả kiểm duyệt AI
-	/// </summary>
+	// Upload multiple manga pages for a chapter.
+	// Request: multipart/form-data with "pages" field.
+	// Returns: List of page URLs + AI moderation results.
 	[HttpPost]
 	[RequestSizeLimit(300 * 1024 * 1024)] // tổng request tối đa 300MB
 	public async Task<IActionResult> UploadPages(
@@ -72,7 +66,7 @@ public class ChapterPagesController : ControllerBase
 		return Ok(result);
 	}
 
-	/// <summary>Xóa một trang cụ thể.</summary>
+	// Delete a specific page.
 	[HttpDelete("{pageId:int}")]
 	public async Task<IActionResult> DeletePage(
 		int pageId,
@@ -82,7 +76,7 @@ public class ChapterPagesController : ControllerBase
 		return NoContent();
 	}
 
-	/// <summary>Xóa toàn bộ trang của chapter.</summary>
+	// Delete all pages for a chapter.
 	[HttpDelete]
 	public async Task<IActionResult> DeleteAllPages(
 		int chapterId,

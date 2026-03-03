@@ -201,3 +201,4 @@ appsettings.*.json
 /mlndex-backend/obj
 /mlndex-backend/obj
 migration_error.txt
+build_errors.txt

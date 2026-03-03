@@ -1,18 +1,16 @@
-using System;
-using System.Threading.Tasks;
+using Application.Interfaces.Data;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Mlndex.Data;
 
-namespace Infrastructure.Services.Translation
+namespace Application.Services.Translation
 {
     public class TranslationPermissionService : ITranslationPermissionService
     {
-        private readonly MlndexDbContext _context;
+        private readonly IMlndexDbContext _context;
 
-        public TranslationPermissionService(MlndexDbContext context)
+        public TranslationPermissionService(IMlndexDbContext context)
         {
             _context = context;
         }

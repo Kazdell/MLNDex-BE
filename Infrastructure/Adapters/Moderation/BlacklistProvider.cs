@@ -1,10 +1,11 @@
 using System.Text.Json;
 using Application.DTOs.Moderation;
+using Application.Interfaces.Moderation;
 
-namespace Infrastructure.Services.Moderation
+namespace Infrastructure.Adapters.Moderation
 {
     // Loads and caches moderation config files from disk.
-    public class BlacklistProvider
+    public class BlacklistProvider : IBlacklistProvider
     {
         private readonly string _configPath;
 
@@ -112,18 +113,5 @@ namespace Infrastructure.Services.Moderation
         {
             public Dictionary<string, ThresholdRule>? Thresholds { get; set; }
         }
-    }
-
-    public class BlacklistEntry
-    {
-        public string Word { get; set; } = string.Empty;
-        public List<string> Variants { get; set; } = new();
-        public string Severity { get; set; } = "low";
-    }
-
-    public class ThresholdRule
-    {
-        public double AUTO_REJECT { get; set; }
-        public double FLAG_FOR_REVIEW { get; set; }
     }
 }
