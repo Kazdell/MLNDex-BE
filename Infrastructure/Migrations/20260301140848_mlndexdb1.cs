@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class mlndexdb : Migration
+    public partial class mlndexdb1 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -183,7 +183,13 @@ namespace Infrastructure.Migrations
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ReportCount = table.Column<int>(type: "int", nullable: false),
                     FlaggedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Source = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AiFlagged = table.Column<bool>(type: "bit", nullable: true),
+                    AiFlaggedReason = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    AiProcessedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AppealReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    AppealCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {

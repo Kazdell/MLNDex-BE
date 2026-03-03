@@ -1,7 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Application.Interfaces.AIModeration;
+using Application.Interfaces.Chapter;
+using Infrastructure.Services.AIModeration;
+using Infrastructure.Services.Chapter;
+using Microsoft.EntityFrameworkCore;
 using Mlndex.Data;
 using mlndex_backend.Extension;
-using Application.Interfaces;
+
 
 
 namespace mlndex_backend
@@ -12,16 +16,16 @@ namespace mlndex_backend
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
-			var PORT = Environment.GetEnvironmentVariable("PORT") ?? "8888";
+			//var PORT = Environment.GetEnvironmentVariable("PORT") ?? "8888";
 
-			if(builder.Environment.IsProduction())
-			{
-				builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-			}
-			else
-			{
-				builder.WebHost.UseUrls($"http://localhost:{PORT}");
-			}
+			//if(builder.Environment.IsProduction())
+			//{
+			//	builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
+			//}
+			//else
+			//{
+			//	builder.WebHost.UseUrls($"http://localhost:{PORT}");
+			//}
 
 				// Add services to the container.
 
@@ -35,11 +39,19 @@ namespace mlndex_backend
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
 				));
 
+			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+
 			builder.Services.AddHttpClient();
 
 			// === Moderation Service (Person #3 Content Policy Engine) ===
-
+			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+			builder.Services.AddScoped<IModerationService, ModerationService>();
+			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
 			// ============================
+
+
+			builder.Services.AddHttpContextAccessor();
+
 
 			// Add SignalR
 			builder.Services.AddSignalR();
@@ -86,9 +98,3 @@ namespace mlndex_backend
 		}
 	}
 }
-
-
-
-
-
-

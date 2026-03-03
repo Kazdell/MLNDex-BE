@@ -808,6 +808,18 @@ namespace Mlndex.Data
 				e.Property(x => x.FlaggedAt).IsRequired();
 				e.Property(x => x.AssignedAt);
 
+				// ── AI fields ──────────────────────────────────
+				e.Property(x => x.Source)
+					.HasConversion<string>()
+					.IsRequired();
+				e.Property(x => x.AiFlagged);
+				e.Property(x => x.AiFlaggedReason).HasMaxLength(255);
+				e.Property(x => x.AiProcessedAt);
+
+				// ── Appeal fields ───────────────────────────────
+				e.Property(x => x.AppealReason).HasMaxLength(500);
+				e.Property(x => x.AppealCount).IsRequired().HasDefaultValue(0);
+
 				e.HasOne(x => x.AssignedModerator)
 					.WithMany(u => u.AssignedQueues)
 					.HasForeignKey(x => x.AssignedTo)
