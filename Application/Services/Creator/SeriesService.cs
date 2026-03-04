@@ -101,5 +101,25 @@ namespace Application.Services.Creator
                 throw;
             }
         }
+
+        public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
+            int creatorId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _context.Series
+                .Where(s => s.CreatorId == creatorId)
+                .Select(s => new SeriesListItemDto
+                {
+                    SeriesId = s.SeriesId,
+                    Title = s.Title,
+                    LastChapterNumber = s.Chapters
+                        .OrderByDescending(c => c.ChapterNumber)
+                        .Select(c => (float?)c.ChapterNumber)
+                        .FirstOrDefault() ?? 0f
+                })
+                .OrderBy(s => s.Title)
+                .ToListAsync(cancellationToken);
+        }
+
     }
 }

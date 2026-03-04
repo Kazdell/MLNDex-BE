@@ -2,6 +2,7 @@
 using Application.Interfaces.Creator;
 using Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace mlndex_backend.Controllers.Creator
@@ -18,6 +19,18 @@ namespace mlndex_backend.Controllers.Creator
             _context = context;
             _service = service;
         }
+
+        [HttpGet]
+        [Route("creator/{creatorId:int}")]
+        public async Task<IActionResult> GetSeriesByCreator(
+            CancellationToken cancellationToken)
+        {
+            var creatorId = 1;
+
+            var result = await _service.GetByCreatorAsync(creatorId, cancellationToken);
+            return Ok(result);
+        }
+
 
         [HttpPost("create")]
         [Consumes("multipart/form-data")]

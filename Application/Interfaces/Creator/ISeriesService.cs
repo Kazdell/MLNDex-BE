@@ -13,5 +13,9 @@ namespace Application.Interfaces.Creator
             int creatorId,
             CreateSeriesDto dto,
             CancellationToken cancellationToken = default);
+
+        Task<List<SeriesListItemDto>> GetByCreatorAsync(
+            int creatorId, 
+            CancellationToken cancellationToken = default);
     }
 }

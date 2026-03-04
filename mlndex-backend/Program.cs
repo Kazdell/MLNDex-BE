@@ -59,8 +59,10 @@ namespace mlndex_backend
             builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
             builder.Services.AddScoped<ISeriesService, SeriesService>();
             builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-			// Translation Team Services
-			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+            builder.Services.AddScoped<IChapterService, ChapterService>();
+
+            // Translation Team Services
+            builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
 			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();

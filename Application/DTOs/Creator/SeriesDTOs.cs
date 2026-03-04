@@ -32,4 +32,11 @@ namespace Application.DTOs.Creator
         public string AgeRating { get; set; } = null!;
         public string ModerationStatus { get; set; } = null!;
     }
+
+    public class SeriesListItemDto
+    {
+        public int SeriesId { get; set; }
+        public string Title { get; set; } = null!;
+        public float LastChapterNumber { get; set; }
+    }
 }
