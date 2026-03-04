@@ -4,13 +4,14 @@ using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
 using Application.Services.Chapter;
 using Application.Services.Translation;
-using Application.Interfaces.AIModeration;
+using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
+using Application.Interfaces.Series;
+using Application.Interfaces.Notification;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Application.Interfaces.Data;
-using Application.Interfaces.Moderation;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
 
@@ -41,6 +42,7 @@ namespace mlndex_backend
 			builder.Services.AddDbContext<MlndexDbContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+					.EnableRetryOnFailure()
 			));
 			builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
@@ -58,8 +60,8 @@ namespace mlndex_backend
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			// Browsing & Reading Services
-			builder.Services.AddScoped<Application.Interfaces.Series.ISeriesService, Infrastructure.Services.Series.SeriesService>();
-			builder.Services.AddScoped<Application.Interfaces.Notification.INotificationService, Infrastructure.Services.Notification.NotificationService>();
+			builder.Services.AddScoped<ISeriesService, Infrastructure.Services.Series.SeriesService>();
+			builder.Services.AddScoped<INotificationService, Infrastructure.Services.Notification.NotificationService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
@@ -68,7 +70,7 @@ namespace mlndex_backend
 				options.AddPolicy("AllowSpecificOrigin", policy =>
 				{
 					policy
-					.WithOrigins("http://localhost:3000", "https://learnlinkk.vercel.app")
+					.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://learnlinkk.vercel.app")
 					.AllowAnyHeader()
 					.AllowAnyMethod()
 					.AllowCredentials();

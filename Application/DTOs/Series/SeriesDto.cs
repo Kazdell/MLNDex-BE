@@ -23,6 +23,9 @@ namespace Application.DTOs.Series
 
         // Genres
         public List<string> Genres { get; set; } = new List<string>();
+
+        // Latest Chapters for Landing Page
+        public List<SeriesChapterDto> LatestChapters { get; set; } = new List<SeriesChapterDto>();
     }
 
     public class SeriesDetailDto : SeriesDto
@@ -35,10 +38,10 @@ namespace Application.DTOs.Series
         public int ChapterId { get; set; }
         public string Title { get; set; } = null!;
         public int? ChapterNumber { get; set; }
-        public int? VolumeNumber { get; set; }
         public int Price { get; set; }
         public DateTime PublishedAt { get; set; }
         public int ViewCount { get; set; }
+        public string? GroupName { get; set; }
     }
 
     public class SeriesSearchRequest
