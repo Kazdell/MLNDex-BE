@@ -13,7 +13,9 @@ namespace Domain.Entities
 		public string Email { get; set; } = null!;
 		public string? DisplayName { get; set; } = null!;
 		public string? DisplayAvatar { get; set; }
+		public string PasswordHash { get; set; } = null!;
 		public bool IsActive { get; set; }
+		public DateTime CreatedAt { get; set; }
 
 		// Navigation
 		public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

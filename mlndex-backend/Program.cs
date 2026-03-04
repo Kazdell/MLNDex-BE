@@ -7,6 +7,10 @@ using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
 using Application.Services.Creator;
 using Application.Services.Translation;
+using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
+using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
@@ -42,6 +46,7 @@ namespace mlndex_backend
 			builder.Services.AddDbContext<MlndexDbContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+					.EnableRetryOnFailure()
 			));
 			builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
@@ -64,7 +69,6 @@ namespace mlndex_backend
             // Translation Team Services
             builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			builder.Services.AddCors(options =>
