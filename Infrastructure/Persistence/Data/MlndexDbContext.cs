@@ -261,10 +261,11 @@ namespace Infrastructure.Persistence.Data
 				e.ToTable("Series");
 				e.HasKey(x => x.SeriesId);
 				e.Property(x => x.SeriesId).UseIdentityColumn();
-				e.Property(x => x.Title).HasColumnType("nvarchar(MAX)").IsRequired();
-				e.Property(x => x.Description).HasMaxLength(255);
-				e.Property(x => x.CoverImageUrl).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.SeriesFormat)
+                e.HasIndex(x => x.Title).IsUnique();
+                e.Property(x => x.Title).HasMaxLength(450).IsRequired();
+                e.Property(x => x.Description).HasColumnType("nvarchar(MAX)");
+                e.Property(x => x.CoverImageUrl).HasColumnType("nvarchar(MAX)");
+                e.Property(x => x.SeriesFormat)
 					.HasConversion<string>()
 					.IsRequired();
 				e.Property(x => x.AgeRating)

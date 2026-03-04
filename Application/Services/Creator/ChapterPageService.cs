@@ -1,6 +1,5 @@
 ﻿using Application.DTOs.Chapter;
 using Application.Interfaces.Data;
-using Application.Interfaces.Chapter;
 using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Application.Interfaces.Creator;
 
-namespace Application.Services.Chapter
+namespace Application.Services.Creator
 {
 	/// Orchestrator điều phối toàn bộ luồng upload trang truyện:
 	/// 1. Upload ảnh lên Cloudinary → nhận URL

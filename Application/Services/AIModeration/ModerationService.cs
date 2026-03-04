@@ -19,6 +19,7 @@ namespace Application.Services.AIModeration
 		private readonly IAiModerationClient _aiClient;
 		private readonly ILogger<ModerationService> _logger;
 		private readonly IBlacklistProvider _blacklist;
+		private readonly IOCRService _ocr;
 
 		private static readonly Dictionary<char, char> TeencodeMap = new()
 		{
@@ -30,12 +31,14 @@ namespace Application.Services.AIModeration
 			IMlndexDbContext db,
 			IAiModerationClient aiClient,
 			ILogger<ModerationService> logger,
-			IBlacklistProvider blacklist)
+			IBlacklistProvider blacklist,
+            IOCRService ocr)
 		{
 			_db = db;
 			_aiClient = aiClient;
 			_logger = logger;
 			_blacklist = blacklist;
+			_ocr = ocr;
 		}
 
 		// ─────────────────────────────────────────────────────────────

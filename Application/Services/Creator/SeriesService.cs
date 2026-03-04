@@ -1,27 +1,129 @@
-using Application.DTOs.Series;
+﻿using Application.DTOs.Creator;
+using Application.Interfaces;
+using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
-using Application.Interfaces.Series;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Services.Series
+namespace Application.Services.Creator
 {
     public class SeriesService : ISeriesService
     {
-        private readonly IMlndexDbContext _db;
+        private readonly IMlndexDbContext _context;
+        private readonly IStorageService _storage;
+        private readonly ILogger<SeriesService> _logger;
 
-        public SeriesService(IMlndexDbContext db)
+        public SeriesService(
+            IMlndexDbContext context,
+            IStorageService storage,
+            ILogger<SeriesService> logger)
         {
-            _db = db;
+            _context = context;
+            _storage = storage;
+            _logger = logger;
+        }
+
+        public async Task<CreateSeriesResponseDto> CreateAsync(
+            int creatorId,
+            CreateSeriesDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            // ── 1. Kiểm tra creator tồn tại ──────────────────────────────
+            var creator = await _context.CreatorProfiles
+                .FindAsync([creatorId], cancellationToken)
+                ?? throw new KeyNotFoundException($"Creator {creatorId} không tồn tại.");
+
+            // ── 2. Upload ảnh bìa lên Cloudinary ─────────────────────────
+            string? imageUrl = null;
+            if (dto.CoverImage != null)
+            {
+                imageUrl = await _storage.UploadAsync(
+                    dto.CoverImage.OpenReadStream(),
+                    dto.CoverImage.FileName,
+                    "covers/novels",
+                    cancellationToken);
+            }
+
+            try
+            {
+                // ── 3. Tính AgeRating từ content scores ───────────────────
+                var maxScore = new[] { dto.Violence, dto.Nudity, dto.SexualContent }.Max();
+                var ageRating = maxScore switch
+                {
+                    >= 3 => AgeRating.ADULT,
+                    >= 2 => AgeRating.MATURE,
+                    >= 1 => AgeRating.TEEN,
+                    _ => AgeRating.ALL
+                };
+
+                // ── 4. Build và lưu entity ────────────────────────────────
+                var series = new Series
+                {
+                    CreatorId = creatorId,
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    CoverImageUrl = imageUrl,
+                    SeriesFormat = SeriesFormat.NOVEL,
+                    AgeRating = ageRating,
+                    Status = SeriesStatus.ONGOING,
+                    ModerationStatus = ModerationStatus.PENDING,
+                    AverageRating = 0,
+                    TotalRatings = 0,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
+                _context.Series.Add(series);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, CreatorId: {CreatorId}.",
+                    series.SeriesId, series.Title, creatorId);
+
+                return new CreateSeriesResponseDto
+                {
+                    SeriesId = series.SeriesId,
+                    Title = series.Title,
+                    CoverImageUrl = series.CoverImageUrl,
+                    AgeRating = series.AgeRating.ToString(),
+                    ModerationStatus = series.ModerationStatus.ToString()
+                };
+            }
+            catch (Exception ex)
+            {
+                // ── 5. Cleanup: Xóa ảnh đã upload nếu DB lỗi ─────────────
+                if (imageUrl != null)
+                {
+                    _logger.LogWarning(ex,
+                        "Lưu DB thất bại. Đang xóa ảnh đã upload: {ImageUrl}", imageUrl);
+                    await _storage.DeleteAsync(imageUrl, cancellationToken);
+                }
+                throw;
+            }
+        }
+
+        public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
+            int creatorId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _context.Series
+                .Where(s => s.CreatorId == creatorId)
+                .Select(s => new SeriesListItemDto
+                {
+                    SeriesId = s.SeriesId,
+                    Title = s.Title,
+                    LastChapterNumber = s.Chapters
+                        .OrderByDescending(c => c.ChapterNumber)
+                        .Select(c => (float?)c.ChapterNumber)
+                        .FirstOrDefault() ?? 0f
+                })
+                .OrderBy(s => s.Title)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
         {
-            var query = _db.Series
+            var query = _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters).ThenInclude(c => c.Team)
@@ -51,7 +153,7 @@ namespace Infrastructure.Services.Series
 
         public async Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request)
         {
-            var query = _db.Series
+            var query = _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters).ThenInclude(c => c.Team)
@@ -59,7 +161,7 @@ namespace Infrastructure.Services.Series
 
             if (!string.IsNullOrWhiteSpace(request.Keyword))
             {
-                query = query.Where(s => s.Title.Contains(request.Keyword) || 
+                query = query.Where(s => s.Title.Contains(request.Keyword) ||
                                          (s.Description != null && s.Description.Contains(request.Keyword)));
             }
             if (request.GenreId.HasValue)
@@ -94,7 +196,7 @@ namespace Infrastructure.Services.Series
 
         public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId)
         {
-            var series = await _db.Series
+            var series = await _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters)
@@ -134,7 +236,7 @@ namespace Infrastructure.Services.Series
         public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10)
         {
             // Simple logic for now: Random high rated
-            var randomSeries = await _db.Series
+            var randomSeries = await _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Where(s => s.AverageRating >= 4.0m)
@@ -145,12 +247,12 @@ namespace Infrastructure.Services.Series
             // Fallback to random if no high rated
             if (!randomSeries.Any())
             {
-                 randomSeries = await _db.Series
-                    .Include(s => s.Creator)
-                    .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                    .OrderBy(r => Guid.NewGuid())
-                    .Take(limit)
-                    .ToListAsync();
+                randomSeries = await _context.Series
+                   .Include(s => s.Creator)
+                   .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                   .OrderBy(r => Guid.NewGuid())
+                   .Take(limit)
+                   .ToListAsync();
             }
 
             return randomSeries.Select(MapToDto).ToList();
@@ -188,5 +290,6 @@ namespace Infrastructure.Services.Series
                     }).ToList()
             };
         }
+
     }
 }

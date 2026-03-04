@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Chapter;
+﻿using Application.Interfaces.Creator;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.Extensions.Configuration;

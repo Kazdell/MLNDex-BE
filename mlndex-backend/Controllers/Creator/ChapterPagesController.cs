@@ -1,11 +1,10 @@
 ﻿using Application.DTOs.Chapter;
 using Application.DTOs.Chapter;
-using Application.Interfaces.Chapter;
+using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Mvc;
-using mlndex_backend.Controllers;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlndex_backend.Controllers;
+namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
 [Route("api/chapters/{chapterId:int}/pages")]

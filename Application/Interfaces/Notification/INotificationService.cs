@@ -1,5 +1,5 @@
+using Application.DTOs.Creator;
 using Application.DTOs.Notification;
-using Application.DTOs.Series;
 using System.Threading.Tasks;
 
 namespace Application.Interfaces.Notification

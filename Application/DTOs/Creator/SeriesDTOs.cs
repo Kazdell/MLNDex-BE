@@ -1,9 +1,46 @@
-using Domain.Entities;
+﻿using Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Application.DTOs.Series
+namespace Application.DTOs.Creator
 {
+    public class CreateSeriesDto
+    {
+        public string Title { get; set; } = null!;
+        public string? Description { get; set; }
+        public string Language { get; set; } = null!;
+        public string Category1 { get; set; } = null!;
+        public string? Category2 { get; set; }
+        public IFormFile? CoverImage { get; set; }
+        // Moderation fields
+        public int Violence { get; set; }
+        public int Nudity { get; set; }
+        public int SexualContent { get; set; }
+        public int Language_Score { get; set; }
+        public int Substances { get; set; }
+        public int SensitiveContent { get; set; }
+    }
+
+    public class CreateSeriesResponseDto
+    {
+        public int SeriesId { get; set; }
+        public string Title { get; set; } = null!;
+        public string? CoverImageUrl { get; set; }
+        public string AgeRating { get; set; } = null!;
+        public string ModerationStatus { get; set; } = null!;
+    }
+
+    public class SeriesListItemDto
+    {
+        public int SeriesId { get; set; }
+        public string Title { get; set; } = null!;
+        public float LastChapterNumber { get; set; }
+    }
+
     public class SeriesDto
     {
         public int SeriesId { get; set; }
@@ -16,7 +53,7 @@ namespace Application.DTOs.Series
         public decimal AverageRating { get; set; }
         public int TotalRatings { get; set; }
         public DateTime CreatedAt { get; set; }
-        
+
         // Creator info (Simplified)
         public int CreatorId { get; set; }
         public string CreatorName { get; set; } = null!;

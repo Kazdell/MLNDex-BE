@@ -1,5 +1,5 @@
+using Application.DTOs.Creator;
 using Application.DTOs.Notification;
-using Application.DTOs.Series;
 using Application.Interfaces.Data;
 using Application.Interfaces.Notification;
 using Domain.Entities;
@@ -71,6 +71,11 @@ namespace Infrastructure.Services.Notification
                 await _db.SaveChangesAsync();
             }
             return count;
+        }
+
+        Task<PaginatedList<NotificationDto>> INotificationService.GetUserNotificationsAsync(int userId, int page, int pageSize)
+        {
+            throw new NotImplementedException();
         }
     }
 }

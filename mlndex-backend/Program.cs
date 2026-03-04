@@ -1,17 +1,21 @@
 ﻿using Application.Interfaces.AIModeration;
-using Application.Interfaces.Chapter;
+using Application.Interfaces.AIModeration;
+using Application.Interfaces.Creator;
+using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
-using Application.Services.Chapter;
+using Application.Services.Creator;
 using Application.Services.Translation;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
-using Application.Interfaces.Series;
 using Application.Interfaces.Notification;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
+using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
 
@@ -53,15 +57,17 @@ namespace mlndex_backend
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
 			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
 			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
-			// AI & Chapter Processing
+
+			// AI & Novel Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
-			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-			// Translation Team Services
-			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-			// Browsing & Reading Services
-			builder.Services.AddScoped<ISeriesService, Infrastructure.Services.Series.SeriesService>();
-			builder.Services.AddScoped<INotificationService, Infrastructure.Services.Notification.NotificationService>();
+            builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+            builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
+            builder.Services.AddScoped<ISeriesService, SeriesService>();
+            builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
+            builder.Services.AddScoped<IChapterService, ChapterService>();
+
+            // Translation Team Services
+            builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
@@ -70,7 +76,7 @@ namespace mlndex_backend
 				options.AddPolicy("AllowSpecificOrigin", policy =>
 				{
 					policy
-					.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://learnlinkk.vercel.app")
+					.WithOrigins("http://localhost:5173")
 					.AllowAnyHeader()
 					.AllowAnyMethod()
 					.AllowCredentials();
@@ -93,7 +99,12 @@ namespace mlndex_backend
 			app.UseStaticFiles();
 
 			app.MapControllers();
-			app.Run();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
+                db.Database.Migrate();
+            }
+            app.Run();
 		}
 	}
 }

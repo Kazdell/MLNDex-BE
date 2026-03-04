@@ -27,7 +27,6 @@ namespace Domain.Entities
 		// Navigation
 		public Series Series { get; set; } = null!;
 		public TranslationTeam? Team { get; set; }
-		public ChapterPage? ChapterPages { get; set; }
 		public ChapterText? ChapterText { get; set; }
 		public ICollection<ChapterPage> Pages { get; set; } = new List<ChapterPage>();
 		public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
