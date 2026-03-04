@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {}
+    "E:\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+    "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
+        "projectUniqueName": "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
         "projectName": "Application",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
-        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\obj\\",
+        "projectPath": "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj",
+        "packagesPath": "C:\\Users\\trinh\\.nuget\\packages\\",
+        "outputPath": "E:\\MLNDex\\MLNDex-BE\\Application\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "F:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\trinh\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,15 +26,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj"
+              "E:\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
+                "projectPath": "E:\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj"
               }
             }
           }
@@ -76,24 +75,24 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
+    "E:\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
+        "projectUniqueName": "E:\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
         "projectName": "Domain",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
-        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Domain\\obj\\",
+        "projectPath": "E:\\MLNDex\\MLNDex-BE\\Domain\\Domain.csproj",
+        "packagesPath": "C:\\Users\\trinh\\.nuget\\packages\\",
+        "outputPath": "E:\\MLNDex\\MLNDex-BE\\Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "F:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\trinh\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -102,7 +101,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -160,24 +158,24 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
+    "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
+        "projectUniqueName": "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
         "projectName": "Infrastructure",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
-        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\obj\\",
+        "projectPath": "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\trinh\\.nuget\\packages\\",
+        "outputPath": "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "F:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\trinh\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -186,15 +184,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
+              "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+                "projectPath": "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
               }
             }
           }
@@ -244,24 +241,24 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {
+    "E:\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
+        "projectUniqueName": "E:\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
         "projectName": "mlndex-backend",
-        "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
-        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\mlndex-backend\\obj\\",
+        "projectPath": "E:\\MLNDex\\MLNDex-BE\\mlndex-backend\\mlndex-backend.csproj",
+        "packagesPath": "C:\\Users\\trinh\\.nuget\\packages\\",
+        "outputPath": "E:\\MLNDex\\MLNDex-BE\\mlndex-backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "F:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\trinh\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -270,18 +267,17 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
+              "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj": {
+                "projectPath": "E:\\MLNDex\\MLNDex-BE\\Application\\Application.csproj"
               },
-              "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
-                "projectPath": "C:\\Users\\ACER\\Downloads\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj"
+              "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj": {
+                "projectPath": "E:\\MLNDex\\MLNDex-BE\\Infrastructure\\Infrastructure.csproj"
               }
             }
           }
@@ -312,9 +308,19 @@
               "target": "Package",
               "version": "[8.0.23, )"
             },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.23, )"
+            },
             "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
               "target": "Package",
               "version": "[1.22.1, )"
+            },
+            "Microsoft.VisualStudio.Web.CodeGeneration.Design": {
+              "target": "Package",
+              "version": "[8.0.23, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
@@ -340,7 +346,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

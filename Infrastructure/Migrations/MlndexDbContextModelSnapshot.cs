@@ -667,8 +667,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(MAX)");
 
                     b.Property<string>("ModerationStatus")
                         .IsRequired()
@@ -684,7 +683,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("TotalRatings")
                         .HasColumnType("int");
@@ -692,6 +692,9 @@ namespace Infrastructure.Migrations
                     b.HasKey("SeriesId");
 
                     b.HasIndex("CreatorId");
+
+                    b.HasIndex("Title")
+                        .IsUnique();
 
                     b.ToTable("Series", (string)null);
                 });

@@ -12,7 +12,7 @@ namespace mlndex_backend
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
-			var PORT = Environment.GetEnvironmentVariable("PORT") ?? "8888";
+			var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
 
 			if (builder.Environment.IsProduction())
 				builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
@@ -42,7 +42,7 @@ namespace mlndex_backend
 				options.AddPolicy("AllowSpecificOrigin", policy =>
 				{
 					policy
-					.WithOrigins("http://localhost:3000", "https://learnlinkk.vercel.app")
+					.WithOrigins("http://localhost:5173")
 					.AllowAnyHeader()
 					.AllowAnyMethod()
 					.AllowCredentials();
@@ -65,7 +65,12 @@ namespace mlndex_backend
 			app.UseStaticFiles();
 
 			app.MapControllers();
-			app.Run();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
+                db.Database.Migrate();
+            }
+            app.Run();
 		}
 	}
 }
