@@ -51,15 +51,16 @@ namespace mlndex_backend
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
 			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
 			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
-			
 			// AI & Chapter Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+			// Browsing & Reading Services
+			builder.Services.AddScoped<Application.Interfaces.Series.ISeriesService, Infrastructure.Services.Series.SeriesService>();
+			builder.Services.AddScoped<Application.Interfaces.Notification.INotificationService, Infrastructure.Services.Notification.NotificationService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			builder.Services.AddCors(options =>
