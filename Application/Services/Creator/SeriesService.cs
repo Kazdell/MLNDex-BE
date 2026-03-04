@@ -8,16 +8,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Creator
 {
-    public class NovelService : INovelService
+    public class SeriesService : ISeriesService
     {
         private readonly IMlndexDbContext _context;
         private readonly IStorageService _storage;
-        private readonly ILogger<NovelService> _logger;
+        private readonly ILogger<SeriesService> _logger;
 
-        public NovelService(
+        public SeriesService(
             IMlndexDbContext context,
             IStorageService storage,
-            ILogger<NovelService> logger)
+            ILogger<SeriesService> logger)
         {
             _context = context;
             _storage = storage;

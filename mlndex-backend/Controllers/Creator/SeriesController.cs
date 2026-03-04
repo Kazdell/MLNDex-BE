@@ -11,9 +11,9 @@ namespace mlndex_backend.Controllers.Creator
     public class SeriesController : BaseController
     {
         private readonly MlndexDbContext _context;
-        private readonly INovelService _service;
+        private readonly ISeriesService _service;
 
-        public SeriesController(MlndexDbContext context, INovelService service)
+        public SeriesController(MlndexDbContext context, ISeriesService service)
         {
             _context = context;
             _service = service;

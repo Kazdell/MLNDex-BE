@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Application.Interfaces.Creator
 {
-    public interface INovelService
+    public interface ISeriesService
     {
         Task<CreateSeriesResponseDto> CreateAsync(
             int creatorId,

@@ -1,18 +1,19 @@
 ﻿using Application.Interfaces.AIModeration;
+using Application.Interfaces.AIModeration;
+using Application.Interfaces.Creator;
+using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
+using Application.Services.Creator;
 using Application.Services.Translation;
-using Application.Interfaces.AIModeration;
-using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Application.Interfaces.Data;
-using Application.Interfaces.Moderation;
+using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
-using Application.Services.Creator;
-using Application.Interfaces.Creator;
 
 namespace mlndex_backend
 {
@@ -54,8 +55,9 @@ namespace mlndex_backend
 
 			// AI & Novel Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
-            builder.Services.AddScoped<INovelService, NovelService>();
+            builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+            builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
+            builder.Services.AddScoped<ISeriesService, SeriesService>();
             builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
