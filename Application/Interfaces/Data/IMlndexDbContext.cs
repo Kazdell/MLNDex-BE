@@ -13,7 +13,7 @@ namespace Application.Interfaces.Data
         DbSet<VipSubscription> VipSubscriptions { get; set; }
         DbSet<TranslationTeam> TranslationTeams { get; set; }
         DbSet<TeamMember> TeamMembers { get; set; }
-        DbSet<Series> Series { get; set; }
+        DbSet<Domain.Entities.Series> Series { get; set; }
         DbSet<Genre> Genres { get; set; }
         DbSet<SeriesGenre> SeriesGenres { get; set; }
         DbSet<Domain.Entities.Chapter> Chapters { get; set; }
@@ -33,7 +33,7 @@ namespace Application.Interfaces.Data
         DbSet<Comment> Comments { get; set; }
         DbSet<Bookmark> Bookmarks { get; set; }
         DbSet<Rating> Ratings { get; set; }
-        DbSet<Notification> Notifications { get; set; }
+        DbSet<Domain.Entities.Notification> Notifications { get; set; }
         DbSet<Report> Reports { get; set; }
         DbSet<ModerationQueue> ModerationQueues { get; set; }
         DbSet<ModerationAction> ModerationActions { get; set; }
