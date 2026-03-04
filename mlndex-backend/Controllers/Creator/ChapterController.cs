@@ -1,4 +1,3 @@
-﻿// Controllers/Creator/ChapterController.cs
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +26,7 @@ public class ChapterController : ControllerBase
         [FromForm] IFormFileCollection pages,
         CancellationToken cancellationToken)
     {
-        // ── Validate files ────────────────────────────────────────────
+        // Kiểm tra tính hợp lệ của file
         if (pages.Count == 0)
             return BadRequest(new { message = "Chưa có trang nào được gửi lên." });
 
@@ -47,7 +46,7 @@ public class ChapterController : ControllerBase
                 });
         }
 
-        // ── Map IFormFile → UploadPageDto ─────────────────────────────
+        // Chuyển đổi dữ liệu sang DTO
         var dto = new CreateChapterDto
         {
             SeriesId = seriesId,
@@ -62,7 +61,7 @@ public class ChapterController : ControllerBase
             }).ToList()
         };
 
-        // ── Gọi Service ───────────────────────────────────────────────
+        // Gọi Service xử lý nghiệp vụ
         var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
         return CreatedAtAction(nameof(Create), new { id = result.ChapterId }, result);
     }
