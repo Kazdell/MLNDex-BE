@@ -23,4 +23,13 @@ namespace Application.DTOs.Creator
         public int Substances { get; set; }
         public int SensitiveContent { get; set; }
     }
+
+    public class CreateSeriesResponseDto
+    {
+        public int SeriesId { get; set; }
+        public string Title { get; set; } = null!;
+        public string? CoverImageUrl { get; set; }
+        public string AgeRating { get; set; } = null!;
+        public string ModerationStatus { get; set; } = null!;
+    }
 }

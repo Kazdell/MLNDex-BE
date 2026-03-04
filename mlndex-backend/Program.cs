@@ -1,8 +1,18 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Mlndex.Data;
-using mlndex_backend.Extension;
+﻿using Application.Interfaces.AIModeration;
+using Application.Interfaces.Translation;
+using Application.Services.AIModeration;
+using Application.Services.Translation;
+using Application.Interfaces.AIModeration;
+using Infrastructure.Persistence.Data;
+using Infrastructure.Adapters.AIModeration;
+using Infrastructure.Adapters.Cloudinary;
+using Infrastructure.Adapters.Moderation;
+using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
-using Infrastructure.Services.Moderation;
+using Microsoft.EntityFrameworkCore;
+using mlndex_backend.Extension;
+using Application.Services.Creator;
+using Application.Interfaces.Creator;
 
 namespace mlndex_backend
 {
@@ -19,23 +29,39 @@ namespace mlndex_backend
 			else
 				builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
+			// Standard API Services
 			builder.Services.AddControllers();
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
+			builder.Services.AddHttpContextAccessor();
+			builder.Services.AddHttpClient();
+			builder.Services.AddSignalR();
 
+			// Database Configuration
 			builder.Services.AddDbContext<MlndexDbContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
 				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
 			));
+			builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
-			builder.Services.AddHttpClient();
+			// Storage & Content Services
+			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-			// Moderation Service (Person #3)
+			// Core Moderation Engine
 			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-			builder.Services.AddSingleton(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<IModerationService, ModerationService>();
+			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 
-			builder.Services.AddSignalR();
+			// AI & Novel Processing
+			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+			builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
+            builder.Services.AddScoped<INovelService, NovelService>();
+            builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
+			// Translation Team Services
+			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
+			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			builder.Services.AddCors(options =>
 			{

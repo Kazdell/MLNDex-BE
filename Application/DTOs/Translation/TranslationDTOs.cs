@@ -1,0 +1,39 @@
+using System;
+using System.Collections.Generic;
+using Domain.Entities;
+
+namespace Application.DTOs.Translation
+{
+    public class UploadTranslationDto
+    {
+        public int ChapterId { get; set; }
+        public int PermissionId { get; set; }
+        public string Language { get; set; } = string.Empty;
+        public ContentType ContentType { get; set; } // IMAGE or TEXT
+        public List<string>? ImageUrls { get; set; } // If Manga
+        public string? ContentUrl { get; set; } // If Light Novel
+        public int? WordCount { get; set; } // For Light Novel
+    }
+
+    public class EditTranslationDto
+    {
+        public string Language { get; set; } = string.Empty;
+        // Optionally update content...
+        public List<string>? ImageUrls { get; set; }
+        public string? ContentUrl { get; set; }
+        public int? WordCount { get; set; }
+    }
+
+    public class TranslationDto
+    {
+        public int TranslationId { get; set; }
+        public int ChapterId { get; set; }
+        public string Language { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string QualityStatus { get; set; } = string.Empty;
+        public string ModerationStatus { get; set; } = string.Empty;
+        public DateTime? PublishedAt { get; set; }
+        public List<string>? Pages { get; set; }
+        public string? TextContent { get; set; }
+    }
+}

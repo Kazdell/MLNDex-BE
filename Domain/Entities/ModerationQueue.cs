@@ -18,6 +18,16 @@ namespace Domain.Entities
 		public DateTime FlaggedAt { get; set; }
 		public DateTime? AssignedAt { get; set; }
 
+		// Thêm mới - context cho moderator biết tại sao item này vào queue
+		public QueueSource Source { get; set; }           // AI_FLAGGED hoặc USER_REPORT
+		public bool? AiFlagged { get; set; }              // AI kết luận: có vấn đề không?
+		public string? AiFlaggedReason { get; set; }      // "violence, sexual"
+		public DateTime? AiProcessedAt { get; set; }      // AI check lúc nào
+
+		// ── Appeal (tác giả yêu cầu review lại) ────────
+		public string? AppealReason { get; set; }         // Tác giả giải thích lý do
+		public int AppealCount { get; set; } = 0;         // Đã appeal mấy lần
+
 		// Navigation
 		public User? AssignedModerator { get; set; }
 		public ICollection<Report> Reports { get; set; } = new List<Report>();
@@ -45,5 +55,11 @@ namespace Domain.Entities
 		IN_REVIEW,
 		RESOLVED,
 		DISMISSED
+	}
+
+	public enum QueueSource
+	{
+		AI_FLAGGED,   // AI tự phát hiện, tác giả appeal
+		USER_REPORT   // User report, mod review
 	}
 }
