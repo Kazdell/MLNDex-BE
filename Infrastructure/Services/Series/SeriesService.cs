@@ -24,10 +24,11 @@ namespace Infrastructure.Services.Series
             var query = _db.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                .Include(s => s.Chapters).ThenInclude(c => c.Team)
                 .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                 .AsQueryable();
 
-            if (sortBy.ToLower() == "popular")
+            if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
             {
                 query = query.OrderByDescending(s => s.TotalRatings);
             }
@@ -53,6 +54,7 @@ namespace Infrastructure.Services.Series
             var query = _db.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                .Include(s => s.Chapters).ThenInclude(c => c.Team)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Keyword))
@@ -73,7 +75,7 @@ namespace Infrastructure.Services.Series
                 query = query.Where(s => s.SeriesFormat == request.Format.Value);
             }
 
-            if (request.SortBy.ToLower() == "popular")
+            if (request.SortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
@@ -170,7 +172,20 @@ namespace Infrastructure.Services.Series
                 CreatedAt = s.CreatedAt,
                 CreatorId = s.CreatorId,
                 CreatorName = s.Creator.PenName,
-                Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList()
+                Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
+                LatestChapters = s.Chapters
+                    .OrderByDescending(c => c.PublishedAt)
+                    .Take(2)
+                    .Select(c => new SeriesChapterDto
+                    {
+                        ChapterId = c.ChapterId,
+                        Title = c.Title ?? "Untitled",
+                        ChapterNumber = (int)c.ChapterNumber,
+                        Price = c.UnlockPriceCoins ?? 0,
+                        PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
+                        ViewCount = c.ReadingHistories?.Count ?? 0,
+                        GroupName = c.Team?.TeamName
+                    }).ToList()
             };
         }
     }
