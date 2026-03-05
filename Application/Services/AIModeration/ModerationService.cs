@@ -68,22 +68,38 @@ namespace Application.Services.AIModeration
 			// Gọi AI
 			var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
-			// Cập nhật ModerationStatus trên Chapter
-			chapter.ModerationStatus = aiResult.Flagged
-				? ModerationStatus.REJECTED
-				: ModerationStatus.APPROVED;
-
-			await _db.SaveChangesAsync();
-
+			// Cập nhật ModerationStatus trên Chapter và đẩy vào Hàng đợi nếu vi phạm
 			if (aiResult.Flagged)
 			{
-				_logger.LogWarning("Chapter {ChapterId} bị flag: {Reason}", chapterId, aiResult.FlaggedReason);
-				// TODO: Gửi notification cho tác giả (sau này thêm INotificationService vào đây)
+				chapter.ModerationStatus = ModerationStatus.PENDING; // Đưa vào trạng thái chờ duyệt thay vì REJECT luôn
+
+				var queueItem = new ModerationQueue
+				{
+					ContentId = chapterId,
+					ContentType = ModerationQueueContentType.CHAPTER,
+					Priority = QueuePriority.HIGH,
+					Status = QueueStatus.PENDING,
+					Source = QueueSource.AI_FLAGGED,
+					AiFlagged = true,
+					AiFlaggedReason = aiResult.FlaggedReason,
+					AiProcessedAt = DateTime.UtcNow,
+					FlaggedAt = DateTime.UtcNow,
+					ReportCount = 0,
+					AppealCount = 0
+				};
+
+				_db.ModerationQueues.Add(queueItem);
+
+				_logger.LogWarning("Chapter {ChapterId} bị flag: {Reason}. Đã đưa vào ModerationQueue.", chapterId, aiResult.FlaggedReason);
+				// TODO: Gửi notification cho Mod
 			}
 			else
 			{
+				chapter.ModerationStatus = ModerationStatus.APPROVED;
 				_logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt", chapterId);
 			}
+
+			await _db.SaveChangesAsync();
 		}
 
 		// ─────────────────────────────────────────────────────────────

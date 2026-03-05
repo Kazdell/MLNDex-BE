@@ -14,6 +14,13 @@ namespace Application.Interfaces.Creator
             CreateSeriesDto dto,
             CancellationToken cancellationToken = default);
 
+        Task<CreateSeriesResponseDto> UpdateAsync(
+            int seriesId,
+            int creatorId,
+            CreateSeriesDto dto,
+            CancellationToken cancellationToken = default);
+
+
         Task<List<SeriesListItemDto>> GetByCreatorAsync(
             int creatorId, 
             CancellationToken cancellationToken = default);
@@ -22,5 +29,7 @@ namespace Application.Interfaces.Creator
         Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request);
         Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId);
         Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10);
+        Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int creatorId);
     }
 }
+

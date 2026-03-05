@@ -47,6 +47,29 @@ namespace mlndex_backend.Controllers.Creator
             return Ok(result);
         }
 
+        [HttpGet("{id}/edit")]
+        public async Task<IActionResult> GetForEdit(int id)
+        {
+            var creatorId = 1; // Default for now
+            var result = await _service.GetForEditAsync(id, creatorId);
+            if (result == null)
+                return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
+
+            return OkResponse(result);
+        }
+
+        [HttpPut("{id}")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> Update(
+            int id,
+            [FromForm] CreateSeriesDto dto,
+            CancellationToken cancellationToken)
+        {
+            var creatorId = 1; // Default for now
+            var result = await _service.UpdateAsync(id, creatorId, dto, cancellationToken);
+            return Ok(result);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetSeries([FromQuery] string sortBy = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
