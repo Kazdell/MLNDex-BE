@@ -29,12 +29,10 @@ namespace Application.Services.Creator
             CreateSeriesDto dto,
             CancellationToken cancellationToken = default)
         {
-            // ── 1. Kiểm tra creator tồn tại ──────────────────────────────
             var creator = await _context.CreatorProfiles
                 .FindAsync([creatorId], cancellationToken)
                 ?? throw new KeyNotFoundException($"Creator {creatorId} không tồn tại.");
 
-            // ── 2. Upload ảnh bìa lên Cloudinary ─────────────────────────
             string? imageUrl = null;
             if (dto.CoverImage != null)
             {
@@ -47,7 +45,6 @@ namespace Application.Services.Creator
 
             try
             {
-                // ── 3. Tính AgeRating từ content scores ───────────────────
                 var maxScore = new[] { dto.Violence, dto.Nudity, dto.SexualContent }.Max();
                 var ageRating = maxScore switch
                 {
@@ -57,7 +54,6 @@ namespace Application.Services.Creator
                     _ => AgeRating.ALL
                 };
 
-                // ── 4. Build và lưu entity ────────────────────────────────
                 var series = new Series
                 {
                     CreatorId = creatorId,
@@ -76,6 +72,18 @@ namespace Application.Services.Creator
                 _context.Series.Add(series);
                 await _context.SaveChangesAsync(cancellationToken);
 
+                if (dto.GenreIds != null && dto.GenreIds.Any())
+                {
+                    var seriesGenres = dto.GenreIds.Select(genreId => new SeriesGenre
+                    {
+                        SeriesId = series.SeriesId,
+                        GenreId = genreId
+                    }).ToList();
+
+                    _context.SeriesGenres.AddRange(seriesGenres);
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+
                 _logger.LogInformation(
                     "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, CreatorId: {CreatorId}.",
                     series.SeriesId, series.Title, creatorId);
@@ -91,12 +99,91 @@ namespace Application.Services.Creator
             }
             catch (Exception ex)
             {
-                // ── 5. Cleanup: Xóa ảnh đã upload nếu DB lỗi ─────────────
                 if (imageUrl != null)
                 {
-                    _logger.LogWarning(ex,
-                        "Lưu DB thất bại. Đang xóa ảnh đã upload: {ImageUrl}", imageUrl);
+                    _logger.LogWarning(ex, "Lưu DB thất bại. Đang xóa ảnh đã upload: {ImageUrl}", imageUrl);
                     await _storage.DeleteAsync(imageUrl, cancellationToken);
+                }
+                throw;
+            }
+        }
+
+        public async Task<CreateSeriesResponseDto> UpdateAsync(
+            int seriesId,
+            int creatorId,
+            CreateSeriesDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            var series = await _context.Series
+                .Include(s => s.SeriesGenres)
+                .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
+                ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+
+            if (series.CreatorId != creatorId)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
+            }
+
+            string? newImageUrl = null;
+            if (dto.CoverImage != null)
+            {
+                newImageUrl = await _storage.UploadAsync(
+                    dto.CoverImage.OpenReadStream(),
+                    dto.CoverImage.FileName,
+                    "covers/novels",
+                    cancellationToken);
+                
+                if (!string.IsNullOrEmpty(series.CoverImageUrl))
+                {
+                    await _storage.DeleteAsync(series.CoverImageUrl, cancellationToken);
+                }
+                series.CoverImageUrl = newImageUrl;
+            }
+
+            try
+            {
+                var maxScore = new[] { dto.Violence, dto.Nudity, dto.SexualContent }.Max();
+                series.AgeRating = maxScore switch
+                {
+                    >= 3 => AgeRating.ADULT,
+                    >= 2 => AgeRating.MATURE,
+                    >= 1 => AgeRating.TEEN,
+                    _ => AgeRating.ALL
+                };
+
+                series.Title = dto.Title;
+                series.Description = dto.Description;
+                
+                if (dto.GenreIds != null)
+                {
+                    _context.SeriesGenres.RemoveRange(series.SeriesGenres);
+                    
+                    var seriesGenres = dto.GenreIds.Select(genreId => new SeriesGenre
+                    {
+                        SeriesId = series.SeriesId,
+                        GenreId = genreId
+                    }).ToList();
+
+                    _context.SeriesGenres.AddRange(seriesGenres);
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                return new CreateSeriesResponseDto
+                {
+                    SeriesId = series.SeriesId,
+                    Title = series.Title,
+                    CoverImageUrl = series.CoverImageUrl,
+                    AgeRating = series.AgeRating.ToString(),
+                    ModerationStatus = series.ModerationStatus.ToString()
+                };
+            }
+            catch (Exception ex)
+            {
+                if (newImageUrl != null)
+                {
+                    _logger.LogWarning(ex, "Cập nhật thất bại. Đang xóa ảnh mới upload: {ImageUrl}", newImageUrl);
+                    await _storage.DeleteAsync(newImageUrl, cancellationToken);
                 }
                 throw;
             }
@@ -131,13 +218,9 @@ namespace Application.Services.Creator
                 .AsQueryable();
 
             if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
-            {
                 query = query.OrderByDescending(s => s.TotalRatings);
-            }
-            else // newest
-            {
+            else
                 query = query.OrderByDescending(s => s.CreatedAt);
-            }
 
             var totalCount = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
@@ -165,17 +248,13 @@ namespace Application.Services.Creator
                                          (s.Description != null && s.Description.Contains(request.Keyword)));
             }
             if (request.GenreId.HasValue)
-            {
                 query = query.Where(s => s.SeriesGenres.Any(sg => sg.GenreId == request.GenreId.Value));
-            }
+            
             if (request.Status.HasValue)
-            {
                 query = query.Where(s => s.Status == request.Status.Value);
-            }
+            
             if (request.Format.HasValue)
-            {
                 query = query.Where(s => s.SeriesFormat == request.Format.Value);
-            }
 
             if (request.SortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
@@ -204,7 +283,7 @@ namespace Application.Services.Creator
 
             if (series == null) return null;
 
-            var dto = new SeriesDetailDto
+            return new SeriesDetailDto
             {
                 SeriesId = series.SeriesId,
                 Title = series.Title,
@@ -229,13 +308,29 @@ namespace Application.Services.Creator
                     ViewCount = c.ReadingHistories?.Count ?? 0
                 }).ToList()
             };
+        }
 
-            return dto;
+        public async Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int creatorId)
+        {
+            var series = await _context.Series
+                .Include(s => s.SeriesGenres)
+                .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
+
+            if (series == null || series.CreatorId != creatorId) return null;
+
+            return new CreateSeriesDto
+            {
+                Title = series.Title,
+                Description = series.Description,
+                GenreIds = series.SeriesGenres.Select(sg => sg.GenreId).ToList(),
+                Violence = (int)series.AgeRating, // Fallback mapping
+                Nudity = 0,
+                SexualContent = 0
+            };
         }
 
         public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10)
         {
-            // Simple logic for now: Random high rated
             var randomSeries = await _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
@@ -244,7 +339,6 @@ namespace Application.Services.Creator
                 .Take(limit)
                 .ToListAsync();
 
-            // Fallback to random if no high rated
             if (!randomSeries.Any())
             {
                 randomSeries = await _context.Series
@@ -258,7 +352,7 @@ namespace Application.Services.Creator
             return randomSeries.Select(MapToDto).ToList();
         }
 
-        private SeriesDto MapToDto(Domain.Entities.Series s)
+        private SeriesDto MapToDto(Series s)
         {
             return new SeriesDto
             {
@@ -290,6 +384,5 @@ namespace Application.Services.Creator
                     }).ToList()
             };
         }
-
     }
 }

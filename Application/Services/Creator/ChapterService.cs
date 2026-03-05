@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Application.Interfaces.AIModeration;
 
 namespace Application.Services.Creator
 {
@@ -18,15 +20,18 @@ namespace Application.Services.Creator
         private readonly IMlndexDbContext _db;
         private readonly IStorageService _storage;
         private readonly ILogger<ChapterService> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public ChapterService(
             IMlndexDbContext db,
             IStorageService storage,
-            ILogger<ChapterService> logger)
+            ILogger<ChapterService> logger,
+            IServiceScopeFactory scopeFactory)
         {
             _db = db;
             _storage = storage;
             _logger = logger;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task<CreateChapterResponseDto> CreateAsync(
@@ -97,6 +102,21 @@ namespace Application.Services.Creator
                     }
 
                     await _db.SaveChangesAsync(cancellationToken);
+
+                    // ── Gọi AI Moderation chạy ngầm ───────────────────────────
+                    _ = Task.Run(async () => 
+                    {
+                        try 
+                        {
+                            using var scope = _scopeFactory.CreateScope();
+                            var moderationService = scope.ServiceProvider.GetRequiredService<IModerationService>();
+                            await moderationService.RunAiModerationAsync(chapter.ChapterId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Lỗi khi chạy background AI kiểm duyệt cho Chapter {ChapterId}", chapter.ChapterId);
+                        }
+                    });
                 }
 
                 _logger.LogInformation(
