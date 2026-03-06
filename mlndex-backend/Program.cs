@@ -87,6 +87,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
             builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
             builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
+            builder.Services.AddScoped<IReportService, ReportService>();
             builder.Services.AddSingleton<ISystemConfigService>(sp =>
             {
                 var path = Path.Combine(
