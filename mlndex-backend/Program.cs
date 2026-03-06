@@ -17,7 +17,6 @@ using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Persistence.Data;
-using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Extension;
 
@@ -85,6 +84,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IGenreService, GenreService>();
             builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
             builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+            builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 
             // Translation Team Services
             builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
