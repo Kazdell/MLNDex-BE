@@ -9,6 +9,7 @@ using Application.Interfaces.User;
 using Application.Services.AIModeration;
 using Application.Services.Creator;
 using Application.Services.Financial;
+using Application.Services.Moderation;
 using Application.Services.Translation;
 using Application.Services.User;
 using Infrastructure.Adapters.AIModeration;
@@ -83,6 +84,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IChapterService, ChapterService>();
             builder.Services.AddScoped<IGenreService, GenreService>();
             builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
+            builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
 
             // Translation Team Services
             builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
