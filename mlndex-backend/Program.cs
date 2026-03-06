@@ -4,9 +4,11 @@ using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
+using Application.Interfaces.User;
 using Application.Services.AIModeration;
 using Application.Services.Creator;
 using Application.Services.Translation;
+using Application.Services.User;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
@@ -21,91 +23,92 @@ using mlndex_backend.Extension;
 
 namespace mlndex_backend
 {
-	public class Program
-	{
-		public static void Main(string[] args)
-		{
-			var builder = WebApplication.CreateBuilder(args);
+  public class Program
+  {
+    public static void Main(string[] args)
+    {
+      var builder = WebApplication.CreateBuilder(args);
 
-			var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
+      var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
 
-			if (builder.Environment.IsProduction())
-				builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-			else
-				builder.WebHost.UseUrls($"http://localhost:{PORT}");
+      if (builder.Environment.IsProduction())
+        builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
+      else
+        builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
-			// Standard API Services
-			builder.Services.AddControllers();
-			builder.Services.AddEndpointsApiExplorer();
-			builder.Services.AddSwaggerGen();
-			builder.Services.AddHttpContextAccessor();
-			builder.Services.AddHttpClient();
-			builder.Services.AddSignalR();
+      // Standard API Services
+      builder.Services.AddControllers();
+      builder.Services.AddEndpointsApiExplorer();
+      builder.Services.AddSwaggerGen();
+      builder.Services.AddHttpContextAccessor();
+      builder.Services.AddHttpClient();
+      builder.Services.AddSignalR();
 
-			// Database Configuration
-			builder.Services.AddDbContext<MlndexDbContext>(options =>
-				options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
-				sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
-					.EnableRetryOnFailure()
-			));
-			builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
+      // Database Configuration
+      builder.Services.AddDbContext<MlndexDbContext>(options =>
+          options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
+          sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+              .EnableRetryOnFailure()
+      ));
+      builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
-			// Storage & Content Services
-			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+      // Storage & Content Services
+      builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-			// Core Moderation Engine
-			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
+      // Core Moderation Engine
+      var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+      builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+      builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
 
-			// AI & Novel Processing
-			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-            builder.Services.AddScoped<IOCRService, TesseractOCRService>();
-            builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
-            builder.Services.AddScoped<ISeriesService, SeriesService>();
-            builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-            builder.Services.AddScoped<IChapterService, ChapterService>();
-            builder.Services.AddScoped<IGenreService, GenreService>();
+      // AI & Novel Processing
+      builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+      builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+      builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
+      builder.Services.AddScoped<ISeriesService, SeriesService>();
+      builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
+      builder.Services.AddScoped<IChapterService, ChapterService>();
+      builder.Services.AddScoped<IGenreService, GenreService>();
 
-            // Translation Team Services
-            builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
+      // Translation Team Services
+      builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+      builder.Services.AddScoped<ITranslationService, TranslationService>();
+      builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
+      builder.Services.AddScoped<IHistoryService, HistoryService>();
 
-			builder.Services.AddCors(options =>
-			{
-				options.AddPolicy("AllowSpecificOrigin", policy =>
-				{
-					policy
-					.WithOrigins("http://localhost:5173")
-					.AllowAnyHeader()
-					.AllowAnyMethod()
-					.AllowCredentials();
-				});
-			});
+      builder.Services.AddCors(options =>
+      {
+        options.AddPolicy("AllowSpecificOrigin", policy =>
+              {
+            policy
+                  .WithOrigins("http://localhost:5173")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+          });
+      });
 
-			var app = builder.Build();
+      var app = builder.Build();
 
-			if (app.Environment.IsDevelopment())
-			{
-				app.UseSwagger();
-				app.UseSwaggerUI();
-				app.UseHttpsRedirection();
-			}
+      if (app.Environment.IsDevelopment())
+      {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        app.UseHttpsRedirection();
+      }
 
-			app.UseGlobalExceptionHandling();
-			app.UseCors("AllowSpecificOrigin");
-			app.UseAuthentication();
-			app.UseAuthorization();
-			app.UseStaticFiles();
+      app.UseGlobalExceptionHandling();
+      app.UseCors("AllowSpecificOrigin");
+      app.UseAuthentication();
+      app.UseAuthorization();
+      app.UseStaticFiles();
 
-			app.MapControllers();
-            using (var scope = app.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
-                db.Database.Migrate();
-            }
-            app.Run();
-		}
-	}
+      app.MapControllers();
+      using (var scope = app.Services.CreateScope())
+      {
+        var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
+        db.Database.Migrate();
+      }
+      app.Run();
+    }
+  }
 }

@@ -7,11 +7,15 @@ using System.Threading.Tasks;
 
 namespace Application.Interfaces.Creator
 {
-    public interface IChapterService
-    {
-        Task<CreateChapterResponseDto> CreateAsync(
-            int creatorId,
-            CreateChapterDto dto,
-            CancellationToken cancellationToken = default);
-    }
+  public interface IChapterService
+  {
+    Task<CreateChapterResponseDto> CreateAsync(
+        int creatorId,
+        CreateChapterDto dto,
+        CancellationToken cancellationToken = default);
+
+    Task<ChapterDetailDto?> GetChapterDetailAsync(
+        int chapterId,
+        CancellationToken cancellationToken = default);
+  }
 }

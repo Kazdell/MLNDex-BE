@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Domain -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Domain\bin\Debug\net8.0\Domain.dll
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\GenreService.cs(26,20): warning CS8603: Possible null reference return. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(155,27): error CS1061: 'Chapter' does not contain a definition for 'ChapterPages' and no accessible extension method 'ChapterPages' accepting a first argument of type 'Chapter' could be found (are you missing a using directive or an assembly reference?) [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+
+Build FAILED.
+
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\GenreService.cs(26,20): warning CS8603: Possible null reference return. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(155,27): error CS1061: 'Chapter' does not contain a definition for 'ChapterPages' and no accessible extension method 'ChapterPages' accepting a first argument of type 'Chapter' could be found (are you missing a using directive or an assembly reference?) [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+    1 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:03.13
