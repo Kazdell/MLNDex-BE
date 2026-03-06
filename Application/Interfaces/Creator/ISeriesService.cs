@@ -32,3 +32,4 @@ namespace Application.Interfaces.Creator
     Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int creatorId);
   }
 }
+
