@@ -4,12 +4,14 @@ using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
 using Application.Services.AIModeration;
 using Application.Services.Creator;
 using Application.Services.Financial;
 using Application.Services.Moderation;
+using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
 using Infrastructure.Adapters.AIModeration;
@@ -85,6 +87,15 @@ namespace mlndex_backend
             builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
             builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
             builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
+            builder.Services.AddSingleton<ISystemConfigService>(sp =>
+            {
+                var path = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "SystemConfig",
+                    "system-settings.json"
+                );
+                return new SystemConfigService(path);
+            });
 
             // Translation Team Services
             builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
