@@ -1,4 +1,5 @@
 ﻿using Application.Interfaces.AIModeration;
+using Application.Interfaces.Community;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
@@ -8,6 +9,7 @@ using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
 using Application.Services.AIModeration;
+using Application.Services.Community;
 using Application.Services.Creator;
 using Application.Services.Financial;
 using Application.Services.Moderation;
@@ -88,6 +90,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
             builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
             builder.Services.AddScoped<IReportService, ReportService>();
+            builder.Services.AddScoped<ICommentService, CommentService>();
             builder.Services.AddSingleton<ISystemConfigService>(sp =>
             {
                 var path = Path.Combine(

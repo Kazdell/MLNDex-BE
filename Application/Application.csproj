@@ -17,6 +17,9 @@
     <Folder Include="DTOs/System/" />
     <Folder Include="Interfaces/System/" />
     <Folder Include="Services/System/" />
+    <Folder Include="DTOs/Community/" />
+    <Folder Include="Interfaces/Community/" />
+    <Folder Include="Services/Community/" />
   </ItemGroup>
 
   <ItemGroup>
