@@ -87,5 +87,39 @@ namespace mlndex_backend.Controllers.Admin
                 return ConflictResponse(ex.Message);
             }
         }
+
+        [HttpPost("{queueId:int}/violation-feedback")]
+        public async Task<IActionResult> SendFeedback(
+            int queueId,
+            [FromServices] IViolationFeedbackService feedbackService,
+            [FromBody] ViolationFeedbackRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            if (!ModelState.IsValid)
+                return BadRequestResponse("Invalid payload");
+
+            // TODO: replace with moderatorId from auth claims
+            var moderatorId = 1;
+
+            try
+            {
+                var result = await feedbackService.SendFeedbackAsync(
+                    queueId,
+                    moderatorId,
+                    request,
+                    cancellationToken
+                );
+                return OkResponse(result, "Feedback sent");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFoundResponse(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ConflictResponse(ex.Message);
+            }
+        }
     }
 }
