@@ -1,4 +1,5 @@
 using Application.DTOs.Community;
+using Domain.Entities;
 
 namespace Application.Interfaces.Community
 {
