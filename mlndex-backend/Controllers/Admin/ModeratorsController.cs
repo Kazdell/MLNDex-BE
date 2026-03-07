@@ -50,7 +50,7 @@ namespace mlndex_backend.Controllers.Admin
             try
             {
                 await _service.RemoveAsync(userId, cancellationToken);
-                return OkResponse<object>(null, "Moderator removed");
+                return OkResponse<object?>(null, "Moderator removed");
             }
             catch (KeyNotFoundException ex)
             {

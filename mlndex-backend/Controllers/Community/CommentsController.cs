@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using Application.DTOs.Community;
 using Application.Interfaces.Community;
 using Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers.Community
 {
+    [Authorize]
     [Route("api/comments")]
     public class CommentsController : BaseController
     {
@@ -24,8 +27,11 @@ namespace mlndex_backend.Controllers.Community
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            // TODO: replace with real user id from auth claims
-            var userId = 1;
+            var userIdValue =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.Identity?.Name;
+
+            if (!int.TryParse(userIdValue, out var userId))
+                return UnauthorizedResponse("Invalid user context");
 
             try
             {
@@ -60,13 +66,16 @@ namespace mlndex_backend.Controllers.Community
         [HttpDelete("{commentId:int}")]
         public async Task<IActionResult> Delete(int commentId, CancellationToken cancellationToken)
         {
-            // TODO: replace with real user id from auth claims
-            var userId = 1;
+            var userIdValue =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.Identity?.Name;
+
+            if (!int.TryParse(userIdValue, out var userId))
+                return UnauthorizedResponse("Invalid user context");
 
             try
             {
                 await _service.DeleteAsync(commentId, userId, cancellationToken);
-                return OkResponse<object>(null, "Deleted");
+                return OkResponse<object?>(null, "Deleted");
             }
             catch (KeyNotFoundException ex)
             {

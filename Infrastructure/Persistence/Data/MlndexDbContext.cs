@@ -642,8 +642,16 @@ namespace Infrastructure.Persistence.Data
                 e.ToTable("Like");
                 e.HasKey(x => x.LikeId);
                 e.Property(x => x.LikeId).UseIdentityColumn();
+                e.HasIndex(x => new
+                    {
+                        x.UserId,
+                        x.TargetId,
+                        x.TargetType,
+                    })
+                    .IsUnique();
+                e.Property(x => x.TargetId).IsRequired();
                 e.Property(x => x.TargetType).HasConversion<string>().IsRequired();
-                e.Property(x => x.CreatedAt).IsRequired();
+                e.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()").IsRequired();
 
                 e.HasOne(x => x.User)
                     .WithMany()
