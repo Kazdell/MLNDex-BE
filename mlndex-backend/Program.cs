@@ -92,6 +92,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IReportService, ReportService>();
             builder.Services.AddScoped<ICommentService, CommentService>();
             builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
+            builder.Services.AddScoped<IContentModerationService, ContentModerationService>();
             builder.Services.AddSingleton<ISystemConfigService>(sp =>
             {
                 var path = Path.Combine(

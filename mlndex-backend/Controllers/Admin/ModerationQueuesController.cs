@@ -53,5 +53,28 @@ namespace mlndex_backend.Controllers.Admin
                 return ConflictResponse(ex.Message);
             }
         }
+            [HttpPost("{queueId:int}/content-decision")]
+            public async Task<IActionResult> ContentDecision(int queueId, [FromServices] IContentModerationService contentService, [FromBody] ContentModerationDecisionRequest request, CancellationToken cancellationToken)
+            {
+                if (!ModelState.IsValid)
+                    return BadRequestResponse("Invalid payload");
+
+                // TODO: replace with moderatorId from auth claims
+                var moderatorId = 1;
+
+                try
+                {
+                    var result = await contentService.DecideAsync(queueId, moderatorId, request, cancellationToken);
+                    return OkResponse(result, "Updated");
+                }
+                catch (KeyNotFoundException ex)
+                {
+                    return NotFoundResponse(ex.Message);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ConflictResponse(ex.Message);
+                }
+            }
     }
 }
