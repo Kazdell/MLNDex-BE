@@ -15,6 +15,6 @@ namespace Application.DTOs.Moderation
     {
         APPROVE,
         REJECT,
-        BAN
+        BAN,
     }
 }
