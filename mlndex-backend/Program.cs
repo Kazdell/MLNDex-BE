@@ -2,11 +2,17 @@
 using Application.Interfaces.Auth;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
+using Application.Interfaces.Financial;
 using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
+using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Services.AIModeration;
 using Application.Services.Auth;
 using Application.Services.Creator;
+using Application.Services.Financial;
+using Application.Services.Moderation;
+using Application.Services.System;
 using Application.Services.Translation;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
@@ -22,26 +28,26 @@ using System.Text;
 
 namespace mlndex_backend
 {
-  public class Program
-  {
-    public static void Main(string[] args)
+    public class Program
     {
-      var builder = WebApplication.CreateBuilder(args);
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-      var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
+            var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
 
-      if (builder.Environment.IsProduction())
-        builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-      else
-        builder.WebHost.UseUrls($"http://localhost:{PORT}");
+            if (builder.Environment.IsProduction())
+                builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
+            else
+                builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
-      // Standard API Services
-      builder.Services.AddControllers();
-      builder.Services.AddEndpointsApiExplorer();
-      builder.Services.AddSwaggerGen();
-      builder.Services.AddHttpContextAccessor();
-      builder.Services.AddHttpClient();
-      builder.Services.AddSignalR();
+            // Standard API Services
+            builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
+            builder.Services.AddSignalR();
 
 	  // ── Memory Cache (cho OTP + Token Blacklist) ────────────
 	  builder.Services.AddMemoryCache();
@@ -116,28 +122,28 @@ namespace mlndex_backend
           });
       });
 
-      var app = builder.Build();
+            var app = builder.Build();
 
-      if (app.Environment.IsDevelopment())
-      {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-        app.UseHttpsRedirection();
-      }
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+                app.UseHttpsRedirection();
+            }
 
-      app.UseGlobalExceptionHandling();
-      app.UseCors("AllowSpecificOrigin");
-      app.UseAuthentication();
-      app.UseAuthorization();
-      app.UseStaticFiles();
+            app.UseGlobalExceptionHandling();
+            app.UseCors("AllowSpecificOrigin");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.UseStaticFiles();
 
-      app.MapControllers();
-      using (var scope = app.Services.CreateScope())
-      {
-        var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
-        db.Database.Migrate();
-      }
-      app.Run();
+            app.MapControllers();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
+                db.Database.Migrate();
+            }
+            app.Run();
+        }
     }
-  }
 }
