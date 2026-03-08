@@ -13,11 +13,6 @@ namespace Infrastructure.Adapters.AIModeration
 		private readonly HttpClient _httpClient;
 		private readonly ILogger<AiModerationClient> _logger;
 
-		// Ngưỡng để quyết định flag - chỉnh sau khi benchmark với ảnh 2D
-		private const float ViolenceThreshold = 0.7f;
-		private const float SexualThreshold = 0.7f;
-		private const float SexualMinorsThreshold = 0.3f;
-
 		public AiModerationClient(IConfiguration configuration, ILogger<AiModerationClient> logger)
 		{
 			var apiKey = configuration["OpenAI:ApiKey"]
@@ -46,7 +41,6 @@ namespace Infrastructure.Adapters.AIModeration
 				}
 				catch (Exception ex)
 				{
-					// 1 ảnh lỗi không dừng cả chapter
 					_logger.LogError(ex, "Lỗi khi kiểm duyệt ảnh: {Url}", url);
 				}
 			}
@@ -61,10 +55,6 @@ namespace Infrastructure.Adapters.AIModeration
 					: null
 			};
 		}
-
-		// ─────────────────────────────────────────────────────────────
-		// Private: gọi REST API cho 1 ảnh
-		// ─────────────────────────────────────────────────────────────
 
 		private async Task<List<string>> ModerateOneImageAsync(string imageUrl)
 		{
@@ -83,9 +73,7 @@ namespace Infrastructure.Adapters.AIModeration
 
 			var json = JsonSerializer.Serialize(requestBody);
 			var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-			var response = await _httpClient.PostAsync(
-				"https://api.openai.com/v1/moderations", content);
+			var response = await _httpClient.PostAsync("https://api.openai.com/v1/moderations", content);
 
 			if (!response.IsSuccessStatusCode)
 			{
@@ -105,27 +93,27 @@ namespace Infrastructure.Adapters.AIModeration
 			using var doc = JsonDocument.Parse(responseJson);
 			var results = doc.RootElement.GetProperty("results");
 			var firstResult = results[0];
-			var flagged = firstResult.GetProperty("flagged").GetBoolean();
 
+			// Dùng trực tiếp flagged từ OpenAI thay vì tự tính threshold
+			var flagged = firstResult.GetProperty("flagged").GetBoolean();
 			if (!flagged) return categories;
 
-			var scores = firstResult.GetProperty("category_scores");
+			// Lấy các category OpenAI đánh dấu là true
+			var categoryFlags = firstResult.GetProperty("categories");
+			foreach (var category in categoryFlags.EnumerateObject())
+			{
+				if (category.Value.GetBoolean())
+					categories.Add(category.Name);
+			}
 
-			if (GetScore(scores, "sexual") >= SexualThreshold) categories.Add("sexual");
-			if (GetScore(scores, "sexual/minors") >= SexualMinorsThreshold) categories.Add("sexual/minors");
-			if (GetScore(scores, "violence") >= ViolenceThreshold) categories.Add("violence");
-			if (GetScore(scores, "violence/graphic") >= ViolenceThreshold) categories.Add("violence/graphic");
-			if (GetScore(scores, "self-harm") >= ViolenceThreshold) categories.Add("self-harm");
+			// Nếu OpenAI flag nhưng không có category cụ thể → ghi "unknown"
+			if (categories.Count == 0)
+				categories.Add("unknown");
 
 			_logger.LogWarning("Ảnh bị flag: {Url} | Lý do: {Reason}",
 				imageUrl, string.Join(", ", categories));
 
 			return categories;
-		}
-
-		private static float GetScore(JsonElement scores, string key)
-		{
-			return scores.TryGetProperty(key, out var val) ? val.GetSingle() : 0f;
 		}
 	}
 }

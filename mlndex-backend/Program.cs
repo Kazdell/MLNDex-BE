@@ -1,25 +1,24 @@
 ﻿using Application.Interfaces.AIModeration;
-using Application.Interfaces.AIModeration;
+using Application.Interfaces.Auth;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
-using Application.Interfaces.User;
 using Application.Services.AIModeration;
+using Application.Services.Auth;
 using Application.Services.Creator;
 using Application.Services.Translation;
-using Application.Services.User;
-using Application.Interfaces.Data;
-using Application.Interfaces.Moderation;
-using Application.Interfaces.Notification;
-using Infrastructure.Persistence.Data;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Persistence.Data;
+using Infrastructure.Services.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using mlndex_backend.Extension;
+using System.Text;
 
 namespace mlndex_backend
 {
@@ -44,38 +43,68 @@ namespace mlndex_backend
       builder.Services.AddHttpClient();
       builder.Services.AddSignalR();
 
-      // Database Configuration
-      builder.Services.AddDbContext<MlndexDbContext>(options =>
+	  // ── Memory Cache (cho OTP + Token Blacklist) ────────────
+	  builder.Services.AddMemoryCache();
+
+			// Database Configuration
+	  builder.Services.AddDbContext<MlndexDbContext>(options =>
           options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
           sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
               .EnableRetryOnFailure()
       ));
       builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
-      // Storage & Content Services
-      builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+			// ── Auth Services ───────────────────────────────────────
+			builder.Services.AddScoped<IAuthService, AuthService>();
+			builder.Services.AddScoped<ITokenService, TokenService>();
+			builder.Services.AddScoped<IOtpService, OtpService>();
+			builder.Services.AddScoped<IEmailService, EmailService>();
 
-      // Core Moderation Engine
-      var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-      builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
-      builder.Services.AddScoped<IModerationService, Application.Services.AIModeration.ModerationService>();
+			// Storage & Content Services
+			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-      // AI & Novel Processing
-      builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-      builder.Services.AddScoped<IOCRService, TesseractOCRService>();
-      builder.Services.AddScoped<Application.Interfaces.AIModeration.IModerationService, Application.Services.AIModeration.ModerationService>();
-      builder.Services.AddScoped<ISeriesService, SeriesService>();
-      builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-      builder.Services.AddScoped<IChapterService, ChapterService>();
-      builder.Services.AddScoped<IGenreService, GenreService>();
+			// Core Moderation Engine
+			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+			builder.Services.AddScoped<IModerationService, ModerationService>();
+			
+			// AI & Chapter Processing
+			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+			
+			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
+			// Translation Team Services
+			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			
+			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
+            
+            // OCR Services
+            builder.Services.AddScoped<IOCRService, TesseractOCRService>();
 
-      // Translation Team Services
-      builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-      builder.Services.AddScoped<ITranslationService, TranslationService>();
-      builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
-      builder.Services.AddScoped<IHistoryService, HistoryService>();
 
-      builder.Services.AddCors(options =>
+			//enable jwt token
+			var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey");
+			builder.Services.AddAuthentication(item =>
+			{
+				item.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+				item.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+			}).AddJwtBearer(item =>
+			{
+				item.RequireHttpsMetadata = true;
+				item.SaveToken = true;
+				item.TokenValidationParameters = new TokenValidationParameters()
+				{
+					ValidateIssuerSigningKey = true,
+					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_authkey)),
+					ValidateIssuer = false,
+					ValidateAudience = false,
+					ValidateLifetime = true,
+					ClockSkew = TimeSpan.Zero
+				};
+
+			});
+
+			builder.Services.AddCors(options =>
       {
         options.AddPolicy("AllowSpecificOrigin", policy =>
               {
