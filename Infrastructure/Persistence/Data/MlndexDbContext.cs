@@ -4,252 +4,263 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Data
 {
-    public class MlndexDbContext : DbContext, IMlndexDbContext
-    {
-        public MlndexDbContext(DbContextOptions<MlndexDbContext> options)
-            : base(options) { }
+	public class MlndexDbContext : DbContext, IMlndexDbContext
+	{
+		public MlndexDbContext(DbContextOptions<MlndexDbContext> options) : base(options) { }
 
-        // ==================== USER MANAGEMENT ====================
-        public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; }
-        public DbSet<UserRole> UserRoles { get; set; }
+		// ==================== USER MANAGEMENT ====================
+		public DbSet<User> Users { get; set; }
+		public DbSet<Role> Roles { get; set; }
+		public DbSet<UserRole> UserRoles { get; set; }
 
-        // ==================== CREATOR ====================
-        public DbSet<CreatorProfile> CreatorProfiles { get; set; }
+		// ==================== CREATOR ====================
+		public DbSet<CreatorProfile> CreatorProfiles { get; set; }
 
-        // ==================== VIP ====================
-        public DbSet<VipPlan> VipPlans { get; set; }
-        public DbSet<VipSubscription> VipSubscriptions { get; set; }
+		// ==================== VIP ====================
+		public DbSet<VipPlan> VipPlans { get; set; }
+		public DbSet<VipSubscription> VipSubscriptions { get; set; }
 
-        // ==================== TRANSLATION TEAM ====================
-        public DbSet<TranslationTeam> TranslationTeams { get; set; }
-        public DbSet<TeamMember> TeamMembers { get; set; }
+		// ==================== TRANSLATION TEAM ====================
+		public DbSet<TranslationTeam> TranslationTeams { get; set; }
+		public DbSet<TeamMember> TeamMembers { get; set; }
 
-        // ==================== CONTENT ====================
-        public DbSet<Series> Series { get; set; }
-        public DbSet<Genre> Genres { get; set; }
-        public DbSet<SeriesGenre> SeriesGenres { get; set; }
-        public DbSet<Chapter> Chapters { get; set; }
-        public DbSet<ChapterPage> ChapterPages { get; set; }
-        public DbSet<ChapterText> ChapterTexts { get; set; }
+		// ==================== CONTENT ====================
+		public DbSet<Series> Series { get; set; }
+		public DbSet<Genre> Genres { get; set; }
+		public DbSet<SeriesGenre> SeriesGenres { get; set; }
+		public DbSet<Chapter> Chapters { get; set; }
+		public DbSet<ChapterPage> ChapterPages { get; set; }
+		public DbSet<ChapterText> ChapterTexts { get; set; }
 
-        // ==================== TRANSLATION ====================
-        public DbSet<TranslationPermission> TranslationPermissions { get; set; }
-        public DbSet<Translation> Translations { get; set; }
-        public DbSet<TranslationPage> TranslationPages { get; set; }
-        public DbSet<TranslationText> TranslationTexts { get; set; }
+		// ==================== TRANSLATION ====================
+		public DbSet<TranslationPermission> TranslationPermissions { get; set; }
+		public DbSet<Translation> Translations { get; set; }
+		public DbSet<TranslationPage> TranslationPages { get; set; }
+		public DbSet<TranslationText> TranslationTexts { get; set; }
 
-        // ==================== FINANCIAL ====================
-        public DbSet<Wallet> Wallets { get; set; }
-        public DbSet<Transaction> Transactions { get; set; }
-        public DbSet<CoinPackage> CoinPackages { get; set; }
-        public DbSet<ChapterUnlock> ChapterUnlocks { get; set; }
-        public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+		// ==================== FINANCIAL ====================
+		public DbSet<Wallet> Wallets { get; set; }
+		public DbSet<Transaction> Transactions { get; set; }
+		public DbSet<CoinPackage> CoinPackages { get; set; }
+		public DbSet<ChapterUnlock> ChapterUnlocks { get; set; }
+		public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
 
-        // ==================== INTERACTION ====================
-        public DbSet<ReadingHistory> ReadingHistories { get; set; }
-        public DbSet<Follow> Follows { get; set; }
-        public DbSet<Comment> Comments { get; set; }
-        public DbSet<Bookmark> Bookmarks { get; set; }
-        public DbSet<Rating> Ratings { get; set; }
-        public DbSet<Like> Likes { get; set; }
+		// ==================== INTERACTION ====================
+		public DbSet<ReadingHistory> ReadingHistories { get; set; }
+		public DbSet<Follow> Follows { get; set; }
+		public DbSet<Comment> Comments { get; set; }
+		public DbSet<Bookmark> Bookmarks { get; set; }
+		public DbSet<Rating> Ratings { get; set; }
 
-        // ==================== NOTIFICATION ====================
-        public DbSet<Notification> Notifications { get; set; }
+		// ==================== NOTIFICATION ====================
+		public DbSet<Notification> Notifications { get; set; }
 
-        // ==================== REPORT & MODERATION ====================
-        public DbSet<Report> Reports { get; set; }
-        public DbSet<ModerationQueue> ModerationQueues { get; set; }
-        public DbSet<ModerationAction> ModerationActions { get; set; }
+		// ==================== REPORT & MODERATION ====================
+		public DbSet<Report> Reports { get; set; }
+		public DbSet<ModerationQueue> ModerationQueues { get; set; }
+		public DbSet<ModerationAction> ModerationActions { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
+		{
+			base.OnModelCreating(modelBuilder);
 
-            // ====================================================
-            // USER
-            // ====================================================
-            modelBuilder.Entity<User>(e =>
-            {
-                e.ToTable("User");
-                e.HasKey(x => x.UserId);
-                e.Property(x => x.UserId).UseIdentityColumn();
-                e.HasIndex(x => x.Username).IsUnique();
-                e.HasIndex(x => x.Email).IsUnique();
-                e.Property(x => x.Username).HasMaxLength(25).IsRequired();
-                e.Property(x => x.Email).HasMaxLength(25).IsRequired();
-                e.Property(x => x.DisplayName).HasMaxLength(25).IsRequired();
-                e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
-                e.Property(x => x.IsActive).IsRequired();
-            });
+			// ====================================================
+			// USER
+			// ====================================================
+			modelBuilder.Entity<User>(e =>
+			{
+				e.ToTable("User");
+				e.HasKey(x => x.UserId);
+				e.Property(x => x.UserId).UseIdentityColumn();
+				e.HasIndex(x => x.Username).IsUnique();
+				e.HasIndex(x => x.Email).IsUnique();
+				e.Property(x => x.Username).HasMaxLength(25).IsRequired();
+				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
+				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
+				e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.IsActive).IsRequired();
+			});
 
-            // ====================================================
-            // ROLE
-            // ====================================================
-            modelBuilder.Entity<Role>(e =>
-            {
-                e.ToTable("Role");
-                e.HasKey(x => x.RoleId);
-                e.Property(x => x.RoleId).UseIdentityColumn();
-                e.Property(x => x.RoleName).HasMaxLength(15).HasConversion<string>().IsRequired();
-            });
+			// ====================================================
+			// ROLE
+			// ====================================================
+			modelBuilder.Entity<Role>(e =>
+			{
+				e.ToTable("Role");
+				e.HasKey(x => x.RoleId);
+				e.Property(x => x.RoleId).UseIdentityColumn();
+				e.Property(x => x.RoleName)
+					.HasMaxLength(15)
+					.HasConversion<string>()
+					.IsRequired();
+			});
 
-            // ====================================================
-            // USER_ROLE
-            // ====================================================
-            modelBuilder.Entity<UserRole>(e =>
-            {
-                e.ToTable("UserRole");
-                e.HasKey(x => x.UserRoleId);
-                e.Property(x => x.UserRoleId).UseIdentityColumn();
-                e.Property(x => x.AssignedAt).IsRequired();
+			// ====================================================
+			// USER_ROLE
+			// ====================================================
+			modelBuilder.Entity<UserRole>(e =>
+			{
+				e.ToTable("UserRole");
+				e.HasKey(x => x.UserRoleId);
+				e.Property(x => x.UserRoleId).UseIdentityColumn();
+				e.Property(x => x.AssignedAt).IsRequired();
 
-                e.HasOne(x => x.User)
-                    .WithMany(u => u.UserRoles)
-                    .HasForeignKey(x => x.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.User)
+					.WithMany(u => u.UserRoles)
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(x => x.Role)
-                    .WithMany(r => r.UserRoles)
-                    .HasForeignKey(x => x.RoleId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+				e.HasOne(x => x.Role)
+					.WithMany(r => r.UserRoles)
+					.HasForeignKey(x => x.RoleId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
 
-            // ====================================================
-            // CREATOR_PROFILE
-            // ====================================================
-            modelBuilder.Entity<CreatorProfile>(e =>
-            {
-                e.ToTable("CreatorProfile");
-                e.HasKey(x => x.CreatorId);
-                e.Property(x => x.CreatorId).UseIdentityColumn();
-                e.Property(x => x.PenName).HasMaxLength(25).IsRequired();
-                e.Property(x => x.ReputationScore).IsRequired();
-                e.Property(x => x.TotalRevenue).HasColumnType("decimal(10,2)").IsRequired();
-                e.Property(x => x.HideRevenue).IsRequired();
-                e.Property(x => x.IsActive).IsRequired();
-                e.Property(x => x.ModerationStatus).HasConversion<string>().IsRequired();
+			// ====================================================
+			// CREATOR_PROFILE
+			// ====================================================
+			modelBuilder.Entity<CreatorProfile>(e =>
+			{
+				e.ToTable("CreatorProfile");
+				e.HasKey(x => x.CreatorId);
+				e.Property(x => x.CreatorId).UseIdentityColumn();
+				e.Property(x => x.PenName).HasMaxLength(25).IsRequired();
+				e.Property(x => x.ReputationScore).IsRequired();
+				e.Property(x => x.TotalRevenue).HasColumnType("decimal(10,2)").IsRequired();
+				e.Property(x => x.HideRevenue).IsRequired();
+				e.Property(x => x.IsActive).IsRequired();
+				e.Property(x => x.ModerationStatus)
+					.HasConversion<string>()
+					.IsRequired();
 
-                e.HasOne(x => x.User)
-                    .WithOne(u => u.CreatorProfile)
-                    .HasForeignKey<CreatorProfile>(x => x.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+				e.HasOne(x => x.User)
+					.WithOne(u => u.CreatorProfile)
+					.HasForeignKey<CreatorProfile>(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
 
-            // ====================================================
-            // VIP_PLAN
-            // ====================================================
-            modelBuilder.Entity<VipPlan>(e =>
-            {
-                e.ToTable("VipPlan");
-                e.HasKey(x => x.PlanId);
-                e.Property(x => x.PlanId).UseIdentityColumn();
-                e.Property(x => x.Name).HasMaxLength(25).IsRequired();
-                e.Property(x => x.Description).HasMaxLength(255);
-                e.Property(x => x.PriceVnd).HasColumnType("decimal(10,2)").IsRequired();
-                e.Property(x => x.DurationDays).IsRequired();
-                e.Property(x => x.AutoUnlockChapter).IsRequired();
-                e.Property(x => x.IsActive).IsRequired();
-            });
+			// ====================================================
+			// VIP_PLAN
+			// ====================================================
+			modelBuilder.Entity<VipPlan>(e =>
+			{
+				e.ToTable("VipPlan");
+				e.HasKey(x => x.PlanId);
+				e.Property(x => x.PlanId).UseIdentityColumn();
+				e.Property(x => x.Name).HasMaxLength(25).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(255);
+				e.Property(x => x.PriceVnd).HasColumnType("decimal(10,2)").IsRequired();
+				e.Property(x => x.DurationDays).IsRequired();
+				e.Property(x => x.AutoUnlockChapter).IsRequired();
+				e.Property(x => x.IsActive).IsRequired();
+			});
 
-            // ====================================================
-            // VIP_SUBSCRIPTION
-            // ====================================================
-            modelBuilder.Entity<VipSubscription>(e =>
-            {
-                e.ToTable("VipSubscription");
-                e.HasKey(x => x.SubscriptionId);
-                e.Property(x => x.SubscriptionId).UseIdentityColumn();
-                e.Property(x => x.StartDate).IsRequired();
-                e.Property(x => x.EndDate).IsRequired();
-                e.Property(x => x.PricePaid).HasColumnType("decimal(10,2)").IsRequired();
-                e.Property(x => x.AutoRenew).IsRequired();
-                e.Property(x => x.Status).HasConversion<string>().IsRequired();
+			// ====================================================
+			// VIP_SUBSCRIPTION
+			// ====================================================
+			modelBuilder.Entity<VipSubscription>(e =>
+			{
+				e.ToTable("VipSubscription");
+				e.HasKey(x => x.SubscriptionId);
+				e.Property(x => x.SubscriptionId).UseIdentityColumn();
+				e.Property(x => x.StartDate).IsRequired();
+				e.Property(x => x.EndDate).IsRequired();
+				e.Property(x => x.PricePaid).HasColumnType("decimal(10,2)").IsRequired();
+				e.Property(x => x.AutoRenew).IsRequired();
+				e.Property(x => x.Status)
+					.HasConversion<string>()
+					.IsRequired();
 
-                e.HasOne(x => x.User)
-                    .WithMany(u => u.VipSubscriptions)
-                    .HasForeignKey(x => x.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.User)
+					.WithMany(u => u.VipSubscriptions)
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(x => x.VipPlan)
-                    .WithMany(p => p.VipSubscriptions)
-                    .HasForeignKey(x => x.PlanId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+				e.HasOne(x => x.VipPlan)
+					.WithMany(p => p.VipSubscriptions)
+					.HasForeignKey(x => x.PlanId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
 
-            // ====================================================
-            // TRANSLATION_TEAM
-            // ====================================================
-            modelBuilder.Entity<TranslationTeam>(e =>
-            {
-                e.ToTable("TranslationTeam");
-                e.HasKey(x => x.TeamId);
-                e.Property(x => x.TeamId).UseIdentityColumn();
-                e.HasIndex(x => x.TeamName).IsUnique();
-                e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
-                e.Property(x => x.Description).HasMaxLength(255);
-                e.Property(x => x.ReputationScore).IsRequired();
-                e.Property(x => x.LockStatus).HasConversion<string>().IsRequired();
-                e.Property(x => x.IsMonetizationEnabled).IsRequired();
-                e.Property(x => x.LockedAt);
-                e.Property(x => x.ModerationStatus).HasConversion<string>().IsRequired();
+			// ====================================================
+			// TRANSLATION_TEAM
+			// ====================================================
+			modelBuilder.Entity<TranslationTeam>(e =>
+			{
+				e.ToTable("TranslationTeam");
+				e.HasKey(x => x.TeamId);
+				e.Property(x => x.TeamId).UseIdentityColumn();
+				e.HasIndex(x => x.TeamName).IsUnique();
+				e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(255);
+				e.Property(x => x.ReputationScore).IsRequired();
+				e.Property(x => x.LockStatus)
+					.HasConversion<string>()
+					.IsRequired();
+				e.Property(x => x.IsMonetizationEnabled).IsRequired();
+				e.Property(x => x.LockedAt);
+				e.Property(x => x.ModerationStatus)
+					.HasConversion<string>()
+					.IsRequired();
 
-                e.HasOne(x => x.Leader)
-                    .WithMany(u => u.LeadingTeams)
-                    .HasForeignKey(x => x.LeaderId)
-                    .OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.Leader)
+					.WithMany(u => u.LeadingTeams)
+					.HasForeignKey(x => x.LeaderId)
+					.OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(x => x.LockedByUser)
-                    .WithMany(u => u.LockedTeams)
-                    .HasForeignKey(x => x.LockedBy)
-                    .OnDelete(DeleteBehavior.Restrict)
-                    .IsRequired(false);
-            });
+				e.HasOne(x => x.LockedByUser)
+					.WithMany(u => u.LockedTeams)
+					.HasForeignKey(x => x.LockedBy)
+					.OnDelete(DeleteBehavior.Restrict)
+					.IsRequired(false);
+			});
 
-            // ====================================================
-            // TEAM_MEMBER
-            // ====================================================
-            modelBuilder.Entity<TeamMember>(e =>
-            {
-                e.ToTable("TeamMember");
-                e.HasKey(x => x.MembershipId);
-                e.Property(x => x.MembershipId).UseIdentityColumn();
-                e.Property(x => x.Role).HasConversion<string>().IsRequired();
-                e.Property(x => x.JoinedAt).IsRequired();
-                e.Property(x => x.IsActive).IsRequired();
+			// ====================================================
+			// TEAM_MEMBER
+			// ====================================================
+			modelBuilder.Entity<TeamMember>(e =>
+			{
+				e.ToTable("TeamMember");
+				e.HasKey(x => x.MembershipId);
+				e.Property(x => x.MembershipId).UseIdentityColumn();
+				e.Property(x => x.Role)
+					.HasConversion<string>()
+					.IsRequired();
+				e.Property(x => x.JoinedAt).IsRequired();
+				e.Property(x => x.IsActive).IsRequired();
 
-                e.HasOne(x => x.TranslationTeam)
-                    .WithMany(t => t.TeamMembers)
-                    .HasForeignKey(x => x.TeamId)
-                    .OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.TranslationTeam)
+					.WithMany(t => t.TeamMembers)
+					.HasForeignKey(x => x.TeamId)
+					.OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(x => x.User)
-                    .WithMany(u => u.TeamMemberships)
-                    .HasForeignKey(x => x.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+				e.HasOne(x => x.User)
+					.WithMany(u => u.TeamMemberships)
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
 
-            // ====================================================
-            // GENRE
-            // ====================================================
-            modelBuilder.Entity<Genre>(e =>
-            {
-                e.ToTable("Genre");
-                e.HasKey(x => x.GenreId);
-                e.Property(x => x.GenreId).UseIdentityColumn();
-                e.HasIndex(x => x.Name).IsUnique();
-                e.Property(x => x.Name).HasMaxLength(25).IsRequired();
-                e.Property(x => x.Description).HasMaxLength(255);
-            });
+			// ====================================================
+			// GENRE
+			// ====================================================
+			modelBuilder.Entity<Genre>(e =>
+			{
+				e.ToTable("Genre");
+				e.HasKey(x => x.GenreId);
+				e.Property(x => x.GenreId).UseIdentityColumn();
+				e.HasIndex(x => x.Name).IsUnique();
+				e.Property(x => x.Name).HasMaxLength(25).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(255);
+			});
 
-            // ====================================================
-            // SERIES
-            // ====================================================
-            modelBuilder.Entity<Series>(e =>
-            {
-                e.ToTable("Series");
-                e.HasKey(x => x.SeriesId);
-                e.Property(x => x.SeriesId).UseIdentityColumn();
+			// ====================================================
+			// SERIES
+			// ====================================================
+			modelBuilder.Entity<Series>(e =>
+			{
+				e.ToTable("Series");
+				e.HasKey(x => x.SeriesId);
+				e.Property(x => x.SeriesId).UseIdentityColumn();
                 e.HasIndex(x => x.Title).IsUnique();
                 e.Property(x => x.Title).HasMaxLength(450).IsRequired();
                 e.Property(x => x.Description).HasColumnType("nvarchar(MAX)");

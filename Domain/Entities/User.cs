@@ -13,7 +13,10 @@ namespace Domain.Entities
 		public string Email { get; set; } = null!;
 		public string? DisplayName { get; set; } = null!;
 		public string? DisplayAvatar { get; set; }
-		public string PasswordHash { get; set; } = null!;
+		public string? PasswordHash { get; set; } = null!;
+		public bool IsEmailVerified { get; set; } = false; 
+		public string? GoogleId { get; set; }              
+		public string? FacebookId { get; set; }
 		public bool IsActive { get; set; }
 		public DateTime CreatedAt { get; set; }
 
