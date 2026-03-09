@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Creator;
+using Application.DTOs.Creator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +30,7 @@ namespace Application.Interfaces.Creator
     Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId);
     Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10);
     Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int creatorId);
+    Task DeleteAsync(int seriesId, int creatorId, CancellationToken cancellationToken = default);
   }
 }
 

@@ -59,13 +59,44 @@ namespace Application.Services.User
           {
             HistoryId = h.HistoryId,
             SeriesId = h.SeriesId,
-            SeriesTitle = h.Series.Title,
+            Title = h.Series.Title,
+            CoverUrl = h.Series.CoverImageUrl,
             LastChapterId = h.LastChapterId,
-            LastChapterNumber = h.LastChapter.ChapterNumber,
+            LastChapterTitle = "Chương " + h.LastChapter.ChapterNumber,
             LastPageNumber = h.LastPageNumber,
+            Progress = 100, // Tạm thời để 100%
             LastReadAt = h.LastReadAt
           })
           .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> RemoveFromHistoryAsync(int userId, int seriesId, CancellationToken cancellationToken = default)
+    {
+      var history = await _db.ReadingHistories
+          .FirstOrDefaultAsync(h => h.UserId == userId && h.SeriesId == seriesId, cancellationToken);
+
+      if (history != null)
+      {
+        _db.ReadingHistories.Remove(history);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+      }
+      return false;
+    }
+
+    public async Task<bool> ClearAllHistoryAsync(int userId, CancellationToken cancellationToken = default)
+    {
+      var histories = await _db.ReadingHistories
+          .Where(h => h.UserId == userId)
+          .ToListAsync(cancellationToken);
+
+      if (histories.Any())
+      {
+        _db.ReadingHistories.RemoveRange(histories);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+      }
+      return false;
     }
   }
 }

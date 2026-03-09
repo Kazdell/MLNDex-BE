@@ -1,24 +1,26 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
-[Route("api/creator/{creatorId:int}/chapters")]
+[Route("api/creator/chapters")]
+[Authorize(Roles = "CREATOR,ADMIN")]
 public class ChapterController : ControllerBase
 {
   private readonly IChapterService _service;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
+  private int CurrentUserId => int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
 
   public ChapterController(IChapterService service) => _service = service;
 
   [HttpPost]
   [RequestSizeLimit(300 * 1024 * 1024)]
   public async Task<IActionResult> Create(
-      int creatorId,
       [FromForm] int seriesId,
       [FromForm] float chapterNumber,
       [FromForm] string? title,
@@ -26,6 +28,8 @@ public class ChapterController : ControllerBase
       [FromForm] IFormFileCollection pages,
       CancellationToken cancellationToken)
   {
+    var creatorId = CurrentUserId;
+    if (creatorId == 0) return Unauthorized();
     // Kiểm tra tính hợp lệ của file
     if (pages.Count == 0)
       return BadRequest(new { message = "Chưa có trang nào được gửi lên." });
@@ -66,6 +70,7 @@ public class ChapterController : ControllerBase
     return CreatedAtAction(nameof(Create), new { id = result.ChapterId }, result);
   }
 
+  [AllowAnonymous]
   [HttpGet("/api/chapters/{id:int}")]
   public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
   {

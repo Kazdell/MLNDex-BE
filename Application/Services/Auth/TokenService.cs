@@ -1,7 +1,6 @@
-﻿using Application.Interfaces.Auth;
+using Application.Interfaces.Auth;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -30,14 +29,15 @@ namespace Application.Services.Auth
 
 			var claims = new List<Claim>
 		{
-			new Claim("id", user.UserId.ToString()),
-			new Claim("email", user.Email),
-			new Claim("username", user.Username),
+			// Use standard ClaimTypes.NameIdentifier so all controllers can read it consistently
+			new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+			new Claim(ClaimTypes.Email, user.Email),
+			new Claim(ClaimTypes.Name, user.Username),
 			new Claim("displayName", user.DisplayName ?? user.Username),
 		};
 
 			foreach (var role in roles)
-				claims.Add(new Claim("role", role));
+				claims.Add(new Claim(ClaimTypes.Role, role));
 
 			var key = new SymmetricSecurityKey(
 				Encoding.UTF8.GetBytes(_config["JwtSettings:securitykey"]!));

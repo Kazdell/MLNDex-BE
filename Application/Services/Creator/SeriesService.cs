@@ -42,7 +42,7 @@ namespace Application.Services.Creator
       if (titleExists)
         throw new ArgumentException("Tiêu đề truyện này đã tồn tại trên hệ thống.");
 
-      // 1b. Check Description Duplicate (Cảnh báo hoặc chặn tùy sếp, ở đây chặn để demo)
+      // 1b. Check Description Duplicate
       if (!string.IsNullOrEmpty(dto.Description))
       {
         var descExists = await _context.Series.AnyAsync(s => s.Description == dto.Description);
@@ -74,8 +74,6 @@ namespace Application.Services.Creator
 
       try
       {
-        // [Zero Trust] AgeRating được tính từ BE dựa trên moderation scores,
-        // không tin vào giá trị client gửi lên.
         var ageRating = CalculateAgeRating(
             dto.Violence, dto.Nudity, dto.SexualContent,
             dto.LanguageScore, dto.Substances, dto.SensitiveContent);
@@ -116,7 +114,6 @@ namespace Application.Services.Creator
           await _context.SaveChangesAsync(cancellationToken);
         }
 
-        // Call AI Moderation for the newly created series
         _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
 
         _logger.LogInformation(
@@ -159,23 +156,19 @@ namespace Application.Services.Creator
         throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
       }
 
-      // Duplicate check for Title
       if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId))
           throw new ArgumentException("Tiêu đề mới đã tồn tại.");
 
-      // Duplicate check for Description
       if (!string.IsNullOrEmpty(dto.Description))
       {
           if (await _context.Series.AnyAsync(s => s.Description == dto.Description && s.SeriesId != seriesId))
               _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
       }
 
-      // Blacklist check for Title
       var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
           throw new ArgumentException($"Tiêu đề vi phạm.");
 
-      // Blacklist check for Description
       if (!string.IsNullOrEmpty(dto.Description))
       {
           var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
@@ -201,7 +194,6 @@ namespace Application.Services.Creator
 
       try
       {
-        // [Zero Trust] Tính lại AgeRating từ scores mới, không tin client.
         series.AgeRating = CalculateAgeRating(
             dto.Violence, dto.Nudity, dto.SexualContent,
             dto.LanguageScore, dto.Substances, dto.SensitiveContent);
@@ -230,8 +222,6 @@ namespace Application.Services.Creator
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-
-        // Call AI Moderation for the updated series
         _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
 
         return new CreateSeriesResponseDto
@@ -421,6 +411,28 @@ namespace Application.Services.Creator
       return randomSeries.Select(MapToDto).ToList();
     }
 
+    public async Task DeleteAsync(int seriesId, int creatorId, CancellationToken cancellationToken = default)
+    {
+      var series = await _context.Series
+          .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
+          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+
+      if (series.CreatorId != creatorId)
+      {
+        throw new UnauthorizedAccessException("Bạn không có quyền xóa bộ truyện này.");
+      }
+
+      if (!string.IsNullOrEmpty(series.CoverImageUrl))
+      {
+        await _storage.DeleteAsync(series.CoverImageUrl, cancellationToken);
+      }
+
+      _context.Series.Remove(series);
+      await _context.SaveChangesAsync(cancellationToken);
+
+      _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, CreatorId: {CreatorId}", seriesId, creatorId);
+    }
+
     private SeriesDto MapToDto(Series s)
     {
       return new SeriesDto
@@ -454,44 +466,27 @@ namespace Application.Services.Creator
       };
     }
 
-  /// <summary>
-  /// [Zero Trust / MangaDex-style] Tính AgeRating từ BE dựa trên 6 moderation scores.
-  /// Client không được phép gán giá trị này trực tiếp.
-  ///
-  /// Thang điểm: mỗi mục 0-3, tổng max = 18
-  ///   ALL    = 0        (hoàn toàn sạch)
-  ///   TEEN   = 1 – 5   (nội dung nhẹ)
-  ///   MATURE = 6 – 11  (người lớn đáng kể)
-  ///   ADULT  = 12 – 18 (nội dung 18+)
-  ///
-  /// Hard rules (override tổng điểm):
-  ///   nudity == 3 || sexual == 3  → buộc ADULT
-  ///   nudity >= 2 || sexual >= 2  → tối thiểu MATURE
-  /// </summary>
-  private static AgeRating CalculateAgeRating(
-      int violence, int nudity, int sexual,
-      int language, int substances, int sensitive)
-  {
-    // Hard rule: nội dung khỏa thân / khiêu dâm nặng nhất → ADULT
-    if (nudity == 3 || sexual == 3)
-      return AgeRating.ADULT;
-
-    // Hard rule: trung bình khỏa thân / khiêu dâm → tối thiểu MATURE
-    if (nudity >= 2 || sexual >= 2)
+    private static AgeRating CalculateAgeRating(
+        int violence, int nudity, int sexual,
+        int language, int substances, int sensitive)
     {
-      int total = violence + nudity + sexual + language + substances + sensitive;
-      return total >= 12 ? AgeRating.ADULT : AgeRating.MATURE;
+      if (nudity == 3 || sexual == 3)
+        return AgeRating.ADULT;
+
+      if (nudity >= 2 || sexual >= 2)
+      {
+        int total = violence + nudity + sexual + language + substances + sensitive;
+        return total >= 12 ? AgeRating.ADULT : AgeRating.MATURE;
+      }
+
+      int totalScore = violence + nudity + sexual + language + substances + sensitive;
+      return totalScore switch
+      {
+        0           => AgeRating.ALL,
+        <= 5        => AgeRating.TEEN,
+        <= 11       => AgeRating.MATURE,
+        _           => AgeRating.ADULT
+      };
     }
-
-    // Phân loại theo tổng điểm
-    int totalScore = violence + nudity + sexual + language + substances + sensitive;
-    return totalScore switch
-    {
-      0           => AgeRating.ALL,
-      <= 5        => AgeRating.TEEN,
-      <= 11       => AgeRating.MATURE,
-      _           => AgeRating.ADULT
-    };
   }
-}
 }

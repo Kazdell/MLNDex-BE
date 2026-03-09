@@ -107,6 +107,7 @@ namespace mlndex_backend
 
 			// User Services
 			builder.Services.AddScoped<IHistoryService, HistoryService>();
+			builder.Services.AddScoped<IUserService, UserService>();
 
 			// Notification Services
 			builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -128,7 +129,7 @@ namespace mlndex_backend
 				item.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 			}).AddJwtBearer(item =>
 			{
-				item.RequireHttpsMetadata = true;
+				item.RequireHttpsMetadata = false;
 				item.SaveToken = true;
 				item.TokenValidationParameters = new TokenValidationParameters()
 				{
@@ -137,7 +138,7 @@ namespace mlndex_backend
 					ValidateIssuer = false,
 					ValidateAudience = false,
 					ValidateLifetime = true,
-					ClockSkew = TimeSpan.Zero
+					ClockSkew = TimeSpan.FromMinutes(5)
 				};
 
 			});
@@ -160,7 +161,7 @@ namespace mlndex_backend
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
-                app.UseHttpsRedirection();
+                // app.UseHttpsRedirection(); // Tắt để đồng bộ với local HTTP dev
             }
 
             app.UseGlobalExceptionHandling();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +13,7 @@ namespace Domain.Entities
 		public string Email { get; set; } = null!;
 		public string? DisplayName { get; set; } = null!;
 		public string? DisplayAvatar { get; set; }
+		public string? Bio { get; set; }
 		public string? PasswordHash { get; set; } = null!;
 		public bool IsEmailVerified { get; set; } = false; 
 		public string? GoogleId { get; set; }              

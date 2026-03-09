@@ -1,8 +1,10 @@
-﻿using Application.DTOs.Creator;
+using Application.DTOs.Creator;
 using Application.Interfaces.Creator;
 using Infrastructure.Persistence.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 
 namespace mlndex_backend.Controllers.Creator
@@ -13,6 +15,7 @@ namespace mlndex_backend.Controllers.Creator
   {
     private readonly MlndexDbContext _context;
     private readonly ISeriesService _service;
+    private int CurrentUserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
     public SeriesController(MlndexDbContext context, ISeriesService service)
     {
@@ -21,11 +24,13 @@ namespace mlndex_backend.Controllers.Creator
     }
 
     [HttpGet]
-    [Route("creator/{creatorId:int}")]
+    [Route("creator")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
     public async Task<IActionResult> GetSeriesByCreator(
         CancellationToken cancellationToken)
     {
-      var creatorId = 1;
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse();
 
       var result = await _service.GetByCreatorAsync(creatorId, cancellationToken);
       return Ok(result);
@@ -34,38 +39,56 @@ namespace mlndex_backend.Controllers.Creator
 
     [HttpPost("create")]
     [Consumes("multipart/form-data")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
     public async Task<IActionResult> Create(
         [FromForm] CreateSeriesDto dto,
         CancellationToken cancellationToken)
     {
-      // TODO: Replace hardcode with JWT claim when auth is ready
-      // var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-      // var creatorId = await _creatorService.GetCreatorIdByUserId(userId);
-      var creatorId = 1;
+      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+      if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      
+      var creatorId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
 
       var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
       return Ok(result);
     }
 
     [HttpGet("{id}/edit")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
     public async Task<IActionResult> GetForEdit(int id)
     {
-      var creatorId = 1; // Default for now
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse();
+
       var result = await _service.GetForEditAsync(id, creatorId);
       if (result == null)
         return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
-
       return OkResponse(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
+    public async Task<IActionResult> Delete(int id)
+    {
+      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+      if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      
+      var creatorId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+      await _service.DeleteAsync(id, creatorId);
+      return NoContent();
     }
 
     [HttpPut("{id}")]
     [Consumes("multipart/form-data")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
     public async Task<IActionResult> Update(
         int id,
         [FromForm] CreateSeriesDto dto,
         CancellationToken cancellationToken)
     {
-      var creatorId = 1; // Default for now
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse();
+
       var result = await _service.UpdateAsync(id, creatorId, dto, cancellationToken);
       return Ok(result);
     }
@@ -97,9 +120,8 @@ namespace mlndex_backend.Controllers.Creator
     [HttpGet("recommendations")]
     public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10)
     {
-      // TODO: Extract UserId from Claims if using JWT Auth. 
-      // Currently using default UserId = 1 for mock
-      int currentUserId = 1;
+      var currentUserId = CurrentUserId;
+      // If not logged in, currentUserId = 0, service should handle guest recommendations
       var result = await _service.GetRecommendationsAsync(currentUserId, limit);
       return OkResponse(result);
     }
