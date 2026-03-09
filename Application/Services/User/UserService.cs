@@ -1,0 +1,105 @@
+using Application.DTOs.User;
+using Application.Interfaces.Data;
+using Application.Interfaces.User;
+using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Application.Services.User
+{
+    public class UserService : IUserService
+    {
+        private readonly IMlndexDbContext _context;
+
+        public UserService(IMlndexDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<UserProfileDto?> GetProfileAsync(int userId, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+                .Include(u => u.Wallet)
+                .Include(u => u.ReadingHistories)
+                .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+
+            if (user == null) return null;
+
+            // Lấy subscription đang hoạt động
+            var activeSubscription = user.VipSubscriptions
+                .Where(vs => vs.Status == SubscriptionStatus.ACTIVE && vs.EndDate > DateTime.UtcNow)
+                .OrderByDescending(vs => vs.EndDate)
+                .FirstOrDefault();
+
+            return new UserProfileDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                Email = user.Email,
+                DisplayName = user.DisplayName,
+                Bio = user.Bio,
+                Avatar = user.DisplayAvatar,
+                CreatedAt = user.CreatedAt,
+                Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                TotalReadSeries = user.ReadingHistories.Select(h => h.SeriesId).Distinct().Count(),
+                TotalReadChapters = user.ReadingHistories.Count(),
+                WalletBalance = user.Wallet?.CoinBalance ?? 0,
+                SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản"
+            };
+        }
+
+        public async Task<bool> UpdateProfileAsync(int userId, UpdateProfileDto dto, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+            if (user == null) return false;
+
+            if (dto.DisplayName != null) user.DisplayName = dto.DisplayName;
+            if (dto.Bio != null) user.Bio = dto.Bio;
+            if (dto.Avatar != null) user.DisplayAvatar = dto.Avatar;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        public async Task<List<ReadingHistoryDto>> GetReadingHistoryAsync(int userId, CancellationToken cancellationToken)
+        {
+            return await _context.ReadingHistories
+                .Where(rh => rh.UserId == userId)
+                .OrderByDescending(rh => rh.LastReadAt)
+                .Select(rh => new ReadingHistoryDto
+                {
+                    SeriesId = rh.SeriesId,
+                    Title = rh.Series.Title,
+                    CoverUrl = rh.Series.CoverImageUrl ?? string.Empty,
+                    LastChapterId = rh.LastChapterId,
+                    LastChapterTitle = rh.LastChapter.Title ?? $"Chương {rh.LastChapter.ChapterNumber}",
+                    LastPageNumber = rh.LastPageNumber,
+                    LastReadAt = rh.LastReadAt
+                })
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<VipPlanDto>> GetVipPlansAsync(CancellationToken cancellationToken)
+        {
+            return await _context.VipPlans
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.PriceVnd)
+                .Select(p => new VipPlanDto
+                {
+                    PlanId = p.PlanId,
+                    Name = p.Name,
+                    Description = p.Description,
+                    PriceVnd = p.PriceVnd,
+                    DurationDays = p.DurationDays,
+                    AutoUnlockChapter = p.AutoUnlockChapter,
+                    IsActive = p.IsActive
+                })
+                .ToListAsync(cancellationToken);
+        }
+    }
+}

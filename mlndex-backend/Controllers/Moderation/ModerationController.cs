@@ -1,5 +1,6 @@
-﻿using Application.DTOs.Moderation;
+using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using mlndex_backend.Controllers;
@@ -8,6 +9,7 @@ using Application.Interfaces.Moderation;
 namespace mlndex_backend.Controllers.Moderation
 {
     [Route("api/[controller]")]
+    [Authorize]
     public class ModerationController : BaseController
     {
         private readonly IModerationService _moderationService;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +18,12 @@ namespace Domain.Entities
 		public AgeRating AgeRating { get; set; }
 		public SeriesStatus Status { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
+		public int ViolenceScore { get; set; }
+		public int NudityScore { get; set; }
+		public int SexualScore { get; set; }
+		public int LanguageScore { get; set; }
+		public int SubstancesScore { get; set; }
+		public int SensitiveScore { get; set; }
 		public decimal AverageRating { get; set; }
 		public int TotalRatings { get; set; }
 		public DateTime CreatedAt { get; set; }

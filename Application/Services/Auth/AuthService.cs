@@ -1,9 +1,10 @@
-﻿using Application.DTOs.Auth;
+using Application.DTOs.Auth;
 using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -19,17 +20,20 @@ namespace Application.Services.Auth
 		private readonly ITokenService _tokenService;
 		private readonly IOtpService _otpService;
 		private readonly IEmailService _emailService;
+		private readonly IConfiguration _configuration;
 
 		public AuthService(
 			IMlndexDbContext context,
 			ITokenService tokenService,
 			IOtpService otpService,
-			IEmailService emailService)
+			IEmailService emailService,
+			IConfiguration configuration)
 		{
 			_context = context;
 			_tokenService = tokenService;
 			_otpService = otpService;
 			_emailService = emailService;
+			_configuration = configuration;
 		}
 
 		// ── REGISTER ────────────────────────────────────────
@@ -106,15 +110,70 @@ namespace Application.Services.Auth
 		// ── LOGIN ───────────────────────────────────────────
 		public async Task<AuthResponseDto?> LoginAsync(LoginDto dto)
 		{
+			// 1. Kiểm tra nếu là tài khoản Admin từ appsettings.json
+			var adminUsername = _configuration["Admin:Username"];
+			var adminEmail = _configuration["Admin:Email"];
+			var adminPassword = _configuration["Admin:Password"];
+
+			bool isAdminLogin = false;
+			if (!string.IsNullOrEmpty(adminUsername) && !string.IsNullOrEmpty(adminPassword))
+			{
+				isAdminLogin = (dto.Username.Equals(adminUsername, StringComparison.OrdinalIgnoreCase) || 
+                                (!string.IsNullOrEmpty(adminEmail) && dto.Username.Equals(adminEmail, StringComparison.OrdinalIgnoreCase))) 
+                                && dto.Password == adminPassword;
+			}
+
 			var user = await _context.Users
 				.Include(u => u.UserRoles)
 					.ThenInclude(ur => ur.Role)
-				.FirstOrDefaultAsync(u => u.Username == dto.Username.ToLower());
+				.FirstOrDefaultAsync(u => u.Username == dto.Username.ToLower() || u.Email == dto.Username.ToLower());
 
-			if (user == null) return null;
-			if (!user.IsEmailVerified) return null;
-			if (!user.IsActive) return null;
-			if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash)) return null;
+			if (isAdminLogin)
+			{
+				// Nếu login đúng credential admin nhưng user chưa tồn tại trong DB, tạo mới
+				if (user == null)
+				{
+					user = new Domain.Entities.User
+					{
+						Username = adminUsername!.ToLower(),
+						Email = adminEmail!.ToLower(),
+						DisplayName = "System Admin",
+						PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+						IsEmailVerified = true,
+						IsActive = true,
+						CreatedAt = DateTime.UtcNow
+					};
+					_context.Users.Add(user);
+					await _context.SaveChangesAsync();
+				}
+
+				// Đảm bảo Admin có role ADMIN
+				var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleName.ADMIN);
+				if (adminRole != null && !user.UserRoles.Any(ur => ur.RoleId == adminRole.RoleId))
+				{
+					_context.UserRoles.Add(new UserRole
+					{
+						UserId = user.UserId,
+						RoleId = adminRole.RoleId,
+						AssignedAt = DateTime.UtcNow
+					});
+					await _context.SaveChangesAsync();
+					
+					// Re-fetch user to include the new role
+					user = await _context.Users
+						.Include(u => u.UserRoles)
+							.ThenInclude(ur => ur.Role)
+						.FirstAsync(u => u.UserId == user.UserId);
+				}
+			}
+			else
+			{
+				// Login bình thường
+				if (user == null) return null;
+				if (!user.IsEmailVerified) return null;
+				if (!user.IsActive) return null;
+				if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash)) return null;
+			}
 
 			var token = _tokenService.GenerateJwtToken(user);
 
@@ -123,6 +182,7 @@ namespace Application.Services.Auth
 				AccessToken = token,
 				ExpiresAt = DateTime.UtcNow.AddDays(1),
 				Username = user.Username,
+				DisplayName = user.DisplayName ?? user.Username,
 				Email = user.Email,
 				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
 			};

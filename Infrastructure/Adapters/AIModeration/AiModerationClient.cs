@@ -1,4 +1,4 @@
-﻿using Application.DTOs.AIModeration;
+using Application.DTOs.AIModeration;
 using Application.Interfaces.AIModeration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -30,14 +30,22 @@ namespace Infrastructure.Adapters.AIModeration
 			var urls = imageUrls.ToList();
 			_logger.LogInformation("Bắt đầu AI kiểm duyệt {Count} ảnh", urls.Count);
 
-			var allFlaggedCategories = new List<string>();
+			var maxScores = new Dictionary<string, double>();
+            bool overallFlagged = false;
 
 			foreach (var url in urls)
 			{
 				try
 				{
-					var flaggedCategories = await ModerateOneImageAsync(url);
-					allFlaggedCategories.AddRange(flaggedCategories);
+					var result = await ModerateOneImageWithFlagAsync(url);
+					foreach (var kvp in result.Scores)
+					{
+						if (!maxScores.ContainsKey(kvp.Key) || kvp.Value > maxScores[kvp.Key])
+						{
+							maxScores[kvp.Key] = kvp.Value;
+						}
+					}
+                    if (result.Flagged) overallFlagged = true;
 				}
 				catch (Exception ex)
 				{
@@ -45,18 +53,15 @@ namespace Infrastructure.Adapters.AIModeration
 				}
 			}
 
-			var flagged = allFlaggedCategories.Count > 0;
-
 			return new AiModerationResultDto
 			{
-				Flagged = flagged,
-				FlaggedReason = flagged
-					? string.Join(", ", allFlaggedCategories.Distinct())
-					: null
+				CategoryScores = maxScores,
+				Flagged = overallFlagged,
+				FlaggedReason = string.Join(", ", maxScores.Where(s => s.Value >= 0.1).Select(s => s.Key)) // Ghi lại các category có score đáng kể
 			};
 		}
 
-		private async Task<List<string>> ModerateOneImageAsync(string imageUrl)
+		private async Task<(Dictionary<string, double> Scores, bool Flagged)> ModerateOneImageWithFlagAsync(string imageUrl)
 		{
 			var requestBody = new
 			{
@@ -83,37 +88,28 @@ namespace Infrastructure.Adapters.AIModeration
 			}
 
 			var responseBody = await response.Content.ReadAsStringAsync();
-			return ParseFlaggedCategories(responseBody, imageUrl);
+            return ParseScoresAndFlag(responseBody);
 		}
 
-		private List<string> ParseFlaggedCategories(string responseJson, string imageUrl)
+		private (Dictionary<string, double> Scores, bool Flagged) ParseScoresAndFlag(string responseJson)
 		{
-			var categories = new List<string>();
+			var scores = new Dictionary<string, double>();
+            bool flagged = false;
 
 			using var doc = JsonDocument.Parse(responseJson);
 			var results = doc.RootElement.GetProperty("results");
-			var firstResult = results[0];
+			if (results.GetArrayLength() == 0) return (scores, flagged);
 
-			// Dùng trực tiếp flagged từ OpenAI thay vì tự tính threshold
-			var flagged = firstResult.GetProperty("flagged").GetBoolean();
-			if (!flagged) return categories;
+            var firstResult = results[0];
+            flagged = firstResult.GetProperty("flagged").GetBoolean();
 
-			// Lấy các category OpenAI đánh dấu là true
-			var categoryFlags = firstResult.GetProperty("categories");
-			foreach (var category in categoryFlags.EnumerateObject())
+			var categoryScores = firstResult.GetProperty("category_scores");
+			foreach (var property in categoryScores.EnumerateObject())
 			{
-				if (category.Value.GetBoolean())
-					categories.Add(category.Name);
+				scores[property.Name] = property.Value.GetDouble();
 			}
 
-			// Nếu OpenAI flag nhưng không có category cụ thể → ghi "unknown"
-			if (categories.Count == 0)
-				categories.Add("unknown");
-
-			_logger.LogWarning("Ảnh bị flag: {Url} | Lý do: {Reason}",
-				imageUrl, string.Join(", ", categories));
-
-			return categories;
+			return (scores, flagged);
 		}
 	}
 }

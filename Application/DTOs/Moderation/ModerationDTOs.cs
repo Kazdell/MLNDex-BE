@@ -12,6 +12,7 @@ namespace Application.DTOs.Moderation
     public class OpenAiScoreRequest
     {
         public Dictionary<string, double> Scores { get; set; } = new();
+        public string TargetAgeRating { get; set; } = "ALL";
     }
 
     // Response from text moderation check.

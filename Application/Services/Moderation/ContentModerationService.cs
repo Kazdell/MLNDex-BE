@@ -75,6 +75,7 @@ namespace Application.Services.Moderation
                 Status = queue.Status,
                 ReportCount = queue.ReportCount,
                 FlaggedAt = queue.FlaggedAt,
+                AppealReason = queue.AppealReason
             };
         }
 

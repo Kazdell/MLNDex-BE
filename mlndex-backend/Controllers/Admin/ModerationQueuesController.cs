@@ -1,10 +1,13 @@
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Admin
 {
     [Route("api/admin/moderation-queues")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public class ModerationQueuesController : BaseController
     {
         private readonly IReportService _service;
@@ -31,8 +34,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            // TODO: replace with moderatorId from auth claims
-            var moderatorId = 1;
+            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
 
             try
             {
@@ -65,8 +68,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            // TODO: replace with moderatorId from auth claims
-            var moderatorId = 1;
+            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
 
             try
             {
@@ -99,8 +102,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            // TODO: replace with moderatorId from auth claims
-            var moderatorId = 1;
+            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
 
             try
             {

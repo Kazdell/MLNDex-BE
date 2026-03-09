@@ -449,16 +449,6 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QueueId"));
 
-                    b.Property<bool?>("AiFlagged")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("AiFlaggedReason")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime?>("AiProcessedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<int>("AppealCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -490,10 +480,6 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ReportCount")
                         .HasColumnType("int");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -716,17 +702,32 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(MAX)");
 
+                    b.Property<int>("LanguageScore")
+                        .HasColumnType("int");
+
                     b.Property<string>("ModerationStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NudityScore")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SensitiveScore")
+                        .HasColumnType("int");
 
                     b.Property<string>("SeriesFormat")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("SexualScore")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SubstancesScore")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -734,6 +735,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("TotalRatings")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ViolenceScore")
                         .HasColumnType("int");
 
                     b.HasKey("SeriesId");
@@ -1046,6 +1050,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");

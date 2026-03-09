@@ -202,3 +202,5 @@ appsettings.*.json
 /mlndex-backend/obj
 migration_error.txt
 build_errors.txt
+Infrastructure/Migrations/20260309040502_AddBioToUser.cs
+Infrastructure/Migrations/20260309040502_AddBioToUser.Designer.cs

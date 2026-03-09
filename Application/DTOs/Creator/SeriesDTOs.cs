@@ -1,4 +1,4 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -22,6 +22,7 @@ namespace Application.DTOs.Creator
         public int LanguageScore { get; set; }
         public int Substances { get; set; }
         public int SensitiveContent { get; set; }
+        public AgeRating AgeRating { get; set; }
     }
 
     public class CreateSeriesResponseDto

@@ -38,6 +38,15 @@ namespace Application.DTOs.Moderation
         public QueueStatus Status { get; set; }
         public int ReportCount { get; set; }
         public DateTime FlaggedAt { get; set; }
+
+        public string? AppealReason { get; set; }
+
+        // Mới thêm để hiển thị trên UI
+        public string? ContentTitle { get; set; }
+        public string? AuthorName { get; set; }
+
+        // Thêm danh sách report để hiển thị chi tiết (bao gồm cả AI reports)
+        public List<ReportDto> Reports { get; set; } = new();
     }
 
     public class ModerationQueueListResponse

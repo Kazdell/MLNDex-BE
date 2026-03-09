@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,9 +14,9 @@ namespace Application.DTOs.AIModeration
 		/// </summary>
 
 		public bool Flagged { get; set; }
-
-		// Các category bị flag, ví dụ: "violence, sexual"
-		// Null nếu không bị flag
 		public string? FlaggedReason { get; set; }
+
+		// Điểm số chi tiết của từng category (lấy mức cao nhất qua các trang)
+		public Dictionary<string, double> CategoryScores { get; set; } = new();
 	}
 }

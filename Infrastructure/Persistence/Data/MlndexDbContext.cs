@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Data;
+using Application.Interfaces.Data;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,6 +51,7 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<Comment> Comments { get; set; }
 		public DbSet<Bookmark> Bookmarks { get; set; }
 		public DbSet<Rating> Ratings { get; set; }
+		public DbSet<Like> Likes { get; set; }
 
 		// ==================== NOTIFICATION ====================
 		public DbSet<Notification> Notifications { get; set; }
@@ -791,11 +792,6 @@ namespace Infrastructure.Persistence.Data
                 e.Property(x => x.FlaggedAt).IsRequired();
                 e.Property(x => x.AssignedAt);
 
-                // ── AI fields ──────────────────────────────────
-                e.Property(x => x.Source).HasConversion<string>().IsRequired();
-                e.Property(x => x.AiFlagged);
-                e.Property(x => x.AiFlaggedReason).HasMaxLength(255);
-                e.Property(x => x.AiProcessedAt);
 
                 // ── Appeal fields ───────────────────────────────
                 e.Property(x => x.AppealReason).HasMaxLength(500);
