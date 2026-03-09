@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,11 +18,6 @@ namespace Domain.Entities
 		public DateTime FlaggedAt { get; set; }
 		public DateTime? AssignedAt { get; set; }
 
-		// Thêm mới - context cho moderator biết tại sao item này vào queue
-		public QueueSource Source { get; set; }           // AI_FLAGGED hoặc USER_REPORT
-		public bool? AiFlagged { get; set; }              // AI kết luận: có vấn đề không?
-		public string? AiFlaggedReason { get; set; }      // "violence, sexual"
-		public DateTime? AiProcessedAt { get; set; }      // AI check lúc nào
 
 		// ── Appeal (tác giả yêu cầu review lại) ────────
 		public string? AppealReason { get; set; }         // Tác giả giải thích lý do
@@ -57,9 +52,4 @@ namespace Domain.Entities
 		DISMISSED
 	}
 
-	public enum QueueSource
-	{
-		AI_FLAGGED,   // AI tự phát hiện, tác giả appeal
-		USER_REPORT   // User report, mod review
-	}
 }

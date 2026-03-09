@@ -37,7 +37,6 @@ namespace Application.Services.Moderation
                     Priority = QueuePriority.MEDIUM,
                     Status = QueueStatus.PENDING,
                     FlaggedAt = DateTime.UtcNow,
-                    Source = QueueSource.USER_REPORT,
                     ReportCount = 0,
                 };
                 _context.ModerationQueues.Add(queue);
@@ -74,8 +73,9 @@ namespace Application.Services.Moderation
             CancellationToken cancellationToken = default
         )
         {
-            var items = await _context
-                .ModerationQueues.Where(q =>
+            var items = await _context.ModerationQueues
+                .Include(q => q.Reports)
+                .Where(q =>
                     q.Status == QueueStatus.PENDING || q.Status == QueueStatus.IN_REVIEW
                 )
                 .OrderByDescending(q => q.Priority)
@@ -89,6 +89,22 @@ namespace Application.Services.Moderation
                     Status = q.Status,
                     ReportCount = q.ReportCount,
                     FlaggedAt = q.FlaggedAt,
+                    AppealReason = q.AppealReason,
+                    ContentTitle = q.ContentType == ModerationQueueContentType.SERIES 
+                        ? _context.Series.Where(s => s.SeriesId == q.ContentId).Select(s => s.Title).FirstOrDefault()
+                        : _context.Chapters.Where(c => c.ChapterId == q.ContentId).Select(c => c.Title).FirstOrDefault(),
+                    AuthorName = q.ContentType == ModerationQueueContentType.SERIES
+                        ? _context.Series.Where(s => s.SeriesId == q.ContentId).Select(s => s.Creator.PenName).FirstOrDefault()
+                        : _context.Chapters.Where(c => c.ChapterId == q.ContentId).Select(c => c.Series.Creator.PenName).FirstOrDefault(),
+                    Reports = q.Reports.Select(r => new ReportDto
+                    {
+                        ReportId = r.ReportId,
+                        ContentId = r.ContentId,
+                        ContentType = r.ContentType,
+                        Reason = r.Reason,
+                        Description = r.Description,
+                        CreatedAt = r.CreatedAt
+                    }).ToList()
                 })
                 .ToListAsync(cancellationToken);
 
@@ -103,10 +119,12 @@ namespace Application.Services.Moderation
         )
         {
             var queue =
-                await _context.ModerationQueues.FirstOrDefaultAsync(
-                    q => q.QueueId == queueId,
-                    cancellationToken
-                ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
+                await _context.ModerationQueues
+                    .Include(q => q.Reports)
+                    .FirstOrDefaultAsync(
+                        q => q.QueueId == queueId,
+                        cancellationToken
+                    ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
 
             if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
             {
@@ -143,6 +161,16 @@ namespace Application.Services.Moderation
                 Status = queue.Status,
                 ReportCount = queue.ReportCount,
                 FlaggedAt = queue.FlaggedAt,
+                AppealReason = queue.AppealReason,
+                Reports = queue.Reports.Select(r => new ReportDto
+                {
+                    ReportId = r.ReportId,
+                    ContentId = r.ContentId,
+                    ContentType = r.ContentType,
+                    Reason = r.Reason,
+                    Description = r.Description,
+                    CreatedAt = r.CreatedAt
+                }).ToList()
             };
         }
 

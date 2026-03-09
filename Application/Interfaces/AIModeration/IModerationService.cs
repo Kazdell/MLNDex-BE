@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Moderation;
+using Application.DTOs.Moderation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +14,7 @@ namespace Application.Interfaces.AIModeration
 		/// - Safe   → tự động set ModerationStatus = AutoApproved
 		/// - Flagged → set ModerationStatus = Flagged, thông báo cho tác giả
 		Task RunAiModerationAsync(int chapterId);
+		Task RunSeriesModerationAsync(int seriesId);
 
 
 		/// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
