@@ -1,3 +1,4 @@
+using Application.DTOs.AIModeration;
 using Application.DTOs.Moderation;
 using System;
 using System.Collections.Generic;
@@ -9,12 +10,12 @@ namespace Application.Interfaces.AIModeration
 {
 	public interface IModerationService
 	{
-		
-		/// Chạy AI kiểm duyệt khi chapter/translation vừa được upload.
-		/// - Safe   → tự động set ModerationStatus = AutoApproved
-		/// - Flagged → set ModerationStatus = Flagged, thông báo cho tác giả
-		Task RunAiModerationAsync(int chapterId);
-		Task RunSeriesModerationAsync(int seriesId);
+
+        /// Chạy AI kiểm duyệt khi chapter/translation vừa được upload.
+        /// - Safe   → tự động set ModerationStatus = AutoApproved
+        /// - Flagged → set ModerationStatus = Flagged, thông báo cho tác giả
+        Task<AiModerationResultDto> RunAiModerationAsync(int chapterId);
+        Task RunSeriesModerationAsync(int seriesId);
 
 
 		/// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
