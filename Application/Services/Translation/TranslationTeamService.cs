@@ -266,6 +266,55 @@ namespace Application.Services.Translation
             return true;
         }
 
+        public async Task<IEnumerable<TeamInvitationDto>> GetTeamInvitationsAsync(int teamId)
+        {
+            var leaderId = _userContext.UserId;
+            if (leaderId == null) throw new UnauthorizedAccessException();
+
+            var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
+            if (team == null) throw new Exception("Team not found or unauthorized.");
+
+            return await _context.TeamInvitations
+                .Include(i => i.Invitee)
+                .Where(i => i.TeamId == teamId && i.Status == TeamInvitationStatus.PENDING)
+                .Select(i => new TeamInvitationDto
+                {
+                    InvitationId = i.InvitationId,
+                    TeamId = i.TeamId,
+                    UserId = i.InviteeId,
+                    Username = i.Invitee.Username,
+                    TargetRole = i.Role,
+                    Status = i.Status.ToString(),
+                    InvitedAt = i.CreatedAt,
+                    ExpiresAt = i.CreatedAt.AddDays(7)
+                })
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId)
+        {
+            var leaderId = _userContext.UserId;
+            if (leaderId == null) throw new UnauthorizedAccessException();
+
+            var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
+            if (team == null) throw new Exception("Team not found or unauthorized.");
+
+            return await _context.TeamJoinRequests
+                .Include(r => r.User)
+                .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.PENDING)
+                .Select(r => new TeamJoinRequestDtoResponse
+                {
+                    RequestId = r.RequestId,
+                    TeamId = r.TeamId,
+                    UserId = r.UserId,
+                    Username = r.User.Username,
+                    Message = r.Message,
+                    Status = r.Status.ToString(),
+                    RequestedAt = r.CreatedAt
+                })
+                .ToListAsync();
+        }
+
         public async Task<bool> RemoveMemberAsync(int teamId, int targetUserId)
         {
             var leaderId = _userContext.UserId;

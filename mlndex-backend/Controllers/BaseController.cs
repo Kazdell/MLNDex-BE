@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Common;
+using Application.DTOs.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers
@@ -35,6 +35,12 @@ namespace mlndex_backend.Controllers
 		{
 			var response = new ApiResponse<object>(false, message, null, errorCode);
 			return StatusCode(statusCode, response);
+		}
+
+		protected int GetUserId()
+		{
+			var userIdClaim = User.FindFirst("UserId")?.Value;
+			return int.TryParse(userIdClaim, out var id) ? id : 0;
 		}
 	}
 }

@@ -26,10 +26,9 @@ namespace mlndex_backend.Controllers.Community
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            var userIdValue =
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.Identity?.Name;
+            var userId = GetUserId();
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (userId == 0)
                 return UnauthorizedResponse("Invalid user context");
 
             var result = await _likeService.ToggleAsync(userId, request, cancellationToken);

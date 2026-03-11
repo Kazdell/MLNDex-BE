@@ -18,10 +18,12 @@ namespace Application.Interfaces.Translation
         Task<int> InviteMemberAsync(int teamId, InviteTeamMemberDto inviteDto);
         Task<bool> AcceptInvitationAsync(int invitationId);
         Task<bool> RejectInvitationAsync(int invitationId);
+        Task<IEnumerable<TeamInvitationDto>> GetTeamInvitationsAsync(int teamId);
         
         Task<int> RequestToJoinAsync(int teamId, JoinTeamRequestDto joinDto);
         Task<bool> ApproveJoinRequestAsync(int requestId);
         Task<bool> RejectJoinRequestAsync(int requestId);
+        Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId);
 
         Task<bool> RemoveMemberAsync(int teamId, int targetUserId);
         Task<TeamMemberDto> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleDto roleDto);

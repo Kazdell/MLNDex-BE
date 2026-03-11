@@ -28,13 +28,14 @@ namespace Application.Services.Auth
 			var roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
 
 			var claims = new List<Claim>
-		{
-			// Use standard ClaimTypes.NameIdentifier so all controllers can read it consistently
-			new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-			new Claim(ClaimTypes.Email, user.Email),
-			new Claim(ClaimTypes.Name, user.Username),
-			new Claim("displayName", user.DisplayName ?? user.Username),
-		};
+			{
+				// Đổi sang "UserId" để khớp với BaseController.GetUserId()
+				new Claim("UserId", user.UserId.ToString()),
+				new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()), // Giữ lại để tương thích với [Authorize] mặc định
+				new Claim(ClaimTypes.Email, user.Email),
+				new Claim(ClaimTypes.Name, user.Username),
+				new Claim("displayName", user.DisplayName ?? user.Username),
+			};
 
 			foreach (var role in roles)
 				claims.Add(new Claim(ClaimTypes.Role, role));

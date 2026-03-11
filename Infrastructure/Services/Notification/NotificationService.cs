@@ -75,10 +75,6 @@ namespace Infrastructure.Services.Notification
             return count;
         }
 
-        Task<PaginatedList<NotificationDto>> INotificationService.GetUserNotificationsAsync(int userId, int page, int pageSize)
-        {
-            throw new NotImplementedException();
-        }
 
         public async Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, NotificationType type)
         {

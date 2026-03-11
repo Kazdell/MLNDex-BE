@@ -24,10 +24,8 @@ namespace mlndex_backend.Controllers.User
         [HttpGet]
         public async Task<IActionResult> GetProfile(CancellationToken cancellationToken)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return UnauthorizedResponse();
-
-            var userId = int.Parse(userIdClaim.Value);
+            var userId = GetUserId();
+            if (userId == 0) return UnauthorizedResponse();
             var profile = await _userService.GetProfileAsync(userId, cancellationToken);
 
             if (profile == null) return NotFoundResponse("User not found");
@@ -38,7 +36,8 @@ namespace mlndex_backend.Controllers.User
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto, CancellationToken cancellationToken)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserId();
+            if (userId == 0) return UnauthorizedResponse();
             var result = await _userService.UpdateProfileAsync(userId, dto, cancellationToken);
             return result ? Ok(new ApiResponse<string>(true, "Profile updated successfully")) : BadRequest();
         }
@@ -46,7 +45,8 @@ namespace mlndex_backend.Controllers.User
         [HttpGet("reading-history")]
         public async Task<IActionResult> GetReadingHistory(CancellationToken cancellationToken)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserId();
+            if (userId == 0) return UnauthorizedResponse();
             var history = await _userService.GetReadingHistoryAsync(userId, cancellationToken);
             return Ok(new ApiResponse<List<ReadingHistoryDto>>(true, "Lấy lịch sử đọc thành công", history));
         }

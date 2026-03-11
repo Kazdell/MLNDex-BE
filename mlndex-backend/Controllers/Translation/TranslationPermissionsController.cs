@@ -49,5 +49,38 @@ namespace mlndex_backend.Controllers.Translation
                 return BadRequestResponse(ex.Message);
             }
         }
+
+        [Authorize]
+        [HttpGet("team/{teamId}")]
+        public async Task<IActionResult> GetTeamPermissions(int teamId)
+        {
+            try
+            {
+                var permissions = await _service.GetTeamPermissionsAsync(teamId);
+                return OkResponse(permissions);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpGet("creator")]
+        public async Task<IActionResult> GetCreatorPermissions()
+        {
+            try
+            {
+                var creatorId = GetUserId(); 
+                if (creatorId == 0) return UnauthorizedResponse();
+
+                var permissions = await _service.GetCreatorPermissionsAsync(creatorId);
+                return OkResponse(permissions);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
     }
 }

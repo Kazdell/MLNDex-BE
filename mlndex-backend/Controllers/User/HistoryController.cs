@@ -13,7 +13,7 @@ namespace mlndex_backend.Controllers.User
   public class HistoryController : BaseController
   {
     private readonly IHistoryService _historyService;
-    private int CurrentUserId => int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+    private int CurrentUserId => GetUserId();
 
     public HistoryController(IHistoryService historyService)
     {

@@ -15,7 +15,7 @@ namespace mlndex_backend.Controllers.Creator
   {
     private readonly MlndexDbContext _context;
     private readonly ISeriesService _service;
-    private int CurrentUserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+    private int CurrentUserId => GetUserId();
 
     public SeriesController(MlndexDbContext context, ISeriesService service)
     {
@@ -44,10 +44,8 @@ namespace mlndex_backend.Controllers.Creator
         [FromForm] CreateSeriesDto dto,
         CancellationToken cancellationToken)
     {
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
-      
-      var creatorId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
       var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
       return Ok(result);
@@ -70,10 +68,8 @@ namespace mlndex_backend.Controllers.Creator
     [Authorize(Roles = "CREATOR,ADMIN")]
     public async Task<IActionResult> Delete(int id)
     {
-      var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-      if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
-      
-      var creatorId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
       await _service.DeleteAsync(id, creatorId);
       return NoContent();
     }

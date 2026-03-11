@@ -14,7 +14,7 @@ public class ChapterController : ControllerBase
   private readonly IChapterService _service;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
-  private int CurrentUserId => int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+  private int CurrentUserId => int.Parse(User.FindFirst("UserId")?.Value ?? "0");
 
   public ChapterController(IChapterService service) => _service = service;
 

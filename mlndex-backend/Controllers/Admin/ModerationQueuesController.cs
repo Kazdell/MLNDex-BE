@@ -34,8 +34,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
+            var id = GetUserId();
+            var moderatorId = id != 0 ? id : 1;
 
             try
             {
@@ -68,8 +68,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
+            var id = GetUserId();
+            var moderatorId = id != 0 ? id : 1;
 
             try
             {
@@ -102,8 +102,8 @@ namespace mlndex_backend.Controllers.Admin
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            var moderatorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            var moderatorId = moderatorIdClaim != null ? int.Parse(moderatorIdClaim.Value) : 1;
+            var id = GetUserId();
+            var moderatorId = id != 0 ? id : 1;
 
             try
             {

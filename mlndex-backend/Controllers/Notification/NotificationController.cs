@@ -19,8 +19,7 @@ namespace mlndex_backend.Controllers.Notification
         [HttpGet]
         public async Task<IActionResult> GetUserNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            // TODO: Replace with explicit ID extraction from Context JWT
-            int currentUserId = 1;
+            int currentUserId = GetUserId();
             var result = await _notificationService.GetUserNotificationsAsync(currentUserId, page, pageSize);
             return OkResponse(result);
         }
@@ -28,7 +27,7 @@ namespace mlndex_backend.Controllers.Notification
         [HttpPatch("{id}/read")]
         public async Task<IActionResult> MarkAsRead(int id)
         {
-            int currentUserId = 1;
+            int currentUserId = GetUserId();
             var isSuccess = await _notificationService.MarkAsReadAsync(id, currentUserId);
             
             if (!isSuccess)
@@ -40,7 +39,7 @@ namespace mlndex_backend.Controllers.Notification
         [HttpPatch("read-all")]
         public async Task<IActionResult> MarkAllAsRead()
         {
-            int currentUserId = 1;
+            int currentUserId = GetUserId();
             int count = await _notificationService.MarkAllAsReadAsync(currentUserId);
             return OkResponse($"Marked {count} notifications as read.");
         }
