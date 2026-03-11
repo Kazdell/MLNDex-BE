@@ -3,11 +3,13 @@ using System.Threading.Tasks;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using mlndex_backend.Controllers;
 
 namespace mlndex_backend.Controllers.Translation
 {
     [Route("api/translations")]
+    [Authorize]
     public class TranslationsController : BaseController
     {
         private readonly ITranslationService _service;
@@ -23,8 +25,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int uploaderId = 1; // TODO: Get from Auth claims
-                var translation = await _service.UploadTranslationAsync(uploaderId, dto);
+                var translation = await _service.UploadTranslationAsync(dto);
                 return CreatedAtAction(nameof(GetTranslationById), new { id = translation.TranslationId }, translation);
             }
             catch (Exception ex)
@@ -35,6 +36,7 @@ namespace mlndex_backend.Controllers.Translation
 
         // Get translation details by ID.
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetTranslationById(int id)
         {
             var translation = await _service.GetTranslationByIdAsync(id);
@@ -44,6 +46,7 @@ namespace mlndex_backend.Controllers.Translation
 
         // Get all translations (Admin/Mod only in future).
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAllTranslations()
         {
             var translations = await _service.GetAllTranslationsAsync();
@@ -56,8 +59,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int uploaderId = 1; // TODO: Get from Auth claims
-                var translation = await _service.EditTranslationAsync(id, uploaderId, dto);
+                var translation = await _service.EditTranslationAsync(id, dto);
                 return OkResponse(translation);
             }
             catch (Exception ex)
@@ -72,8 +74,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int uploaderId = 1; // TODO: Get from Auth claims
-                var success = await _service.DeleteTranslationAsync(id, uploaderId);
+                var success = await _service.DeleteTranslationAsync(id);
                 if (!success) return NotFoundResponse("Translation not found or unauthorized.");
                 return NoContent();
             }

@@ -12,10 +12,12 @@ namespace Infrastructure.Services.Notification
     public class NotificationService : INotificationService
     {
         private readonly IMlndexDbContext _db;
+        private readonly INotificationPusher _pusher;
 
-        public NotificationService(IMlndexDbContext db)
+        public NotificationService(IMlndexDbContext db, INotificationPusher pusher)
         {
             _db = db;
+            _pusher = pusher;
         }
 
         public async Task<PaginatedList<NotificationDto>> GetUserNotificationsAsync(int userId, int page = 1, int pageSize = 20)
@@ -76,6 +78,38 @@ namespace Infrastructure.Services.Notification
         Task<PaginatedList<NotificationDto>> INotificationService.GetUserNotificationsAsync(int userId, int page, int pageSize)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, NotificationType type)
+        {
+            var notif = new Domain.Entities.Notification
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                ActionUrl = actionUrl,
+                NotificationType = type,
+                IsRead = false,
+                CreatedAt = System.DateTime.UtcNow
+            };
+            
+            _db.Notifications.Add(notif);
+            await _db.SaveChangesAsync();
+            
+            var dto = new NotificationDto
+            {
+                NotificationId = notif.NotificationId,
+                Title = notif.Title,
+                Message = notif.Message,
+                ActionUrl = notif.ActionUrl,
+                IsRead = notif.IsRead,
+                NotificationType = notif.NotificationType.ToString(),
+                CreatedAt = notif.CreatedAt
+            };
+            
+            await _pusher.PushNotificationAsync(userId, dto);
+            
+            return dto;
         }
     }
 }

@@ -38,7 +38,22 @@ public class ChapterController : BaseController
 
         var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
 
-        var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+  [HttpPost]
+  [RequestSizeLimit(300 * 1024 * 1024)]
+  public async Task<IActionResult> Create(
+      [FromForm] int seriesId,
+      [FromForm] float chapterNumber,
+      [FromForm] string? title,
+      [FromForm] string? language,
+      [FromForm] int? teamId,
+      [FromForm] IFormFileCollection pages,
+      CancellationToken cancellationToken)
+  {
+    var creatorId = CurrentUserId;
+    if (creatorId == 0) return Unauthorized();
+    // Kiểm tra tính hợp lệ của file
+    if (pages.Count == 0)
+      return BadRequest(new { message = "Chưa có trang nào được gửi lên." });
 
         var creatorId = creator.CreatorId;
 
@@ -87,9 +102,18 @@ public class ChapterController : BaseController
     [HttpGet("/api/chapters/{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await _service.GetChapterDetailAsync(id, cancellationToken);
-        if (result == null)
-            return NotFound(new { message = "Không tìm thấy chương này." });
+      SeriesId = seriesId,
+      ChapterNumber = chapterNumber,
+      Title = title,
+      Language = language,
+      TeamId = teamId,
+      Pages = pages.Select((file, index) => new UploadPageDto
+      {
+        FileStream = file.OpenReadStream(),
+        FileName = file.FileName,
+        PageNumber = index + 1
+      }).ToList()
+    };
 
         return Ok(result);
     }

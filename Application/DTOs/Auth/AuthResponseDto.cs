@@ -9,6 +9,7 @@ namespace Application.DTOs.Auth
 	public class AuthResponseDto
 	{
 		public string AccessToken { get; set; } = null!;
+		public int UserId { get; set; }
 		public DateTime ExpiresAt { get; set; }
 		public string Username { get; set; } = null!;
 		public string DisplayName { get; set; } = null!;

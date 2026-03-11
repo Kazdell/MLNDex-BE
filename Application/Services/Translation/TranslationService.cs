@@ -1,3 +1,4 @@
+using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
@@ -9,24 +10,34 @@ namespace Application.Services.Translation
     public class TranslationService : ITranslationService
     {
         private readonly IMlndexDbContext _context;
+        private readonly IUserContext _userContext;
 
-        public TranslationService(IMlndexDbContext context)
+        public TranslationService(IMlndexDbContext context, IUserContext userContext)
         {
             _context = context;
+            _userContext = userContext;
         }
 
-        public async Task<TranslationDto> UploadTranslationAsync(int uploaderId, UploadTranslationDto dto)
+        public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
         {
+            var uploaderId = _userContext.UserId;
+            if (uploaderId == null) throw new UnauthorizedAccessException();
+
             // Verify permission
             var permission = await _context.TranslationPermissions
                 .Include(p => p.Team)
                 .ThenInclude(t => t.TeamMembers)
-                .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId && p.ChapterId == dto.ChapterId);
+                .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
 
             if (permission == null || permission.Status != TranslationPermissionStatus.GRANTED)
             {
                 throw new Exception("Translation permission not found or not granted.");
             }
+
+            // Verify the chapter belongs to the series for which permission was granted
+            var chapter = await _context.Chapters.FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId);
+            if (chapter == null) throw new Exception("Chapter not found.");
+            if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
 
             // Verify uploader is in the team
             if (!permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
@@ -103,8 +114,11 @@ namespace Application.Services.Translation
             return translations.Select(MapToDto);
         }
 
-        public async Task<TranslationDto> EditTranslationAsync(int translationId, int uploaderId, EditTranslationDto dto)
+        public async Task<TranslationDto> EditTranslationAsync(int translationId, EditTranslationDto dto)
         {
+            var uploaderId = _userContext.UserId;
+            if (uploaderId == null) throw new UnauthorizedAccessException();
+
             var translation = await _context.Translations
                 .Include(t => t.Permission)
                 .ThenInclude(p => p.Team)
@@ -123,15 +137,15 @@ namespace Application.Services.Translation
                 translation.Language = dto.Language;
             }
 
-            // In a real scenario, we would update pages/text here based on logic
-            // Assuming we just append/replace for simplicity in this implementation plan
-
             await _context.SaveChangesAsync();
             return await GetTranslationByIdAsync(translationId) ?? throw new Exception("Error retrieving updated translation.");
         }
 
-        public async Task<bool> DeleteTranslationAsync(int translationId, int uploaderId)
+        public async Task<bool> DeleteTranslationAsync(int translationId)
         {
+            var uploaderId = _userContext.UserId;
+            if (uploaderId == null) throw new UnauthorizedAccessException();
+
             var translation = await _context.Translations
                 .Include(t => t.Permission)
                 .ThenInclude(p => p.Team)

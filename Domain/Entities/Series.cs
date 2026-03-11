@@ -35,6 +35,7 @@ namespace Domain.Entities
 		public ICollection<ReadingHistory> ReadingHistories { get; set; } = new List<ReadingHistory>();
 		public ICollection<Bookmark> Bookmarks { get; set; } = new List<Bookmark>();
 		public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+		public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
 	}
 
 	public enum SeriesFormat

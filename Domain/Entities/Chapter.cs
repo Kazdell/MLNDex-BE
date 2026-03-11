@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +29,6 @@ namespace Domain.Entities
 		public TranslationTeam? Team { get; set; }
 		public ChapterText? ChapterText { get; set; }
 		public ICollection<ChapterPage> Pages { get; set; } = new List<ChapterPage>();
-		public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
 		public ICollection<Translation> Translations { get; set; } = new List<Translation>();
 		public ICollection<ChapterUnlock> ChapterUnlocks { get; set; } = new List<ChapterUnlock>();
 		public ICollection<ReadingHistory> ReadingHistories { get; set; } = new List<ReadingHistory>();
