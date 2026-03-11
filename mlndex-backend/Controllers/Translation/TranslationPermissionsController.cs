@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using mlndex_backend.Controllers;
 
 namespace mlndex_backend.Controllers.Translation
@@ -17,14 +18,14 @@ namespace mlndex_backend.Controllers.Translation
             _service = service;
         }
 
-        // Request permission from series creator to translate a chapter.
+        // Request permission from series creator to translate a series.
+        [Authorize]
         [HttpPost("request")]
         public async Task<IActionResult> RequestPermission([FromBody] RequestPermissionDto dto)
         {
             try
             {
-                int requesterId = 1; // TODO: Get from Auth claims
-                var permission = await _service.RequestPermissionAsync(requesterId, dto);
+                var permission = await _service.RequestPermissionAsync(dto);
                 return OkResponse(permission);
             }
             catch (Exception ex)
@@ -34,13 +35,13 @@ namespace mlndex_backend.Controllers.Translation
         }
 
         // Series creator reviews (Approve/Reject) a translation request.
+        [Authorize]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> ReviewPermission(int id, [FromBody] ReviewPermissionDto dto)
         {
             try
             {
-                int creatorId = 1; // TODO: Get from Auth claims
-                var permission = await _service.ReviewPermissionAsync(id, creatorId, dto);
+                var permission = await _service.ReviewPermissionAsync(id, dto);
                 return OkResponse(permission);
             }
             catch (Exception ex)

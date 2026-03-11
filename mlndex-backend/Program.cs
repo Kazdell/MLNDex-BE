@@ -1,5 +1,6 @@
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Auth;
+using Application.Interfaces.Common;
 using Application.Interfaces.Community;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
@@ -18,6 +19,7 @@ using Application.Services.Moderation;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
+using Infrastructure.Common;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
@@ -25,12 +27,14 @@ using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
+using mlndex_backend.Hubs;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using mlndex_backend.Extension;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace mlndex_backend
 {
@@ -48,7 +52,11 @@ namespace mlndex_backend
                 builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
             // Standard API Services
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpContextAccessor();
@@ -71,6 +79,7 @@ namespace mlndex_backend
 			builder.Services.AddScoped<ITokenService, TokenService>();
 			builder.Services.AddScoped<IOtpService, OtpService>();
 			builder.Services.AddScoped<IEmailService, EmailService>();
+			builder.Services.AddScoped<IUserContext, UserContext>();
 
 			// Storage & Content Services
 			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
@@ -110,6 +119,7 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IUserService, UserService>();
 
 			// Notification Services
+			builder.Services.AddScoped<INotificationPusher, NotificationPusher>();
 			builder.Services.AddScoped<INotificationService, NotificationService>();
 
 			// Financial Services
@@ -169,6 +179,8 @@ namespace mlndex_backend
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseStaticFiles();
+
+            app.MapHub<NotificationHub>("/hubs/notification");
 
             app.MapControllers();
             using (var scope = app.Services.CreateScope())

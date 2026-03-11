@@ -17,9 +17,20 @@ namespace Application.DTOs.Translation
         public TeamMemberRole Role { get; set; } = TeamMemberRole.TRANSLATOR;
     }
 
+    public class UpdateTranslationTeamDto
+    {
+        public string? TeamName { get; set; }
+        public string? Description { get; set; }
+    }
+
     public class AssignTeamMemberRoleDto
     {
         public TeamMemberRole Role { get; set; }
+    }
+
+    public class JoinTeamRequestDto
+    {
+        public string Message { get; set; } = string.Empty;
     }
 
     // Response Models
@@ -33,6 +44,10 @@ namespace Application.DTOs.Translation
         public string LockStatus { get; set; } = string.Empty;
         public bool IsMonetizationEnabled { get; set; }
         public string ModerationStatus { get; set; } = string.Empty;
+        
+        // Bổ sung cho Frontend hiển thị danh sách
+        public int MemberCount { get; set; }
+        public string Role { get; set; } = string.Empty;
     }
 
     public class TeamMemberDto
@@ -43,5 +58,14 @@ namespace Application.DTOs.Translation
         public string Role { get; set; } = string.Empty;
         public DateTime JoinedAt { get; set; }
         public bool IsActive { get; set; }
+    }
+
+    public class TeamMemberDetailDto
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public DateTime JoinedAt { get; set; }
     }
 }

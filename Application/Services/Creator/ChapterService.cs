@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Chapter;
+using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Domain.Entities;
@@ -39,13 +39,35 @@ namespace Application.Services.Creator
         CreateChapterDto dto,
         CancellationToken cancellationToken = default)
     {
-      // ── 1. Kiểm tra series tồn tại và thuộc về creator ───────────
-      var series = await _db.Series
-          .FirstOrDefaultAsync(
-              s => s.SeriesId == dto.SeriesId && s.CreatorId == creatorId,
-              cancellationToken)
-          ?? throw new KeyNotFoundException(
-              $"Series {dto.SeriesId} không tồn tại hoặc bạn không có quyền truy cập.");
+      // ── 1. Kiểm tra quyền tải lên (Tác giả hoặc Nhóm dịch) ───────────
+      Series? series = null;
+      if (dto.TeamId == null)
+      {
+          series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.CreatorId == creatorId, cancellationToken);
+          if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
+      }
+      else
+      {
+          series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId, cancellationToken);
+          if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại.");
+
+          var isAuthorizedMember = await _db.TeamMembers.AnyAsync(m => 
+              m.TeamId == dto.TeamId && 
+              m.UserId == creatorId && 
+              m.IsActive &&
+              (m.Role == TeamMemberRole.LEADER || m.Role == TeamMemberRole.EDITOR || m.Role == TeamMemberRole.TRANSLATOR),
+              cancellationToken);
+
+          if (!isAuthorizedMember) throw new UnauthorizedAccessException("Bạn không có quyền tải chương lên danh nghĩa nhóm dịch này.");
+
+          var hasPermission = await _db.TranslationPermissions.AnyAsync(p => 
+              p.TeamId == dto.TeamId && 
+              p.SeriesId == dto.SeriesId && 
+              p.Status == TranslationPermissionStatus.GRANTED,
+              cancellationToken);
+
+          if (!hasPermission) throw new InvalidOperationException("Nhóm dịch của bạn chưa được cấp phép hoặc đã bị thu hồi quyền dịch bộ truyện này.");
+      }
 
       // ── 2. Kiểm tra trùng số chương ───────────────────────────────
       bool duplicate = await _db.Chapters.AnyAsync(
@@ -66,6 +88,7 @@ namespace Application.Services.Creator
         var chapter = new Chapter
         {
           SeriesId = dto.SeriesId,
+          TeamId = dto.TeamId,
           ChapterNumber = dto.ChapterNumber,
           Title = dto.Title,
           ContentType = ContentType.IMAGE,

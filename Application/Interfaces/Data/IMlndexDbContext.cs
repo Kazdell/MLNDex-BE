@@ -38,6 +38,8 @@ namespace Application.Interfaces.Data
         DbSet<Report> Reports { get; set; }
         DbSet<ModerationQueue> ModerationQueues { get; set; }
         DbSet<ModerationAction> ModerationActions { get; set; }
+        DbSet<TeamInvitation> TeamInvitations { get; set; }
+        DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

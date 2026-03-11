@@ -9,5 +9,6 @@ namespace Application.Interfaces.Notification
         Task<PaginatedList<NotificationDto>> GetUserNotificationsAsync(int userId, int page = 1, int pageSize = 20);
         Task<bool> MarkAsReadAsync(int notificationId, int userId);
         Task<int> MarkAllAsReadAsync(int userId);
+        Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, Domain.Entities.NotificationType type);
     }
 }
