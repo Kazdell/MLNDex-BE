@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,6 +32,7 @@ namespace Domain.Entities
 		CONTENT_BANNED,
 		TEAM_LOCKED,
 		TEAM_MONETIZATION,
+		TRANSLATION_REQUEST,
 		TRANSLATION_GRANTED,
 		TRANSLATION_REVOKED,
 		MOD_NEW_CONTENT,

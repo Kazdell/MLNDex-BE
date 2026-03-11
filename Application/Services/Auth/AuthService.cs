@@ -180,6 +180,7 @@ namespace Application.Services.Auth
 			return new AuthResponseDto
 			{
 				AccessToken = token,
+				UserId = user.UserId,
 				ExpiresAt = DateTime.UtcNow.AddDays(1),
 				Username = user.Username,
 				DisplayName = user.DisplayName ?? user.Username,

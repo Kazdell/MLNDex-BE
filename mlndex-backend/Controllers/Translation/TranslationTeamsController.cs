@@ -25,8 +25,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int leaderId = 1; // TODO: Get from Auth claims
-                var team = await _service.CreateTeamAsync(leaderId, dto);
+                var team = await _service.CreateTeamAsync(dto);
                 return CreatedAtAction(nameof(GetTeamById), new { id = team.TeamId }, team);
             }
             catch (Exception ex)
@@ -37,10 +36,52 @@ namespace mlndex_backend.Controllers.Translation
 
         // List all translation teams.
         [HttpGet]
-        public async Task<IActionResult> GetAllTeams()
+        public async Task<ActionResult<IEnumerable<TranslationTeamDto>>> GetAllTeams()
         {
             var teams = await _service.GetAllTeamsAsync();
-            return OkResponse(teams);
+            return Ok(teams);
+        }
+
+        [HttpGet("{id}/members")]
+        public async Task<ActionResult<IEnumerable<TeamMemberDetailDto>>> GetMembers(int id)
+        {
+            var members = await _service.GetTeamMembersAsync(id);
+            return Ok(members);
+        }
+
+        // Get current user's joined teams.
+        [Authorize]
+        [HttpGet("my-teams")]
+        public async Task<IActionResult> GetMyTeams([FromQuery] int limit = 5)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out var userId)) return UnauthorizedResponse("Invalid user.");
+
+                var teams = await _service.GetUserTeamsAsync(userId, limit);
+                return OkResponse(teams);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        // Update team details (Leader only).
+        [Authorize]
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateTeam(int id, [FromBody] UpdateTranslationTeamDto dto)
+        {
+            try
+            {
+                var team = await _service.UpdateTeamAsync(id, dto);
+                return OkResponse(team);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
         }
 
         // Get team details by ID.
@@ -58,8 +99,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int leaderId = 1; // TODO: Get from Auth claims
-                var success = await _service.DisbandTeamAsync(id, leaderId);
+                var success = await _service.DisbandTeamAsync(id);
                 if (!success) return NotFoundResponse("Team not found or you are not the leader.");
                 
                 return NoContent();
@@ -70,15 +110,97 @@ namespace mlndex_backend.Controllers.Translation
             }
         }
 
-        // Invite a user to join the team.
-        [HttpPost("{id}/members")]
+        [Authorize]
+        [HttpPost("{id}/invitations")]
         public async Task<IActionResult> InviteMember(int id, [FromBody] InviteTeamMemberDto dto)
         {
             try
             {
-                int leaderId = 1; // TODO: Get from Auth claims
-                var member = await _service.InviteMemberAsync(id, leaderId, dto);
-                return OkResponse(member);
+                var invitationId = await _service.InviteMemberAsync(id, dto);
+                return OkResponse(new { invitationId });
+            }
+            catch (Exception ex)
+            {
+                var message = ex.InnerException != null ? $"{ex.Message} | Inner: {ex.InnerException.Message}" : ex.Message;
+                return BadRequestResponse(message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("invitations/{invitationId}/accept")]
+        public async Task<IActionResult> AcceptInvitation(int invitationId)
+        {
+            try
+            {
+                var success = await _service.AcceptInvitationAsync(invitationId);
+                if (!success) return NotFoundResponse("Invitation not found or unauthorized.");
+                return OkResponse("Invitation accepted.");
+            }
+            catch (Exception ex)
+            {
+                var message = ex.InnerException != null ? $"{ex.Message} | Inner: {ex.InnerException.Message}" : ex.Message;
+                return BadRequestResponse(message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("invitations/{invitationId}/reject")]
+        public async Task<IActionResult> RejectInvitation(int invitationId)
+        {
+            try
+            {
+                var success = await _service.RejectInvitationAsync(invitationId);
+                if (!success) return NotFoundResponse("Invitation not found or unauthorized.");
+                return OkResponse("Invitation rejected.");
+            }
+            catch (Exception ex)
+            {
+                var message = ex.InnerException != null ? $"{ex.Message} | Inner: {ex.InnerException.Message}" : ex.Message;
+                return BadRequestResponse(message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("{id}/join-requests")]
+        public async Task<IActionResult> RequestToJoin(int id, [FromBody] JoinTeamRequestDto dto)
+        {
+            try
+            {
+                var requestId = await _service.RequestToJoinAsync(id, dto);
+                return OkResponse(new { requestId });
+            }
+            catch (Exception ex)
+            {
+                var message = ex.InnerException != null ? $"{ex.Message} | Inner: {ex.InnerException.Message}" : ex.Message;
+                return BadRequestResponse(message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("join-requests/{requestId}/approve")]
+        public async Task<IActionResult> ApproveJoinRequest(int requestId)
+        {
+            try
+            {
+                var success = await _service.ApproveJoinRequestAsync(requestId);
+                if (!success) return NotFoundResponse("Join request not found or unauthorized.");
+                return OkResponse("Join request approved.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("join-requests/{requestId}/reject")]
+        public async Task<IActionResult> RejectJoinRequest(int requestId)
+        {
+            try
+            {
+                var success = await _service.RejectJoinRequestAsync(requestId);
+                if (!success) return NotFoundResponse("Join request not found or unauthorized.");
+                return OkResponse("Join request rejected.");
             }
             catch (Exception ex)
             {
@@ -92,8 +214,7 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int leaderId = 1; // TODO: Get from Auth claims
-                var success = await _service.RemoveMemberAsync(id, leaderId, userId);
+                var success = await _service.RemoveMemberAsync(id, userId);
                 if (!success) return NotFoundResponse("Member not found.");
                 return NoContent();
             }
@@ -109,9 +230,38 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                int leaderId = 1; // TODO: Get from Auth claims
-                var member = await _service.AssignRoleAsync(id, leaderId, userId, dto);
+                var member = await _service.AssignRoleAsync(id, userId, dto);
                 return OkResponse(member);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+        
+        // Get series translated by the team
+        [HttpGet("{id}/series")]
+        public async Task<IActionResult> GetTeamSeries(int id)
+        {
+            try
+            {
+                var series = await _service.GetTeamSeriesAsync(id);
+                return OkResponse(series);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        // Get team statistics
+        [HttpGet("{id}/stats")]
+        public async Task<IActionResult> GetTeamStats(int id)
+        {
+            try
+            {
+                var stats = await _service.GetTeamStatsAsync(id);
+                return OkResponse(stats);
             }
             catch (Exception ex)
             {

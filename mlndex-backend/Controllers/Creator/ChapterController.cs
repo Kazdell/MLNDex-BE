@@ -25,6 +25,7 @@ public class ChapterController : ControllerBase
       [FromForm] float chapterNumber,
       [FromForm] string? title,
       [FromForm] string? language,
+      [FromForm] int? teamId,
       [FromForm] IFormFileCollection pages,
       CancellationToken cancellationToken)
   {
@@ -57,6 +58,7 @@ public class ChapterController : ControllerBase
       ChapterNumber = chapterNumber,
       Title = title,
       Language = language,
+      TeamId = teamId,
       Pages = pages.Select((file, index) => new UploadPageDto
       {
         FileStream = file.OpenReadStream(),

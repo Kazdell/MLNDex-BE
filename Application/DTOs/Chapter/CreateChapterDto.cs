@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,7 @@ namespace Application.DTOs.Chapter
         public float ChapterNumber { get; set; }
         public string? Title { get; set; }
         public string? Language { get; set; }
+        public int? TeamId { get; set; }
         public List<UploadPageDto>? Pages { get; set; }
     }
 }

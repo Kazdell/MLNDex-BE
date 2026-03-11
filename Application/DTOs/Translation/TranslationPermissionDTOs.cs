@@ -5,7 +5,7 @@ namespace Application.DTOs.Translation
 {
     public class RequestPermissionDto
     {
-        public int ChapterId { get; set; }
+        public int SeriesId { get; set; }
         public int TeamId { get; set; }
         public string? Note { get; set; }
     }
@@ -18,7 +18,7 @@ namespace Application.DTOs.Translation
     public class TranslationPermissionDto
     {
         public int PermissionId { get; set; }
-        public int ChapterId { get; set; }
+        public int SeriesId { get; set; }
         public int TeamId { get; set; }
         public int GrantedBy { get; set; }
         public string Status { get; set; } = string.Empty;

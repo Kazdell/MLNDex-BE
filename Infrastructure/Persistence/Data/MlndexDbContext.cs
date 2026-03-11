@@ -34,6 +34,8 @@ namespace Infrastructure.Persistence.Data
 
 		// ==================== TRANSLATION ====================
 		public DbSet<TranslationPermission> TranslationPermissions { get; set; }
+		public DbSet<TeamInvitation> TeamInvitations { get; set; }
+		public DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
 		public DbSet<Translation> Translations { get; set; }
 		public DbSet<TranslationPage> TranslationPages { get; set; }
 		public DbSet<TranslationText> TranslationTexts { get; set; }
@@ -154,6 +156,66 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.DurationDays).IsRequired();
 				e.Property(x => x.AutoUnlockChapter).IsRequired();
 				e.Property(x => x.IsActive).IsRequired();
+			});
+
+			// ====================================================
+			// TRANSLATION_PERMISSION
+			// ====================================================
+			modelBuilder.Entity<TranslationPermission>(e =>
+			{
+				e.ToTable("TranslationPermission");
+				e.HasKey(x => x.PermissionId);
+				e.Property(x => x.PermissionId).UseIdentityColumn();
+				e.Property(x => x.Status)
+					.HasConversion<string>()
+					.IsRequired();
+
+				e.HasOne(x => x.Series)
+					.WithMany()
+					.HasForeignKey(x => x.SeriesId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.Team)
+					.WithMany(t => t.TranslationPermissions)
+					.HasForeignKey(x => x.TeamId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.GrantedByUser)
+					.WithMany()
+					.HasForeignKey(x => x.GrantedBy)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ====================================================
+			// TEAM_INVITATION
+			// ====================================================
+			modelBuilder.Entity<TeamInvitation>(e =>
+			{
+				e.ToTable("TeamInvitation");
+				e.HasKey(x => x.InvitationId);
+				e.Property(x => x.InvitationId).UseIdentityColumn();
+				e.Property(x => x.Status).HasConversion<string>().IsRequired();
+				e.Property(x => x.Role).HasMaxLength(20).IsRequired();
+
+				e.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId);
+				e.HasOne(x => x.Invitee).WithMany().HasForeignKey(x => x.InviteeId).OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.Inviter).WithMany().HasForeignKey(x => x.InviterId).OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ====================================================
+			// TEAM_JOIN_REQUEST
+			// ====================================================
+			modelBuilder.Entity<TeamJoinRequest>(e =>
+			{
+				e.ToTable("TeamJoinRequest");
+				e.HasKey(x => x.RequestId);
+				e.Property(x => x.RequestId).UseIdentityColumn();
+				e.Property(x => x.Status).HasConversion<string>().IsRequired();
+				e.Property(x => x.Message).HasMaxLength(500);
+
+				e.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId);
+				e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+				e.HasOne(x => x.RespondedByUser).WithMany().HasForeignKey(x => x.RespondedBy).OnDelete(DeleteBehavior.Restrict);
 			});
 
 			// ====================================================
@@ -380,9 +442,9 @@ namespace Infrastructure.Persistence.Data
                 e.Property(x => x.RevokedAt);
                 e.Property(x => x.Note).HasMaxLength(150);
 
-                e.HasOne(x => x.Chapter)
-                    .WithMany(c => c.TranslationPermissions)
-                    .HasForeignKey(x => x.ChapterId)
+                e.HasOne(x => x.Series)
+                    .WithMany(s => s.TranslationPermissions)
+                    .HasForeignKey(x => x.SeriesId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 e.HasOne(x => x.Team)

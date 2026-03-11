@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +9,7 @@ namespace Domain.Entities
 	public class TranslationPermission
 	{
 		public int PermissionId { get; set; }
-		public int ChapterId { get; set; }
+		public int SeriesId { get; set; }
 		public int TeamId { get; set; }
 		public int GrantedBy { get; set; }
 		public TranslationPermissionStatus Status { get; set; }
@@ -18,7 +18,7 @@ namespace Domain.Entities
 		public string? Note { get; set; }
 
 		// Navigation
-		public Chapter Chapter { get; set; } = null!;
+		public Series Series { get; set; } = null!;
 		public TranslationTeam Team { get; set; } = null!;
 		public User GrantedByUser { get; set; } = null!;
 		public ICollection<Translation> Translations { get; set; } = new List<Translation>();
