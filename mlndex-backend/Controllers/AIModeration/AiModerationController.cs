@@ -23,8 +23,8 @@ namespace mlndex_backend.Controllers.AIModeration
         [HttpPost("chapters/{chapterId}/run")]
         public async Task<IActionResult> RunAiModeration(int chapterId)
         {
-            await _moderationService.RunAiModerationAsync(chapterId);
-            return OkResponse<object?>(null, "Kiểm duyệt hoàn tất");
+            var result = await _moderationService.RunAiModerationAsync(chapterId);
+            return OkResponse(result, "Kiểm duyệt hoàn tất");
         }
 
         // Submit an appeal for a chapter flagged by AI.

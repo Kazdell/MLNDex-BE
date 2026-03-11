@@ -1,4 +1,4 @@
-using Domain.Entities;
+﻿using Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -39,6 +39,16 @@ namespace Application.DTOs.Creator
         public int SeriesId { get; set; }
         public string Title { get; set; } = null!;
         public float LastChapterNumber { get; set; }
+
+        // ── Thêm mới ──────────────────────────────────────────────
+        public string? CoverImageUrl { get; set; }
+        public string Status { get; set; } = "On-going";        // On-going | Hiatus | Completed | Dropped
+        public string ModerationStatus { get; set; } = null!;   // APPROVED | PENDING | REJECTED
+        public string AgeRating { get; set; } = null!;
+        public int ChapterCount { get; set; }
+        public long TotalViews { get; set; }
+        public DateTime? LastUpdatedAt { get; set; }            // Ngày upload chapter mới nhất
+        public List<string> Genres { get; set; } = new();
     }
 
     public class SeriesDto
