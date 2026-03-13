@@ -29,21 +29,47 @@ namespace Application.Services.Translation
                 throw new Exception("Team name already exists.");
             }
 
+            // Check if slug already exists
+            if (await _context.TranslationTeams.AnyAsync(t => t.Slug == createDto.Slug))
+            {
+                throw new Exception("Slug already exists.");
+            }
+
             var team = new TranslationTeam
             {
                 LeaderId = userId.Value,
                 TeamName = createDto.TeamName,
+                Slug = createDto.Slug,
                 Description = createDto.Description,
+                Language = createDto.Language,
+                RequireApproval = createDto.RequireApproval,
                 ReputationScore = 100, // Default starting score
                 LockStatus = TeamLockStatus.ACTIVE,
                 ModerationStatus = ModerationStatus.APPROVED, // Auto approve for now
                 IsMonetizationEnabled = false,
                 AvatarUrl = createDto.AvatarUrl,
-                BannerUrl = createDto.BannerUrl
+                BannerUrl = createDto.BannerUrl,
+                Facebook = createDto.Facebook,
+                Discord = createDto.Discord,
+                Website = createDto.Website
             };
 
             _context.TranslationTeams.Add(team);
             await _context.SaveChangesAsync();
+
+            // Add Genres
+            if (createDto.GenreIds != null && createDto.GenreIds.Any())
+            {
+                foreach (var genreId in createDto.GenreIds)
+                {
+                    _context.TeamGenres.Add(new TeamGenre
+                    {
+                        TeamId = team.TeamId,
+                        GenreId = genreId
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
 
             // Auto-add leader as a team member
             var member = new TeamMember
@@ -78,19 +104,38 @@ namespace Application.Services.Translation
                 team.TeamName = updateDto.TeamName;
             }
 
-            if (updateDto.Description != null)
+            if (!string.IsNullOrEmpty(updateDto.Slug) && updateDto.Slug != team.Slug)
             {
-                team.Description = updateDto.Description;
+                if (await _context.TranslationTeams.AnyAsync(t => t.Slug == updateDto.Slug && t.TeamId != teamId))
+                {
+                    throw new Exception("Slug already exists.");
+                }
+                team.Slug = updateDto.Slug;
             }
 
-            if (updateDto.AvatarUrl != null)
-            {
-                team.AvatarUrl = updateDto.AvatarUrl;
-            }
+            if (updateDto.Description != null) team.Description = updateDto.Description;
+            if (updateDto.Language != null) team.Language = updateDto.Language;
+            if (updateDto.RequireApproval.HasValue) team.RequireApproval = updateDto.RequireApproval.Value;
+            if (updateDto.AvatarUrl != null) team.AvatarUrl = updateDto.AvatarUrl;
+            if (updateDto.BannerUrl != null) team.BannerUrl = updateDto.BannerUrl;
+            if (updateDto.Facebook != null) team.Facebook = updateDto.Facebook;
+            if (updateDto.Discord != null) team.Discord = updateDto.Discord;
+            if (updateDto.Website != null) team.Website = updateDto.Website;
 
-            if (updateDto.BannerUrl != null)
+            // Update Genres
+            if (updateDto.GenreIds != null)
             {
-                team.BannerUrl = updateDto.BannerUrl;
+                var currentGenres = await _context.TeamGenres.Where(tg => tg.TeamId == teamId).ToListAsync();
+                _context.TeamGenres.RemoveRange(currentGenres);
+
+                foreach (var genreId in updateDto.GenreIds)
+                {
+                    _context.TeamGenres.Add(new TeamGenre
+                    {
+                        TeamId = teamId,
+                        GenreId = genreId
+                    });
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -117,6 +162,9 @@ namespace Application.Services.Translation
         public async Task<TranslationTeamDto?> GetTeamByIdAsync(int teamId)
         {
             var team = await _context.TranslationTeams
+                .Include(t => t.TeamGenres)
+                .ThenInclude(tg => tg.Genre)
+                .Include(t => t.TeamMembers)
                 .FirstOrDefaultAsync(t => t.TeamId == teamId);
 
             if (team == null) return null;
@@ -141,7 +189,11 @@ namespace Application.Services.Translation
 
         public async Task<IEnumerable<TranslationTeamDto>> GetAllTeamsAsync()
         {
-            var teams = await _context.TranslationTeams.ToListAsync();
+            var teams = await _context.TranslationTeams
+                .Include(t => t.TeamGenres)
+                .ThenInclude(tg => tg.Genre)
+                .Include(t => t.TeamMembers)
+                .ToListAsync();
             return teams.Select(MapToDto);
         }
 
@@ -475,7 +527,10 @@ namespace Application.Services.Translation
                 TeamId = team.TeamId,
                 LeaderId = team.LeaderId,
                 TeamName = team.TeamName,
+                Slug = team.Slug,
                 Description = team.Description,
+                Language = team.Language,
+                RequireApproval = team.RequireApproval,
                 ReputationScore = team.ReputationScore,
                 LockStatus = team.LockStatus.ToString(),
                 IsMonetizationEnabled = team.IsMonetizationEnabled,
@@ -483,8 +538,10 @@ namespace Application.Services.Translation
                 MemberCount = team.TeamMembers?.Count ?? 0,
                 AvatarUrl = team.AvatarUrl,
                 BannerUrl = team.BannerUrl,
-                // Role field in DTO is primarily for list endpoints where we know the user context.
-                // For single team lookup, we might need to set it separately if needed.
+                Facebook = team.Facebook,
+                Discord = team.Discord,
+                Website = team.Website,
+                Genres = team.TeamGenres?.Select(tg => tg.Genre.Name).ToList()
             };
         }
     }

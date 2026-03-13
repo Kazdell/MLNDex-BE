@@ -40,12 +40,19 @@ namespace Application.Services.Translation
             if (series == null)
                 throw new Exception("Series not found.");
 
+            // Tìm UserId của Tác giả từ CreatorId
+            var creatorProfile = await _context.CreatorProfiles
+                .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);
+
+            if (creatorProfile == null)
+                throw new Exception("Creator profile not found for this series.");
+
             // Create permission record
             var permission = new TranslationPermission
             {
                 SeriesId = dto.SeriesId,
                 TeamId = dto.TeamId,
-                GrantedBy = series.CreatorId, // Creator gives permission
+                GrantedBy = creatorProfile.UserId, // Use UserId here
                 Status = TranslationPermissionStatus.PENDING,
                 Note = dto.Note
             };
@@ -55,8 +62,13 @@ namespace Application.Services.Translation
 
             // Gửi thông báo cho Tác giả bằng SignalR
             var teamName = await _context.TranslationTeams.Where(t => t.TeamId == dto.TeamId).Select(t => t.TeamName).FirstOrDefaultAsync();
+            var creatorUserId = await _context.CreatorProfiles
+                .Where(c => c.CreatorId == series.CreatorId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+
             await _notificationService.CreateNotificationAsync(
-                series.CreatorId,
+                creatorUserId,
                 "Yêu cầu dịch truyện mới",
                 $"Nhóm dịch {teamName ?? "đối tác"} vừa gửi yêu cầu muốn dịch bộ truyện {series.Title} của bạn.",
                 $"/creator/series/{series.SeriesId}/translation-requests",
@@ -78,8 +90,13 @@ namespace Application.Services.Translation
             if (permission == null)
                 throw new Exception("Permission request not found.");
 
-            // Ensure the person reviewing is the creator of the series
-            if (permission.Series.CreatorId != creatorId)
+            // Ensure the person reviewing is the owner of the creator profile associated with the series
+            var seriesCreatorUserId = await _context.CreatorProfiles
+                .Where(c => c.CreatorId == permission.Series.CreatorId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+
+            if (seriesCreatorUserId != creatorId)
                 throw new Exception("Unauthorized. Only the creator of the series can review this translation request.");
 
             if (dto.IsApproved)
@@ -89,9 +106,12 @@ namespace Application.Services.Translation
             }
             else
             {
-                permission.Status = TranslationPermissionStatus.REVOKED;
+                permission.Status = TranslationPermissionStatus.DENIED;
                 permission.RevokedAt = DateTime.UtcNow;
             }
+
+            // Fix legacy records that might have wrong GrantedBy ID
+            permission.GrantedBy = seriesCreatorUserId;
 
             await _context.SaveChangesAsync();
 
@@ -105,13 +125,13 @@ namespace Application.Services.Translation
             var resultMessage = dto.IsApproved 
                 ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
                 : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch của nhóm bạn.";
-            var link = dto.IsApproved ? $"/creator/series/{permission.SeriesId}" : "/"; // Go to series page or home
+            var link = $"/translation/sent-requests/{permission.TeamId}"; // Trang yêu cầu gửi đi của nhóm
 
             foreach (var memberId in teamMembers)
             {
                 await _notificationService.CreateNotificationAsync(
                     memberId,
-                    $"Yêu cầu dịch truyện bị {resultText.ToLower()}", // Title
+                    $"Don xin dich bi {resultText.ToLower()}", // Simplified title (no accents)
                     resultMessage,
                     link,
                     dto.IsApproved ? NotificationType.TRANSLATION_GRANTED : NotificationType.TRANSLATION_REVOKED
@@ -136,10 +156,17 @@ namespace Application.Services.Translation
             return dtos;
         }
 
-        public async Task<IEnumerable<TranslationPermissionDto>> GetCreatorPermissionsAsync(int creatorId)
+        public async Task<IEnumerable<TranslationPermissionDto>> GetCreatorPermissionsAsync(int userId)
         {
+            var creatorId = await _context.CreatorProfiles
+                .Where(c => c.UserId == userId)
+                .Select(c => c.CreatorId)
+                .FirstOrDefaultAsync();
+
+            if (creatorId == 0) return new List<TranslationPermissionDto>();
+
             var permissions = await _context.TranslationPermissions
-                .Where(p => p.GrantedBy == creatorId)
+                .Where(p => p.GrantedBy == userId || p.GrantedBy == creatorId)
                 .OrderByDescending(p => p.PermissionId)
                 .ToListAsync();
 

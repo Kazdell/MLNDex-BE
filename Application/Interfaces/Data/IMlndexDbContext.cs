@@ -13,6 +13,7 @@ namespace Application.Interfaces.Data
         DbSet<VipSubscription> VipSubscriptions { get; set; }
         DbSet<TranslationTeam> TranslationTeams { get; set; }
         DbSet<TeamMember> TeamMembers { get; set; }
+        DbSet<TeamGenre> TeamGenres { get; set; }
         DbSet<Domain.Entities.Series> Series { get; set; }
         DbSet<Genre> Genres { get; set; }
         DbSet<SeriesGenre> SeriesGenres { get; set; }

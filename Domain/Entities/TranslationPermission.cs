@@ -29,6 +29,7 @@ namespace Domain.Entities
 	{
 		PENDING,
 		GRANTED,
+		DENIED,
 		REVOKED
 	}
 }

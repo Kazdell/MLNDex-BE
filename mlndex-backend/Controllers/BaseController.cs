@@ -39,8 +39,9 @@ namespace mlndex_backend.Controllers
 
 		protected int GetUserId()
 		{
-			var userIdClaim = User.FindFirst("UserId")?.Value;
-			return int.TryParse(userIdClaim, out var id) ? id : 0;
+			var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) 
+                           ?? User.FindFirst("UserId");
+			return int.TryParse(userIdClaim?.Value, out var id) ? id : 0;
 		}
 	}
 }

@@ -23,6 +23,7 @@ namespace Infrastructure.Persistence.Data
 		// ==================== TRANSLATION TEAM ====================
 		public DbSet<TranslationTeam> TranslationTeams { get; set; }
 		public DbSet<TeamMember> TeamMembers { get; set; }
+		public DbSet<TeamGenre> TeamGenres { get; set; }
 
 		// ==================== CONTENT ====================
 		public DbSet<Series> Series { get; set; }
@@ -81,6 +82,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
 				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
 				e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.Bio).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.IsActive).IsRequired();
 			});
 
@@ -168,10 +171,14 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.PermissionId).UseIdentityColumn();
 				e.Property(x => x.Status)
 					.HasConversion<string>()
+					.HasMaxLength(20)
 					.IsRequired();
+                e.Property(x => x.GrantedAt);
+                e.Property(x => x.RevokedAt);
+                e.Property(x => x.Note).HasMaxLength(255);
 
 				e.HasOne(x => x.Series)
-					.WithMany()
+					.WithMany(s => s.TranslationPermissions)
 					.HasForeignKey(x => x.SeriesId)
 					.OnDelete(DeleteBehavior.Restrict);
 
@@ -181,7 +188,7 @@ namespace Infrastructure.Persistence.Data
 					.OnDelete(DeleteBehavior.Restrict);
 
 				e.HasOne(x => x.GrantedByUser)
-					.WithMany()
+					.WithMany(u => u.GrantedPermissions)
 					.HasForeignKey(x => x.GrantedBy)
 					.OnDelete(DeleteBehavior.Restrict);
 			});
@@ -255,7 +262,10 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.TeamId).UseIdentityColumn();
 				e.HasIndex(x => x.TeamName).IsUnique();
 				e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
-				e.Property(x => x.Description).HasMaxLength(255);
+				e.Property(x => x.Slug).HasMaxLength(140).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(1000);
+				e.Property(x => x.Language).HasMaxLength(50).IsRequired().HasDefaultValue("Tiếng Việt");
+				e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
 				e.Property(x => x.ReputationScore).IsRequired();
 				e.Property(x => x.LockStatus)
 					.HasConversion<string>()
@@ -265,6 +275,11 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.ModerationStatus)
 					.HasConversion<string>()
 					.IsRequired();
+				e.Property(x => x.AvatarUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.Facebook).HasMaxLength(255);
+				e.Property(x => x.Discord).HasMaxLength(255);
+				e.Property(x => x.Website).HasMaxLength(255);
 
 				e.HasOne(x => x.Leader)
 					.WithMany(u => u.LeadingTeams)
@@ -428,35 +443,6 @@ namespace Infrastructure.Persistence.Data
                     .WithOne(c => c.ChapterText)
                     .HasForeignKey<ChapterText>(x => x.ChapterId)
                     .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // ====================================================
-            // TRANSLATION_PERMISSION
-            // ====================================================
-            modelBuilder.Entity<TranslationPermission>(e =>
-            {
-                e.ToTable("TranslationPermission");
-                e.HasKey(x => x.PermissionId);
-                e.Property(x => x.PermissionId).UseIdentityColumn();
-                e.Property(x => x.Status).HasConversion<string>().IsRequired();
-                e.Property(x => x.GrantedAt);
-                e.Property(x => x.RevokedAt);
-                e.Property(x => x.Note).HasMaxLength(150);
-
-                e.HasOne(x => x.Series)
-                    .WithMany(s => s.TranslationPermissions)
-                    .HasForeignKey(x => x.SeriesId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                e.HasOne(x => x.Team)
-                    .WithMany(t => t.TranslationPermissions)
-                    .HasForeignKey(x => x.TeamId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                e.HasOne(x => x.GrantedByUser)
-                    .WithMany(u => u.GrantedPermissions)
-                    .HasForeignKey(x => x.GrantedBy)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // ====================================================
@@ -887,6 +873,26 @@ namespace Infrastructure.Persistence.Data
                 e.HasOne(x => x.Moderator)
                     .WithMany(u => u.ModerationActions)
                     .HasForeignKey(x => x.ModeratorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ====================================================
+            // TEAM_GENRE
+            // ====================================================
+            modelBuilder.Entity<TeamGenre>(e =>
+            {
+                e.ToTable("TeamGenre");
+                e.HasKey(x => x.TeamGenreId);
+                e.Property(x => x.TeamGenreId).UseIdentityColumn();
+
+                e.HasOne(x => x.TranslationTeam)
+                    .WithMany(t => t.TeamGenres)
+                    .HasForeignKey(x => x.TeamId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Genre)
+                    .WithMany()
+                    .HasForeignKey(x => x.GenreId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }
