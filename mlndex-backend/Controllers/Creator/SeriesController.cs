@@ -19,23 +19,25 @@ namespace mlndex_backend.Controllers.Creator
 
     public SeriesController(MlndexDbContext context, ISeriesService service)
     {
-      _context = context;
-      _service = service;
-    }
+        private readonly MlndexDbContext _context;
+        private readonly ISeriesService _service;
 
-    [HttpGet]
-    [Route("creator")]
-    [Authorize(Roles = "CREATOR,ADMIN")]
-    public async Task<IActionResult> GetSeriesByCreator(
-        CancellationToken cancellationToken)
-    {
-      var creatorId = CurrentUserId;
-      if (creatorId == 0) return UnauthorizedResponse();
+        public SeriesController(MlndexDbContext context, ISeriesService service)
+        {
+            _context = context;
+            _service = service;
+        }
 
-      var result = await _service.GetByCreatorAsync(creatorId, cancellationToken);
-      return Ok(result);
-    }
+        [HttpGet]
+        [Route("creator")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> GetSeriesByCreator(
+            CancellationToken cancellationToken)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
+            var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
 
     [HttpPost("create")]
     [Consumes("multipart/form-data")]
@@ -47,22 +49,13 @@ namespace mlndex_backend.Controllers.Creator
       var creatorId = CurrentUserId;
       if (creatorId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-      var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
-      return Ok(result);
-    }
+            var creatorId = creator.CreatorId;
 
-    [HttpGet("{id}/edit")]
-    [Authorize(Roles = "CREATOR,ADMIN")]
-    public async Task<IActionResult> GetForEdit(int id)
-    {
-      var creatorId = CurrentUserId;
-      if (creatorId == 0) return UnauthorizedResponse();
+            if (creatorId == 0) return UnauthorizedResponse();
 
-      var result = await _service.GetForEditAsync(id, creatorId);
-      if (result == null)
-        return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
-      return OkResponse(result);
-    }
+            var result = await _service.GetByCreatorAsync(creatorId, cancellationToken);
+            return Ok(result);
+        }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "CREATOR,ADMIN")]
@@ -74,52 +67,119 @@ namespace mlndex_backend.Controllers.Creator
       return NoContent();
     }
 
-    [HttpPut("{id}")]
-    [Consumes("multipart/form-data")]
-    [Authorize(Roles = "CREATOR,ADMIN")]
-    public async Task<IActionResult> Update(
-        int id,
-        [FromForm] CreateSeriesDto dto,
-        CancellationToken cancellationToken)
-    {
-      var creatorId = CurrentUserId;
-      if (creatorId == 0) return UnauthorizedResponse();
+        [HttpPost("create")]
+        [Consumes("multipart/form-data")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> Create(
+            [FromForm] CreateSeriesDto dto,
+            CancellationToken cancellationToken)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-      var result = await _service.UpdateAsync(id, creatorId, dto, cancellationToken);
-      return Ok(result);
+            var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+
+            var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            var creatorId = creator.CreatorId;
+
+            var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpGet("{id}/edit")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> GetForEdit(int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+            var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+
+            var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            var creatorId = creator.CreatorId;
+
+            if (creatorId == 0) return UnauthorizedResponse();
+
+            var result = await _service.GetForEditAsync(id, creatorId);
+            if (result == null)
+                return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
+            return OkResponse(result);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+            var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+
+            var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            var creatorId = creator.CreatorId;
+            await _service.DeleteAsync(id, creatorId);
+            return NoContent();
+        }
+
+        [HttpPut("{id}")]
+        [Consumes("multipart/form-data")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> Update(
+            int id,
+            [FromForm] CreateSeriesDto dto,
+            CancellationToken cancellationToken)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+            var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+
+            var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            var creatorId = creator.CreatorId;
+
+            if (creatorId == 0) return UnauthorizedResponse();
+
+            var result = await _service.UpdateAsync(id, creatorId, dto, cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSeries([FromQuery] string sortBy = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var result = await _service.GetSeriesListAsync(sortBy, page, pageSize);
+            return OkResponse(result);
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchSeries([FromQuery] SeriesSearchRequest request)
+        {
+            var result = await _service.SearchSeriesAsync(request);
+            return OkResponse(result);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetSeriesDetails(int id)
+        {
+            var result = await _service.GetSeriesDetailsAsync(id);
+            if (result == null)
+                return NotFoundResponse("Series not found.");
+
+            return OkResponse(result);
+        }
+
+        [HttpGet("recommendations")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            int userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 0; 
+
+            var result = await _service.GetRecommendationsAsync(userId, limit);
+            return OkResponse(result);
+        }
     }
-
-    [HttpGet]
-    public async Task<IActionResult> GetSeries([FromQuery] string sortBy = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
-    {
-      var result = await _service.GetSeriesListAsync(sortBy, page, pageSize);
-      return OkResponse(result);
-    }
-
-    [HttpGet("search")]
-    public async Task<IActionResult> SearchSeries([FromQuery] SeriesSearchRequest request)
-    {
-      var result = await _service.SearchSeriesAsync(request);
-      return OkResponse(result);
-    }
-
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetSeriesDetails(int id)
-    {
-      var result = await _service.GetSeriesDetailsAsync(id);
-      if (result == null)
-        return NotFoundResponse("Series not found.");
-
-      return OkResponse(result);
-    }
-
-    [HttpGet("recommendations")]
-    public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10)
-    {
-      var currentUserId = CurrentUserId;
-      // If not logged in, currentUserId = 0, service should handle guest recommendations
-      var result = await _service.GetRecommendationsAsync(currentUserId, limit);
-      return OkResponse(result);
-    }
-  }
 }

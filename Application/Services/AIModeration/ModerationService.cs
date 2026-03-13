@@ -1,7 +1,8 @@
+using Application.DTOs.AIModeration;
 using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
-using Application.Interfaces.Moderation;
 using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -41,11 +42,11 @@ namespace Application.Services.AIModeration
 			_ocr = ocr;
 		}
 
-		// ─────────────────────────────────────────────────────────────
-		// Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
-		// ─────────────────────────────────────────────────────────────
-		public async Task RunAiModerationAsync(int chapterId)
-		{
+        // ─────────────────────────────────────────────────────────────
+        // Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
+        // ─────────────────────────────────────────────────────────────
+        public async Task<AiModerationResultDto> RunAiModerationAsync(int chapterId)
+        {
 			var chapter = await _db.Chapters
 				.Include(c => c.Pages)
                 .Include(c => c.Series) // Lấy Series để biết AgeRating
@@ -63,7 +64,12 @@ namespace Application.Services.AIModeration
                     chapter.ModerationStatus = ModerationStatus.REJECTED;
                     await _db.SaveChangesAsync();
                     _logger.LogWarning("Chapter {ChapterId} bị reject do tiêu đề vi phạm.", chapterId);
-                    return;
+                    return new AiModerationResultDto
+                    {
+                        Flagged = true,
+                        FlaggedReason = "title_violation",
+                        CategoryScores = new Dictionary<string, double>()
+                    };
                 }
             }
 
@@ -76,8 +82,13 @@ namespace Application.Services.AIModeration
 			if (imageUrls.Count == 0)
 			{
 				_logger.LogWarning("Chapter {ChapterId} không có ảnh nào", chapterId);
-				return;
-			}
+                return new AiModerationResultDto
+                {
+                    Flagged = false,
+                    FlaggedReason = null,
+                    CategoryScores = new Dictionary<string, double>()
+                };
+            }
 
 			var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
@@ -144,7 +155,8 @@ namespace Application.Services.AIModeration
 			}
 
 			await _db.SaveChangesAsync();
-		}
+            return aiResult;
+        }
 
         public async Task RunSeriesModerationAsync(int seriesId)
         {
