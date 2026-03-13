@@ -20,6 +20,8 @@ namespace Domain.Entities
 		public string? FacebookId { get; set; }
 		public bool IsActive { get; set; }
 		public DateTime CreatedAt { get; set; }
+		public string? BannerUrl { get; set; }
+
 
 		// Navigation
 		public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

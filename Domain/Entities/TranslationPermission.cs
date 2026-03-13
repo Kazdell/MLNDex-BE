@@ -13,6 +13,7 @@ namespace Domain.Entities
 		public int TeamId { get; set; }
 		public int GrantedBy { get; set; }
 		public TranslationPermissionStatus Status { get; set; }
+		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 		public DateTime? GrantedAt { get; set; }
 		public DateTime? RevokedAt { get; set; }
 		public string? Note { get; set; }

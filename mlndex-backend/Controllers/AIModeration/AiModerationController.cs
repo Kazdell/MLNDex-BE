@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Application.DTOs.AIModeration;
 using Application.Interfaces.AIModeration;
 using Microsoft.AspNetCore.Authorization;
@@ -37,12 +37,9 @@ namespace mlndex_backend.Controllers.AIModeration
             if (string.IsNullOrWhiteSpace(request.AppealReason))
                 return BadRequestResponse("Vui lòng nhập lý do appeal");
 
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (userIdClaim is null)
+            var userId = GetUserId();
+            if (userId == 0)
                 return UnauthorizedResponse();
-
-            var userId = int.Parse(userIdClaim);
 
             await _moderationService.SubmitAppealAsync(chapterId, userId, request.AppealReason);
 

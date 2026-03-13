@@ -7,5 +7,7 @@ namespace Application.Interfaces.Translation
     {
         Task<TranslationPermissionDto> RequestPermissionAsync(RequestPermissionDto dto);
         Task<TranslationPermissionDto> ReviewPermissionAsync(int permissionId, ReviewPermissionDto dto);
+        Task<IEnumerable<TranslationPermissionDto>> GetTeamPermissionsAsync(int teamId);
+        Task<IEnumerable<TranslationPermissionDto>> GetCreatorPermissionsAsync(int creatorId);
     }
 }

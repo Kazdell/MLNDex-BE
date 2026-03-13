@@ -56,8 +56,8 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                if (!int.TryParse(userIdClaim, out var userId)) return UnauthorizedResponse("Invalid user.");
+                var userId = GetUserId();
+                if (userId == 0) return UnauthorizedResponse("Invalid user.");
 
                 var teams = await _service.GetUserTeamsAsync(userId, limit);
                 return OkResponse(teams);
@@ -127,6 +127,21 @@ namespace mlndex_backend.Controllers.Translation
         }
 
         [Authorize]
+        [HttpGet("{id}/invitations")]
+        public async Task<IActionResult> GetTeamInvitations(int id)
+        {
+            try
+            {
+                var invitations = await _service.GetTeamInvitationsAsync(id);
+                return OkResponse(invitations);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        [Authorize]
         [HttpPost("invitations/{invitationId}/accept")]
         public async Task<IActionResult> AcceptInvitation(int invitationId)
         {
@@ -173,6 +188,21 @@ namespace mlndex_backend.Controllers.Translation
             {
                 var message = ex.InnerException != null ? $"{ex.Message} | Inner: {ex.InnerException.Message}" : ex.Message;
                 return BadRequestResponse(message);
+            }
+        }
+
+        [Authorize]
+        [HttpGet("{id}/join-requests")]
+        public async Task<IActionResult> GetTeamJoinRequests(int id)
+        {
+            try
+            {
+                var requests = await _service.GetTeamJoinRequestsAsync(id);
+                return OkResponse(requests);
+            }
+            catch (Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
             }
         }
 

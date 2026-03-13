@@ -27,10 +27,9 @@ namespace mlndex_backend.Controllers.Community
             if (!ModelState.IsValid)
                 return BadRequestResponse("Invalid payload");
 
-            var userIdValue =
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.Identity?.Name;
+            var userId = GetUserId();
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (userId == 0)
                 return UnauthorizedResponse("Invalid user context");
 
             try
@@ -66,10 +65,9 @@ namespace mlndex_backend.Controllers.Community
         [HttpDelete("{commentId:int}")]
         public async Task<IActionResult> Delete(int commentId, CancellationToken cancellationToken)
         {
-            var userIdValue =
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.Identity?.Name;
+            var userId = GetUserId();
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (userId == 0)
                 return UnauthorizedResponse("Invalid user context");
 
             try

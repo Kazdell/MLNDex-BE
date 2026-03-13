@@ -381,6 +381,7 @@ namespace Infrastructure.Persistence.Data
                 e.Property(x => x.Status).HasConversion<string>().IsRequired();
                 e.Property(x => x.ModerationStatus).HasConversion<string>().IsRequired();
                 e.Property(x => x.PublishedAt);
+                e.Property(x => x.Views).HasDefaultValue(0).IsRequired();
 
                 e.HasOne(x => x.Series)
                     .WithMany(s => s.Chapters)

@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Chapter;
+using Application.DTOs.Chapter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +10,7 @@ namespace Application.Interfaces.Creator
   public interface IChapterService
   {
     Task<CreateChapterResponseDto> CreateAsync(
-        int creatorId,
+        int userId,
         CreateChapterDto dto,
         CancellationToken cancellationToken = default);
 

@@ -63,7 +63,7 @@ namespace Application.Services.Translation
                 NotificationType.TRANSLATION_REQUEST
             );
 
-            return MapToDto(permission);
+            return await MapToDtoAsync(permission);
         }
 
         public async Task<TranslationPermissionDto> ReviewPermissionAsync(int permissionId, ReviewPermissionDto dto)
@@ -95,18 +95,77 @@ namespace Application.Services.Translation
 
             await _context.SaveChangesAsync();
 
-            return MapToDto(permission);
+            // Gửi thông báo cho toàn bộ thành viên của nhóm dịch
+            var teamMembers = await _context.TeamMembers
+                .Where(m => m.TeamId == permission.TeamId && m.IsActive)
+                .Select(m => m.UserId)
+                .ToListAsync();
+
+            var resultText = dto.IsApproved ? "CHẤP THUẬN" : "TỪ CHỐI";
+            var resultMessage = dto.IsApproved 
+                ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
+                : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch của nhóm bạn.";
+            var link = dto.IsApproved ? $"/creator/series/{permission.SeriesId}" : "/"; // Go to series page or home
+
+            foreach (var memberId in teamMembers)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    memberId,
+                    $"Yêu cầu dịch truyện bị {resultText.ToLower()}", // Title
+                    resultMessage,
+                    link,
+                    dto.IsApproved ? NotificationType.TRANSLATION_GRANTED : NotificationType.TRANSLATION_REVOKED
+                );
+            }
+
+            return await MapToDtoAsync(permission);
         }
 
-        private TranslationPermissionDto MapToDto(TranslationPermission p)
+        public async Task<IEnumerable<TranslationPermissionDto>> GetTeamPermissionsAsync(int teamId)
         {
+            var permissions = await _context.TranslationPermissions
+                .Where(p => p.TeamId == teamId)
+                .OrderByDescending(p => p.PermissionId)
+                .ToListAsync();
+
+            var dtos = new List<TranslationPermissionDto>();
+            foreach (var p in permissions)
+            {
+                dtos.Add(await MapToDtoAsync(p));
+            }
+            return dtos;
+        }
+
+        public async Task<IEnumerable<TranslationPermissionDto>> GetCreatorPermissionsAsync(int creatorId)
+        {
+            var permissions = await _context.TranslationPermissions
+                .Where(p => p.GrantedBy == creatorId)
+                .OrderByDescending(p => p.PermissionId)
+                .ToListAsync();
+
+            var dtos = new List<TranslationPermissionDto>();
+            foreach (var p in permissions)
+            {
+                dtos.Add(await MapToDtoAsync(p));
+            }
+            return dtos;
+        }
+
+        private async Task<TranslationPermissionDto> MapToDtoAsync(TranslationPermission p)
+        {
+            var seriesTitle = await _context.Series.Where(s => s.SeriesId == p.SeriesId).Select(s => s.Title).FirstOrDefaultAsync();
+            var teamName = await _context.TranslationTeams.Where(t => t.TeamId == p.TeamId).Select(t => t.TeamName).FirstOrDefaultAsync();
+
             return new TranslationPermissionDto
             {
                 PermissionId = p.PermissionId,
                 SeriesId = p.SeriesId,
+                SeriesTitle = seriesTitle,
                 TeamId = p.TeamId,
+                TeamName = teamName,
                 GrantedBy = p.GrantedBy,
                 Status = p.Status.ToString(),
+                RequestedAt = p.CreatedAt,
                 GrantedAt = p.GrantedAt,
                 RevokedAt = p.RevokedAt,
                 Note = p.Note

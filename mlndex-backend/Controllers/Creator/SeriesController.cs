@@ -9,9 +9,15 @@ using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Creator
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class SeriesController : BaseController
+  [Route("api/[controller]")]
+  [ApiController]
+  public class SeriesController : BaseController
+  {
+    private readonly MlndexDbContext _context;
+    private readonly ISeriesService _service;
+    private int CurrentUserId => GetUserId();
+
+    public SeriesController(MlndexDbContext context, ISeriesService service)
     {
         private readonly MlndexDbContext _context;
         private readonly ISeriesService _service;
@@ -33,7 +39,15 @@ namespace mlndex_backend.Controllers.Creator
 
             var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
 
-            var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
+    [HttpPost("create")]
+    [Consumes("multipart/form-data")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
+    public async Task<IActionResult> Create(
+        [FromForm] CreateSeriesDto dto,
+        CancellationToken cancellationToken)
+    {
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
             var creatorId = creator.CreatorId;
 
@@ -43,6 +57,15 @@ namespace mlndex_backend.Controllers.Creator
             return Ok(result);
         }
 
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "CREATOR,ADMIN")]
+    public async Task<IActionResult> Delete(int id)
+    {
+      var creatorId = CurrentUserId;
+      if (creatorId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      await _service.DeleteAsync(id, creatorId);
+      return NoContent();
+    }
 
         [HttpPost("create")]
         [Consumes("multipart/form-data")]

@@ -19,9 +19,12 @@ namespace Application.DTOs.Translation
     {
         public int PermissionId { get; set; }
         public int SeriesId { get; set; }
+        public string? SeriesTitle { get; set; }
         public int TeamId { get; set; }
+        public string? TeamName { get; set; }
         public int GrantedBy { get; set; }
         public string Status { get; set; } = string.Empty;
+        public DateTime RequestedAt { get; set; }
         public DateTime? GrantedAt { get; set; }
         public DateTime? RevokedAt { get; set; }
         public string? Note { get; set; }

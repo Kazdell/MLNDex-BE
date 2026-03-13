@@ -23,6 +23,7 @@ namespace Domain.Entities
 		public ChapterStatus Status { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
 		public DateTime? PublishedAt { get; set; }
+		public int Views { get; set; } = 0;
 
 		// Navigation
 		public Series Series { get; set; } = null!;

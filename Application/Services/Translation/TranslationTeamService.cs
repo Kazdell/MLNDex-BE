@@ -37,7 +37,9 @@ namespace Application.Services.Translation
                 ReputationScore = 100, // Default starting score
                 LockStatus = TeamLockStatus.ACTIVE,
                 ModerationStatus = ModerationStatus.APPROVED, // Auto approve for now
-                IsMonetizationEnabled = false
+                IsMonetizationEnabled = false,
+                AvatarUrl = createDto.AvatarUrl,
+                BannerUrl = createDto.BannerUrl
             };
 
             _context.TranslationTeams.Add(team);
@@ -79,6 +81,16 @@ namespace Application.Services.Translation
             if (updateDto.Description != null)
             {
                 team.Description = updateDto.Description;
+            }
+
+            if (updateDto.AvatarUrl != null)
+            {
+                team.AvatarUrl = updateDto.AvatarUrl;
+            }
+
+            if (updateDto.BannerUrl != null)
+            {
+                team.BannerUrl = updateDto.BannerUrl;
             }
 
             await _context.SaveChangesAsync();
@@ -266,6 +278,55 @@ namespace Application.Services.Translation
             return true;
         }
 
+        public async Task<IEnumerable<TeamInvitationDto>> GetTeamInvitationsAsync(int teamId)
+        {
+            var leaderId = _userContext.UserId;
+            if (leaderId == null) throw new UnauthorizedAccessException();
+
+            var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
+            if (team == null) throw new Exception("Team not found or unauthorized.");
+
+            return await _context.TeamInvitations
+                .Include(i => i.Invitee)
+                .Where(i => i.TeamId == teamId && i.Status == TeamInvitationStatus.PENDING)
+                .Select(i => new TeamInvitationDto
+                {
+                    InvitationId = i.InvitationId,
+                    TeamId = i.TeamId,
+                    UserId = i.InviteeId,
+                    Username = i.Invitee.Username,
+                    TargetRole = i.Role,
+                    Status = i.Status.ToString(),
+                    InvitedAt = i.CreatedAt,
+                    ExpiresAt = i.CreatedAt.AddDays(7)
+                })
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId)
+        {
+            var leaderId = _userContext.UserId;
+            if (leaderId == null) throw new UnauthorizedAccessException();
+
+            var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
+            if (team == null) throw new Exception("Team not found or unauthorized.");
+
+            return await _context.TeamJoinRequests
+                .Include(r => r.User)
+                .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.PENDING)
+                .Select(r => new TeamJoinRequestDtoResponse
+                {
+                    RequestId = r.RequestId,
+                    TeamId = r.TeamId,
+                    UserId = r.UserId,
+                    Username = r.User.Username,
+                    Message = r.Message,
+                    Status = r.Status.ToString(),
+                    RequestedAt = r.CreatedAt
+                })
+                .ToListAsync();
+        }
+
         public async Task<bool> RemoveMemberAsync(int teamId, int targetUserId)
         {
             var leaderId = _userContext.UserId;
@@ -324,8 +385,11 @@ namespace Application.Services.Translation
                 TotalChapters = _context.Chapters.Count(c => c.SeriesId == p.SeriesId && c.TeamId == teamId),
                 LastUpdate = _context.Chapters
                     .Where(c => c.SeriesId == p.SeriesId && c.TeamId == teamId)
-                    .Max(c => c.PublishedAt),
-                Views = 0, // Simplified for now, real views would require complex aggregating from Chapter/Translation views
+                    .Select(c => (DateTime?)c.PublishedAt)
+                    .Max(),
+                Views = _context.Chapters
+                    .Where(c => c.SeriesId == p.SeriesId && c.TeamId == teamId)
+                    .Sum(c => c.Views),
                 Rating = p.Series?.AverageRating ?? 0
             });
         }
@@ -339,10 +403,12 @@ namespace Application.Services.Translation
             var activeSeriesCount = await _context.TranslationPermissions
                 .CountAsync(p => p.TeamId == teamId && p.Status == TranslationPermissionStatus.GRANTED);
 
+            var totalViews = chapters.Sum(c => c.Views);
+
             return new TeamStatsDto
             {
-                TotalViews = 0, // Placeholder
-                TotalBookmarks = 0, // Placeholder
+                TotalViews = totalViews,
+                TotalBookmarks = 0, // Placeholder for now - depends on Bookmark entity integration
                 ActiveSeriesCount = activeSeriesCount,
                 TotalChaptersTranslated = chapters.Count,
                 AverageRating = 0 // Placeholder
@@ -368,7 +434,9 @@ namespace Application.Services.Translation
                     IsMonetizationEnabled = tm.TranslationTeam.IsMonetizationEnabled,
                     ModerationStatus = tm.TranslationTeam.ModerationStatus.ToString(),
                     MemberCount = tm.TranslationTeam.TeamMembers.Count,
-                    Role = tm.Role.ToString()
+                    Role = tm.Role.ToString(),
+                    AvatarUrl = tm.TranslationTeam.AvatarUrl,
+                    BannerUrl = tm.TranslationTeam.BannerUrl
                 })
                 .ToListAsync();
 
@@ -390,7 +458,9 @@ namespace Application.Services.Translation
                         IsMonetizationEnabled = t.IsMonetizationEnabled,
                         ModerationStatus = t.ModerationStatus.ToString(),
                         MemberCount = t.TeamMembers.Count,
-                        Role = "LEADER"
+                        Role = "LEADER",
+                        AvatarUrl = t.AvatarUrl,
+                        BannerUrl = t.BannerUrl
                     })
                     .ToListAsync();
             }
@@ -411,6 +481,8 @@ namespace Application.Services.Translation
                 IsMonetizationEnabled = team.IsMonetizationEnabled,
                 ModerationStatus = team.ModerationStatus.ToString(),
                 MemberCount = team.TeamMembers?.Count ?? 0,
+                AvatarUrl = team.AvatarUrl,
+                BannerUrl = team.BannerUrl,
                 // Role field in DTO is primarily for list endpoints where we know the user context.
                 // For single team lookup, we might need to set it separately if needed.
             };

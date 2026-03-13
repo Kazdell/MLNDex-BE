@@ -49,8 +49,10 @@ namespace Application.Services.User
                 TotalReadSeries = user.ReadingHistories.Select(h => h.SeriesId).Distinct().Count(),
                 TotalReadChapters = user.ReadingHistories.Count(),
                 WalletBalance = user.Wallet?.CoinBalance ?? 0,
-                SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản"
+                SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
+                BannerUrl = user.BannerUrl
             };
+
         }
 
         public async Task<bool> UpdateProfileAsync(int userId, UpdateProfileDto dto, CancellationToken cancellationToken)
@@ -61,6 +63,8 @@ namespace Application.Services.User
             if (dto.DisplayName != null) user.DisplayName = dto.DisplayName;
             if (dto.Bio != null) user.Bio = dto.Bio;
             if (dto.Avatar != null) user.DisplayAvatar = dto.Avatar;
+            if (dto.BannerUrl != null) user.BannerUrl = dto.BannerUrl;
+
 
             await _context.SaveChangesAsync(cancellationToken);
             return true;

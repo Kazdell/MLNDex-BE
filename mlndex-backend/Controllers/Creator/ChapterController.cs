@@ -13,28 +13,10 @@ namespace mlndex_backend.Controllers.Creator;
 [Authorize(Roles = "CREATOR,ADMIN")]
 public class ChapterController : BaseController
 {
-    private readonly MlndexDbContext _context;
-    private readonly IChapterService _service;
-    private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
-    private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
-    public ChapterController(MlndexDbContext context, IChapterService service)
-    {
-        _context = context;
-        _service = service;
-    }
-
-    [HttpPost("create")]
-    [RequestSizeLimit(300 * 1024 * 1024)]
-    public async Task<IActionResult> Create(
-        [FromForm] int seriesId,
-        [FromForm] float chapterNumber,
-        [FromForm] string? title,
-        [FromForm] string? language,
-        [FromForm] IFormFileCollection pages,
-        CancellationToken cancellationToken)
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+  private readonly IChapterService _service;
+  private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+  private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
+  private int CurrentUserId => int.Parse(User.FindFirst("UserId")?.Value ?? "0");
 
         var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
 

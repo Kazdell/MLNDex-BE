@@ -50,6 +50,21 @@ namespace mlndex_backend.Controllers.Testing
         _db.TeamMembers.AddRange(member1, member2);
         await _db.SaveChangesAsync(default);
 
+        // Assign Roles to Test Users
+        var readerRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.READER);
+        var creatorRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.CREATOR);
+        
+        if (readerRole != null && creatorRole != null)
+        {
+           _db.UserRoles.AddRange(
+             new UserRole { UserId = user1.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+             new UserRole { UserId = user2.UserId, RoleId = creatorRole.RoleId, AssignedAt = DateTime.UtcNow }, // creator1
+             new UserRole { UserId = transLeader.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+             new UserRole { UserId = transMember.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow }
+           );
+           await _db.SaveChangesAsync(default);
+        }
+
         // Genres (Comprehensive MangaDex-like List)
         var genreNames = new[] {
                     "Action", "Adventure", "Comedy", "Drama", "Slice of Life", "Fantasy",

@@ -9,6 +9,8 @@ namespace Application.DTOs.Translation
     {
         public string TeamName { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
     }
 
     public class InviteTeamMemberDto
@@ -21,6 +23,8 @@ namespace Application.DTOs.Translation
     {
         public string? TeamName { get; set; }
         public string? Description { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
     }
 
     public class AssignTeamMemberRoleDto
@@ -44,6 +48,8 @@ namespace Application.DTOs.Translation
         public string LockStatus { get; set; } = string.Empty;
         public bool IsMonetizationEnabled { get; set; }
         public string ModerationStatus { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
         
         // Bổ sung cho Frontend hiển thị danh sách
         public int MemberCount { get; set; }
@@ -67,5 +73,28 @@ namespace Application.DTOs.Translation
         public string DisplayName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
         public DateTime JoinedAt { get; set; }
+    }
+
+    public class TeamInvitationDto
+    {
+        public int InvitationId { get; set; }
+        public int TeamId { get; set; }
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string TargetRole { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime InvitedAt { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+    }
+
+    public class TeamJoinRequestDtoResponse
+    {
+        public int RequestId { get; set; }
+        public int TeamId { get; set; }
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime RequestedAt { get; set; }
     }
 }
