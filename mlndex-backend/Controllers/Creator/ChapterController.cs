@@ -1,81 +1,61 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
-using Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
-[Route("api/chapters")]
+[Route("api/creator/chapters")]
 [Authorize(Roles = "CREATOR,ADMIN")]
 public class ChapterController : BaseController
 {
-  private readonly IChapterService _service;
-  private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
-  private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
-  
-  private int CurrentUserId 
-  {
-      get 
-      {
-          var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) 
-                         ?? User.FindFirst("UserId");
-          return int.Parse(userIdClaim?.Value ?? "0");
-      }
-  }
+    private readonly IChapterService _service;
+    private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+    private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-        var userId = int.Parse(userIdClaim.Value); // Map UserId to CreatorId simplified for now
+    public ChapterController(IChapterService service)
+    {
+        _service = service;
+    }
 
-  [HttpPost]
-  [RequestSizeLimit(300 * 1024 * 1024)]
-  public async Task<IActionResult> Create(
-      [FromForm] int seriesId,
-      [FromForm] float chapterNumber,
-      [FromForm] string? title,
-      [FromForm] string? language,
-      [FromForm] int? teamId,
-      [FromForm] IFormFileCollection pages,
-      CancellationToken cancellationToken)
-  {
-    var creatorId = CurrentUserId;
-    if (creatorId == 0) return Unauthorized();
-    // Kiểm tra tính hợp lệ của file
-    if (pages.Count == 0)
-      return BadRequest(new { message = "Chưa có trang nào được gửi lên." });
+    [HttpPost("create")]
+    [RequestSizeLimit(300 * 1024 * 1024)]
+    public async Task<IActionResult> Create(
+        [FromForm] int seriesId,
+        [FromForm] float chapterNumber,
+        [FromForm] string? title,
+        [FromForm] string? language,
+        [FromForm] int? teamId,
+        [FromForm] IFormFileCollection pages,
+        CancellationToken cancellationToken)
+    {
+        int userId = GetUserId();
+        if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-        var creatorId = creator.CreatorId;
-
-        if (creatorId == 0) return Unauthorized();
-        // Kiểm tra tính hợp lệ của file
-        if (pages.Count == 0)
-            return BadRequest(new { message = "Chưa có trang nào được gửi lên." });
+        // 1. Kiểm tra tính hợp lệ của file
+        if (pages == null || pages.Count == 0)
+            return BadRequestResponse("Chưa có trang nào được gửi lên.");
 
         foreach (var file in pages)
         {
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(ext))
-                return BadRequest(new
-                {
-                    message = $"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp"
-                });
+                return BadRequestResponse($"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp");
 
             if (file.Length > MaxFileSizeBytes)
-                return BadRequest(new
-                {
-                    message = $"File '{file.FileName}' vượt quá 20MB."
-                });
+                return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
         }
 
-        // Chuyển đổi dữ liệu sang DTO
+        // 2. Chuyển đổi dữ liệu sang DTO
         var dto = new CreateChapterDto
         {
             SeriesId = seriesId,
             ChapterNumber = chapterNumber,
             Title = title,
             Language = language,
+            TeamId = teamId,
             Pages = pages.Select((file, index) => new UploadPageDto
             {
                 FileStream = file.OpenReadStream(),
@@ -84,28 +64,31 @@ public class ChapterController : BaseController
             }).ToList()
         };
 
-        // Gọi Service xử lý nghiệp vụ
-        var result = await _service.CreateAsync(creatorId, dto, cancellationToken);
-        return CreatedAtAction(nameof(Create), new { id = result.ChapterId }, result);
+        try
+        {
+            // 3. Gọi Service xử lý nghiệp vụ
+            var result = await _service.CreateAsync(userId, dto, cancellationToken);
+            return OkResponse(result, "Đăng chương truyện thành công.");
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex.Message);
+        }
     }
 
     [AllowAnonymous]
-    [HttpGet("/api/chapters/{id:int}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-      SeriesId = seriesId,
-      ChapterNumber = chapterNumber,
-      Title = title,
-      Language = language,
-      TeamId = teamId,
-      Pages = pages.Select((file, index) => new UploadPageDto
-      {
-        FileStream = file.OpenReadStream(),
-        FileName = file.FileName,
-        PageNumber = index + 1
-      }).ToList()
-    };
-
-        return Ok(result);
+        try
+        {
+            var result = await _service.GetChapterDetailAsync(id, cancellationToken);
+            if (result == null) return NotFoundResponse("Không tìm thấy chương truyện.");
+            return OkResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex.Message);
+        }
     }
 }

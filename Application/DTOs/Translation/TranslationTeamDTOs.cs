@@ -8,9 +8,16 @@ namespace Application.DTOs.Translation
     public class CreateTranslationTeamDto
     {
         public string TeamName { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string Language { get; set; } = "Tiếng Việt";
+        public bool RequireApproval { get; set; } = true;
         public string? AvatarUrl { get; set; }
         public string? BannerUrl { get; set; }
+        public List<int>? GenreIds { get; set; } = new();
+        public string? Facebook { get; set; }
+        public string? Discord { get; set; }
+        public string? Website { get; set; }
     }
 
     public class InviteTeamMemberDto
@@ -22,9 +29,16 @@ namespace Application.DTOs.Translation
     public class UpdateTranslationTeamDto
     {
         public string? TeamName { get; set; }
+        public string? Slug { get; set; }
         public string? Description { get; set; }
+        public string? Language { get; set; }
+        public bool? RequireApproval { get; set; }
         public string? AvatarUrl { get; set; }
         public string? BannerUrl { get; set; }
+        public List<int>? GenreIds { get; set; }
+        public string? Facebook { get; set; }
+        public string? Discord { get; set; }
+        public string? Website { get; set; }
     }
 
     public class AssignTeamMemberRoleDto
@@ -43,15 +57,22 @@ namespace Application.DTOs.Translation
         public int TeamId { get; set; }
         public int LeaderId { get; set; }
         public string TeamName { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string Language { get; set; } = string.Empty;
+        public bool RequireApproval { get; set; }
         public int ReputationScore { get; set; }
         public string LockStatus { get; set; } = string.Empty;
         public bool IsMonetizationEnabled { get; set; }
         public string ModerationStatus { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
         public string? BannerUrl { get; set; }
+        public List<string>? Genres { get; set; }
         
-        // Bổ sung cho Frontend hiển thị danh sách
+        public string? Facebook { get; set; }
+        public string? Discord { get; set; }
+        public string? Website { get; set; }
+
         public int MemberCount { get; set; }
         public string Role { get; set; } = string.Empty;
     }

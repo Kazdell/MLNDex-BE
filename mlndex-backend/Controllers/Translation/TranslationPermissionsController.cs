@@ -71,10 +71,10 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
-                var creatorId = GetUserId(); 
-                if (creatorId == 0) return UnauthorizedResponse();
+                var userId = GetUserId(); 
+                if (userId == 0) return UnauthorizedResponse();
 
-                var permissions = await _service.GetCreatorPermissionsAsync(creatorId);
+                var permissions = await _service.GetCreatorPermissionsAsync(userId);
                 return OkResponse(permissions);
             }
             catch (Exception ex)

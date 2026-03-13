@@ -106,6 +106,11 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("UnlockTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("Views")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int?>("WordCount")
                         .HasColumnType("int");
 
@@ -773,6 +778,95 @@ namespace Infrastructure.Migrations
                     b.ToTable("SeriesGenre", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.TeamInvitation", b =>
+                {
+                    b.Property<int>("InvitationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvitationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InviteeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InviterId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("int");
+
+                    b.HasKey("InvitationId");
+
+                    b.HasIndex("InviteeId");
+
+                    b.HasIndex("InviterId");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("TeamInvitation", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.TeamJoinRequest", b =>
+                {
+                    b.Property<int>("RequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RespondedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("RespondedBy");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TeamJoinRequest", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.TeamMember", b =>
                 {
                     b.Property<int>("MembershipId")
@@ -930,8 +1024,8 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PermissionId"));
 
-                    b.Property<int>("ChapterId")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("GrantedAt")
                         .HasColumnType("datetime2");
@@ -946,6 +1040,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("SeriesId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -955,9 +1052,9 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("PermissionId");
 
-                    b.HasIndex("ChapterId");
-
                     b.HasIndex("GrantedBy");
+
+                    b.HasIndex("SeriesId");
 
                     b.HasIndex("TeamId");
 
@@ -971,6 +1068,12 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeamId"));
+
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("nvarchar(MAX)");
+
+                    b.Property<string>("BannerUrl")
+                        .HasColumnType("nvarchar(MAX)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(255)
@@ -1051,8 +1154,11 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
+                    b.Property<string>("BannerUrl")
+                        .HasColumnType("nvarchar(MAX)");
+
                     b.Property<string>("Bio")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(MAX)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1551,6 +1657,59 @@ namespace Infrastructure.Migrations
                     b.Navigation("Series");
                 });
 
+            modelBuilder.Entity("Domain.Entities.TeamInvitation", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "Invitee")
+                        .WithMany()
+                        .HasForeignKey("InviteeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.User", "Inviter")
+                        .WithMany()
+                        .HasForeignKey("InviterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.TranslationTeam", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invitee");
+
+                    b.Navigation("Inviter");
+
+                    b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("Domain.Entities.TeamJoinRequest", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "RespondedByUser")
+                        .WithMany()
+                        .HasForeignKey("RespondedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.TranslationTeam", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RespondedByUser");
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Domain.Entities.TeamMember", b =>
                 {
                     b.HasOne("Domain.Entities.TranslationTeam", "TranslationTeam")
@@ -1621,15 +1780,15 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.TranslationPermission", b =>
                 {
-                    b.HasOne("Domain.Entities.Chapter", "Chapter")
-                        .WithMany("TranslationPermissions")
-                        .HasForeignKey("ChapterId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Domain.Entities.User", "GrantedByUser")
                         .WithMany("GrantedPermissions")
                         .HasForeignKey("GrantedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Series", "Series")
+                        .WithMany("TranslationPermissions")
+                        .HasForeignKey("SeriesId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1639,9 +1798,9 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Chapter");
-
                     b.Navigation("GrantedByUser");
+
+                    b.Navigation("Series");
 
                     b.Navigation("Team");
                 });
@@ -1747,8 +1906,6 @@ namespace Infrastructure.Migrations
 
                     b.Navigation("ReadingHistories");
 
-                    b.Navigation("TranslationPermissions");
-
                     b.Navigation("Translations");
                 });
 
@@ -1792,6 +1949,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("ReadingHistories");
 
                     b.Navigation("SeriesGenres");
+
+                    b.Navigation("TranslationPermissions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Transaction", b =>

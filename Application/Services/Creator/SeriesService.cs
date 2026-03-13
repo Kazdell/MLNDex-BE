@@ -11,119 +11,41 @@ namespace Application.Services.Creator
 {
     public class SeriesService : ISeriesService
     {
-      _context = context;
-      _storage = storage;
-      _moderation = moderation;
-      _logger = logger;
-    }
+        private readonly IMlndexDbContext _context;
+        private readonly IStorageService _storage;
+        private readonly IModerationService _moderation;
+        private readonly ILogger<SeriesService> _logger;
 
-    public async Task<CreateSeriesResponseDto> CreateAsync(
-        int userId,
-        CreateSeriesDto dto,
-        CancellationToken cancellationToken = default)
-    {
-      var creator = await _context.CreatorProfiles
-          .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
-
-      // 1. Check Title Duplicate
-      var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower());
-      if (titleExists)
-        throw new ArgumentException("Tiêu đề truyện này đã tồn tại trên hệ thống.");
-
-      // 1b. Check Description Duplicate
-      if (!string.IsNullOrEmpty(dto.Description))
-      {
-        var descExists = await _context.Series.AnyAsync(s => s.Description == dto.Description);
-        if (descExists)
-            _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
-      }
-
-      // 2. Check Blacklist for Title & Description
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
-      if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-        throw new ArgumentException($"Tiêu đề vi phạm: {string.Join(", ", titleCheck.Reasons)}");
-
-      if (!string.IsNullOrEmpty(dto.Description))
-      {
-        var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
-        if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-          throw new ArgumentException($"Mô tả chứa từ ngữ không phù hợp.");
-      }
-
-      string? imageUrl = null;
-      if (dto.CoverImage != null)
-      {
-        imageUrl = await _storage.UploadAsync(
-            dto.CoverImage.OpenReadStream(),
-            dto.CoverImage.FileName,
-            "covers/novels",
-            cancellationToken);
-      }
-
-      try
-      {
-        var ageRating = CalculateAgeRating(
-            dto.Violence, dto.Nudity, dto.SexualContent,
-            dto.LanguageScore, dto.Substances, dto.SensitiveContent);
-
-        var series = new Series
+        public SeriesService(
+            IMlndexDbContext context,
+            IStorageService storage,
+            IModerationService moderation,
+            ILogger<SeriesService> logger)
         {
-          CreatorId = creator.CreatorId,
-          Title = dto.Title,
-          Description = dto.Description,
-          CoverImageUrl = imageUrl,
-          SeriesFormat = SeriesFormat.NOVEL,
-          AgeRating = ageRating,
-          ViolenceScore = dto.Violence,
-          NudityScore = dto.Nudity,
-          SexualScore = dto.SexualContent,
-          LanguageScore = dto.LanguageScore,
-          SubstancesScore = dto.Substances,
-          SensitiveScore = dto.SensitiveContent,
-          Status = SeriesStatus.ONGOING,
-          ModerationStatus = ModerationStatus.PENDING,
-          AverageRating = 0,
-          TotalRatings = 0,
-          CreatedAt = DateTime.UtcNow,
-        };
-
-        _context.Series.Add(series);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        if (dto.GenreIds != null && dto.GenreIds.Any())
-        {
-          var seriesGenres = dto.GenreIds.Select(genreId => new SeriesGenre
-          {
-            SeriesId = series.SeriesId,
-            GenreId = genreId
-          }).ToList();
-
-          _context.SeriesGenres.AddRange(seriesGenres);
-          await _context.SaveChangesAsync(cancellationToken);
+            _context = context;
+            _storage = storage;
+            _moderation = moderation;
+            _logger = logger;
         }
 
-        _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
-
-        _logger.LogInformation(
-            "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
-            series.SeriesId, series.Title, userId);
-
-        return new CreateSeriesResponseDto
+        public async Task<CreateSeriesResponseDto> CreateAsync(
+            int userId,
+            CreateSeriesDto dto,
+            CancellationToken cancellationToken = default)
         {
             var creator = await _context.CreatorProfiles
-                .FindAsync([creatorId], cancellationToken)
-                ?? throw new KeyNotFoundException($"Creator {creatorId} không tồn tại.");
+                .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
+                ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
 
             // 1. Check Title Duplicate
-            var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower());
+            var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower(), cancellationToken);
             if (titleExists)
                 throw new ArgumentException("Tiêu đề truyện này đã tồn tại trên hệ thống.");
 
             // 1b. Check Description Duplicate
             if (!string.IsNullOrEmpty(dto.Description))
             {
-                var descExists = await _context.Series.AnyAsync(s => s.Description == dto.Description);
+                var descExists = await _context.Series.AnyAsync(s => s.Description == dto.Description, cancellationToken);
                 if (descExists)
                     _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
             }
@@ -158,7 +80,7 @@ namespace Application.Services.Creator
 
                 var series = new Series
                 {
-                    CreatorId = creatorId,
+                    CreatorId = creator.CreatorId,
                     Title = dto.Title,
                     Description = dto.Description,
                     CoverImageUrl = imageUrl,
@@ -195,8 +117,8 @@ namespace Application.Services.Creator
                 _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
 
                 _logger.LogInformation(
-                    "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, CreatorId: {CreatorId}.",
-                    series.SeriesId, series.Title, creatorId);
+                    "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
+                    series.SeriesId, series.Title, userId);
 
                 return new CreateSeriesResponseDto
                 {
@@ -218,70 +140,29 @@ namespace Application.Services.Creator
             }
         }
 
-    public async Task<CreateSeriesResponseDto> UpdateAsync(
-        int seriesId,
-        int userId,
-        CreateSeriesDto dto,
-        CancellationToken cancellationToken = default)
-    {
-      var series = await _context.Series
-          .Include(s => s.SeriesGenres)
-          .Include(s => s.Creator)
-          .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
-
-      if (series.Creator.UserId != userId)
-      {
-        throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
-      }
-
-      if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId))
-          throw new ArgumentException("Tiêu đề mới đã tồn tại.");
-
-      if (!string.IsNullOrEmpty(dto.Description))
-      {
-          if (await _context.Series.AnyAsync(s => s.Description == dto.Description && s.SeriesId != seriesId))
-              _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
-      }
-
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
-      if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-          throw new ArgumentException($"Tiêu đề vi phạm.");
-
-      if (!string.IsNullOrEmpty(dto.Description))
-      {
-          var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
-          if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-              throw new ArgumentException($"Mô tả chứa từ ngữ không phù hợp.");
-      }
-
-      string? newImageUrl = null;
-      if (dto.CoverImage != null)
-      {
-        newImageUrl = await _storage.UploadAsync(
-            dto.CoverImage.OpenReadStream(),
-            dto.CoverImage.FileName,
-            "covers/novels",
-            cancellationToken);
-
-        if (!string.IsNullOrEmpty(series.CoverImageUrl))
+        public async Task<CreateSeriesResponseDto> UpdateAsync(
+            int seriesId,
+            int userId,
+            CreateSeriesDto dto,
+            CancellationToken cancellationToken = default)
         {
             var series = await _context.Series
                 .Include(s => s.SeriesGenres)
+                .Include(s => s.Creator)
                 .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
 
-            if (series.CreatorId != creatorId)
+            if (series.Creator.UserId != userId)
             {
                 throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
             }
 
-            if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId))
+            if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId, cancellationToken))
                 throw new ArgumentException("Tiêu đề mới đã tồn tại.");
 
             if (!string.IsNullOrEmpty(dto.Description))
             {
-                if (await _context.Series.AnyAsync(s => s.Description == dto.Description && s.SeriesId != seriesId))
+                if (await _context.Series.AnyAsync(s => s.Description == dto.Description && s.SeriesId != seriesId, cancellationToken))
                     _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
             }
 
@@ -364,10 +245,12 @@ namespace Application.Services.Creator
             }
         }
 
-        public async Task<List<SeriesListItemDto>> GetByCreatorAsync(int creatorId, CancellationToken cancellationToken)
+        public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
+            int userId,
+            CancellationToken cancellationToken = default)
         {
             var series = await _context.Series
-                .Where(s => s.CreatorId == creatorId)
+                .Where(s => s.Creator.UserId == userId)
                 .Include(s => s.Chapters)
                 .ThenInclude(c => c.ReadingHistories)
                 .Include(s => s.SeriesGenres)
@@ -396,7 +279,6 @@ namespace Application.Services.Creator
                 Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
             }).ToList();
         }
-
         public async Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
         {
             var query = _context.Series
@@ -422,28 +304,6 @@ namespace Application.Services.Creator
                 Items = items.Select(MapToDto).ToList()
             };
         }
-        throw;
-      }
-    }
-
-    public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
-        int userId,
-        CancellationToken cancellationToken = default)
-    {
-      return await _context.Series
-          .Where(s => s.Creator.UserId == userId)
-          .Select(s => new SeriesListItemDto
-          {
-            SeriesId = s.SeriesId,
-            Title = s.Title,
-            LastChapterNumber = s.Chapters
-                  .OrderByDescending(c => c.ChapterNumber)
-                  .Select(c => (float?)c.ChapterNumber)
-                  .FirstOrDefault() ?? 0f
-          })
-          .OrderBy(s => s.Title)
-          .ToListAsync(cancellationToken);
-    }
 
         public async Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request)
         {
@@ -467,7 +327,7 @@ namespace Application.Services.Creator
             if (request.Format.HasValue)
                 query = query.Where(s => s.SeriesFormat == request.Format.Value);
 
-            if (request.SortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
@@ -521,29 +381,29 @@ namespace Application.Services.Creator
             };
         }
 
-    public async Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int userId)
-    {
-      var series = await _context.Series
-          .Include(s => s.SeriesGenres)
-          .Include(s => s.Creator)
-          .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
+        public async Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int userId)
+        {
+            var series = await _context.Series
+                .Include(s => s.SeriesGenres)
+                .Include(s => s.Creator)
+                .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
-      if (series == null || series.Creator.UserId != userId) return null;
+            if (series == null || series.Creator.UserId != userId) return null;
 
-      return new CreateSeriesDto
-      {
-        Title = series.Title,
-        Description = series.Description,
-        GenreIds = series.SeriesGenres.Select(sg => sg.GenreId).ToList(),
-        Violence = series.ViolenceScore,
-        Nudity = series.NudityScore, 
-        SexualContent = series.SexualScore,
-        LanguageScore = series.LanguageScore,
-        Substances = series.SubstancesScore,
-        SensitiveContent = series.SensitiveScore,
-        AgeRating = series.AgeRating
-      };
-    }
+            return new CreateSeriesDto
+            {
+                Title = series.Title,
+                Description = series.Description,
+                GenreIds = series.SeriesGenres.Select(sg => sg.GenreId).ToList(),
+                Violence = series.ViolenceScore,
+                Nudity = series.NudityScore,
+                SexualContent = series.SexualScore,
+                LanguageScore = series.LanguageScore,
+                Substances = series.SubstancesScore,
+                SensitiveContent = series.SensitiveScore,
+                AgeRating = series.AgeRating
+            };
+        }
 
         public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10)
         {
@@ -568,17 +428,17 @@ namespace Application.Services.Creator
             return randomSeries.Select(MapToDto).ToList();
         }
 
-    public async Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default)
-    {
-      var series = await _context.Series
-          .Include(s => s.Creator)
-          .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+        public async Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default)
+        {
+            var series = await _context.Series
+                .Include(s => s.Creator)
+                .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
+                ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
 
-      if (series.Creator.UserId != userId)
-      {
-        throw new UnauthorizedAccessException("Bạn không có quyền xóa bộ truyện này.");
-      }
+            if (series.Creator.UserId != userId)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa bộ truyện này.");
+            }
 
             if (!string.IsNullOrEmpty(series.CoverImageUrl))
             {
@@ -588,8 +448,8 @@ namespace Application.Services.Creator
             _context.Series.Remove(series);
             await _context.SaveChangesAsync(cancellationToken);
 
-      _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, UserId: {UserId}", seriesId, userId);
-    }
+            _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, UserId: {UserId}", seriesId, userId);
+        }
 
         private SeriesDto MapToDto(Series s)
         {
