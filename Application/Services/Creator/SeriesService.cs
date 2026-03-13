@@ -29,13 +29,13 @@ namespace Application.Services.Creator
     }
 
     public async Task<CreateSeriesResponseDto> CreateAsync(
-        int creatorId,
+        int userId,
         CreateSeriesDto dto,
         CancellationToken cancellationToken = default)
     {
       var creator = await _context.CreatorProfiles
-          .FindAsync([creatorId], cancellationToken)
-          ?? throw new KeyNotFoundException($"Creator {creatorId} không tồn tại.");
+          .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
+          ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
 
       // 1. Check Title Duplicate
       var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower());
@@ -80,7 +80,7 @@ namespace Application.Services.Creator
 
         var series = new Series
         {
-          CreatorId = creatorId,
+          CreatorId = creator.CreatorId,
           Title = dto.Title,
           Description = dto.Description,
           CoverImageUrl = imageUrl,
@@ -117,8 +117,8 @@ namespace Application.Services.Creator
         _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
 
         _logger.LogInformation(
-            "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, CreatorId: {CreatorId}.",
-            series.SeriesId, series.Title, creatorId);
+            "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
+            series.SeriesId, series.Title, userId);
 
         return new CreateSeriesResponseDto
         {
@@ -142,16 +142,17 @@ namespace Application.Services.Creator
 
     public async Task<CreateSeriesResponseDto> UpdateAsync(
         int seriesId,
-        int creatorId,
+        int userId,
         CreateSeriesDto dto,
         CancellationToken cancellationToken = default)
     {
       var series = await _context.Series
           .Include(s => s.SeriesGenres)
+          .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
           ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
 
-      if (series.CreatorId != creatorId)
+      if (series.Creator.UserId != userId)
       {
         throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
       }
@@ -245,11 +246,11 @@ namespace Application.Services.Creator
     }
 
     public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
-        int creatorId,
+        int userId,
         CancellationToken cancellationToken = default)
     {
       return await _context.Series
-          .Where(s => s.CreatorId == creatorId)
+          .Where(s => s.Creator.UserId == userId)
           .Select(s => new SeriesListItemDto
           {
             SeriesId = s.SeriesId,
@@ -365,13 +366,14 @@ namespace Application.Services.Creator
       };
     }
 
-    public async Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int creatorId)
+    public async Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int userId)
     {
       var series = await _context.Series
           .Include(s => s.SeriesGenres)
+          .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
-      if (series == null || series.CreatorId != creatorId) return null;
+      if (series == null || series.Creator.UserId != userId) return null;
 
       return new CreateSeriesDto
       {
@@ -411,13 +413,14 @@ namespace Application.Services.Creator
       return randomSeries.Select(MapToDto).ToList();
     }
 
-    public async Task DeleteAsync(int seriesId, int creatorId, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default)
     {
       var series = await _context.Series
+          .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
           ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
 
-      if (series.CreatorId != creatorId)
+      if (series.Creator.UserId != userId)
       {
         throw new UnauthorizedAccessException("Bạn không có quyền xóa bộ truyện này.");
       }
@@ -430,7 +433,7 @@ namespace Application.Services.Creator
       _context.Series.Remove(series);
       await _context.SaveChangesAsync(cancellationToken);
 
-      _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, CreatorId: {CreatorId}", seriesId, creatorId);
+      _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, UserId: {UserId}", seriesId, userId);
     }
 
     private SeriesDto MapToDto(Series s)

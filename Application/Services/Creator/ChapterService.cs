@@ -35,7 +35,7 @@ namespace Application.Services.Creator
     }
 
     public async Task<CreateChapterResponseDto> CreateAsync(
-        int creatorId,
+        int userId,
         CreateChapterDto dto,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +43,7 @@ namespace Application.Services.Creator
       Series? series = null;
       if (dto.TeamId == null)
       {
-          series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.CreatorId == creatorId, cancellationToken);
+          series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
           if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
       }
       else
@@ -53,7 +53,7 @@ namespace Application.Services.Creator
 
           var isAuthorizedMember = await _db.TeamMembers.AnyAsync(m => 
               m.TeamId == dto.TeamId && 
-              m.UserId == creatorId && 
+              m.UserId == userId && 
               m.IsActive &&
               (m.Role == TeamMemberRole.LEADER || m.Role == TeamMemberRole.EDITOR || m.Role == TeamMemberRole.TRANSLATOR),
               cancellationToken);

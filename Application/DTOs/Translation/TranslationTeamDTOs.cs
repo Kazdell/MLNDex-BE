@@ -9,6 +9,8 @@ namespace Application.DTOs.Translation
     {
         public string TeamName { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
     }
 
     public class InviteTeamMemberDto
@@ -21,6 +23,8 @@ namespace Application.DTOs.Translation
     {
         public string? TeamName { get; set; }
         public string? Description { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
     }
 
     public class AssignTeamMemberRoleDto
@@ -44,6 +48,8 @@ namespace Application.DTOs.Translation
         public string LockStatus { get; set; } = string.Empty;
         public bool IsMonetizationEnabled { get; set; }
         public string ModerationStatus { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public string? BannerUrl { get; set; }
         
         // Bổ sung cho Frontend hiển thị danh sách
         public int MemberCount { get; set; }

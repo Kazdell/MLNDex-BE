@@ -13,6 +13,8 @@ namespace Application.DTOs.User
         public string? Avatar { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<string> Roles { get; set; } = new();
+        public string? BannerUrl { get; set; }
+
         
         // Stats
         public int TotalReadSeries { get; set; }
@@ -26,5 +28,7 @@ namespace Application.DTOs.User
         public string? DisplayName { get; set; }
         public string? Bio { get; set; }
         public string? Avatar { get; set; }
+        public string? BannerUrl { get; set; }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +19,8 @@ namespace Domain.Entities
 		public int? LockedBy { get; set; }
 		public DateTime? LockedAt { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
+		public string? AvatarUrl { get; set; }
+		public string? BannerUrl { get; set; }
 
 		// Navigation
 		public User Leader { get; set; } = null!;
