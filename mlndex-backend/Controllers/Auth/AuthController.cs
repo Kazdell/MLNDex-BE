@@ -71,5 +71,33 @@ namespace mlndex_backend.Controllers.Auth
 				? OkResponse<object>(null, result.Message)
 				: BadRequestResponse(result.Message);
 		}
+
+		// POST /api/auth/google
+		[HttpPost("google")]
+		public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+			var result = await _authService.GoogleLoginAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Google token không hợp lệ.");
+
+			return OkResponse(result, "Đăng nhập Google thành công.");
+		}
+
+		// POST /api/auth/facebook
+		[HttpPost("facebook")]
+		public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+			var result = await _authService.FacebookLoginAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Facebook token không hợp lệ.");
+
+			return OkResponse(result, "Đăng nhập Facebook thành công.");
+		}
 	}
 }

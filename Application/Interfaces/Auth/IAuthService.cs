@@ -14,5 +14,7 @@ namespace Application.Interfaces.Auth
 		Task<ServiceResult> VerifyEmailOtpAsync(VerifyOtpDto dto);
 		Task<AuthResponseDto?> LoginAsync(LoginDto dto);
 		Task<ServiceResult> LogoutAsync(string token);
+		Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto);
+		Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto);
 	}
 }

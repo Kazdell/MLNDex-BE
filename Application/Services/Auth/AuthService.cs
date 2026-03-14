@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Application.Services.Auth
@@ -19,17 +20,23 @@ namespace Application.Services.Auth
 		private readonly ITokenService _tokenService;
 		private readonly IOtpService _otpService;
 		private readonly IEmailService _emailService;
+		private readonly IGoogleOAuthService _googleOAuth;
+		private readonly IFacebookOAuthService _facebookOAuth;
 
 		public AuthService(
 			IMlndexDbContext context,
 			ITokenService tokenService,
 			IOtpService otpService,
-			IEmailService emailService)
+			IEmailService emailService,
+			IGoogleOAuthService googleOAuth,
+			IFacebookOAuthService facebookOAuth)
 		{
 			_context = context;
 			_tokenService = tokenService;
 			_otpService = otpService;
 			_emailService = emailService;
+			_googleOAuth = googleOAuth;
+			_facebookOAuth = facebookOAuth;
 		}
 
 		// ── REGISTER ────────────────────────────────────────
@@ -136,6 +143,142 @@ namespace Application.Services.Auth
 			_tokenService.BlacklistToken(token, jwt.ValidTo);
 
 			return Task.FromResult(ServiceResult.Ok("Đăng xuất thành công."));
+		}
+
+		// ── GOOGLE LOGIN ─────────────────────────────────────────
+		public async Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto)
+		{
+			// 1. Verify token với Google
+			var socialUser = await _googleOAuth.VerifyTokenAsync(dto.IdToken);
+			if (socialUser == null) return null;
+
+			// 2. Tìm hoặc merge account
+			var user = await FindOrMergeAccountAsync(socialUser.Email, socialUser.SocialId, null, socialUser.Name);
+			if (user == null) return null;
+
+			// 3. Trả về JWT
+			var token = _tokenService.GenerateJwtToken(user);
+			return new AuthResponseDto
+			{
+				AccessToken = token,
+				ExpiresAt = DateTime.UtcNow.AddDays(30),
+				Username = user.Username,
+				Email = user.Email,
+				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+			};
+		}
+
+		// ── FACEBOOK LOGIN ───────────────────────────────────────
+		public async Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto)
+		{
+			// 1. Verify token với Facebook
+			var socialUser = await _facebookOAuth.VerifyTokenAsync(dto.AccessToken);
+			if (socialUser == null) return null;
+
+			// 2. Tìm hoặc merge account
+			var user = await FindOrMergeAccountAsync(socialUser.Email, null, socialUser.SocialId, socialUser.Name);
+			if (user == null) return null;
+
+			// 3. Trả về JWT
+			var token = _tokenService.GenerateJwtToken(user);
+			return new AuthResponseDto
+			{
+				AccessToken = token,
+				ExpiresAt = DateTime.UtcNow.AddDays(30),
+				Username = user.Username,
+				Email = user.Email,
+				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+			};
+		}
+
+		// ── ACCOUNT MERGE ────────────────────────────────────────
+		private async Task<Domain.Entities.User?> FindOrMergeAccountAsync(
+			string email, string? googleId, string? facebookId, string name)
+		{
+			var emailLower = email.ToLower();
+			var user = await _context.Users
+				.Include(u => u.UserRoles)
+					.ThenInclude(ur => ur.Role)
+				.FirstOrDefaultAsync(u => u.Email == emailLower);
+
+			if (user != null)
+			{
+				// Account đã tồn tại → merge: gắn thêm socialId nếu chưa có
+				// Primary account là account đăng ký trước (giữ nguyên, không thay đổi)
+				if (googleId != null && user.GoogleId == null)
+					user.GoogleId = googleId;
+
+				if (facebookId != null && user.FacebookId == null)
+					user.FacebookId = facebookId;
+
+				// Đánh dấu đã verify vì social login đã xác thực email
+				if (!user.IsEmailVerified)
+					user.IsEmailVerified = true;
+
+				await _context.SaveChangesAsync();
+			}
+			else
+			{
+				// Chưa có account → tạo mới qua social login
+				var username = await GenerateUniqueUsernameAsync(name);
+
+				user = new Domain.Entities.User
+				{
+					Email = emailLower,
+					Username = username,
+					DisplayName = name,
+					GoogleId = googleId,
+					FacebookId = facebookId,
+					IsEmailVerified = true,
+					IsActive = true,
+					CreatedAt = DateTime.UtcNow
+				};
+				_context.Users.Add(user);
+				await _context.SaveChangesAsync();
+
+				// Gán role READER mặc định
+				var readerRole = await _context.Roles
+					.FirstOrDefaultAsync(r => r.RoleName == RoleName.READER);
+				if (readerRole != null)
+				{
+					_context.UserRoles.Add(new UserRole
+					{
+						UserId = user.UserId,
+						RoleId = readerRole.RoleId,
+						AssignedAt = DateTime.UtcNow
+					});
+					await _context.SaveChangesAsync();
+				}
+
+				// Load lại roles để GenerateJwtToken dùng
+				// Load lại user kèm roles sau khi tạo mới
+				user = await _context.Users
+					.Include(u => u.UserRoles)
+						.ThenInclude(ur => ur.Role)
+					.FirstAsync(u => u.UserId == user.UserId);
+			}
+
+			return user;
+		}
+
+		// Tạo username unique từ tên social
+		private async Task<string> GenerateUniqueUsernameAsync(string name)
+		{
+			// Chuyển name thành username hợp lệ: chỉ chữ, số, _
+			var base_ = Regex.Replace(name.ToLower(), @"[^a-z0-9_]", "_");
+			if (base_.Length < 3) base_ = base_.PadRight(3, '0');
+			if (base_.Length > 15) base_ = base_[..15];
+
+			var username = base_;
+			var count = 1;
+
+			// Đảm bảo unique
+			while (await _context.Users.AnyAsync(u => u.Username == username))
+			{
+				username = $"{base_}{count++}";
+			}
+
+			return username;
 		}
 	}
 }

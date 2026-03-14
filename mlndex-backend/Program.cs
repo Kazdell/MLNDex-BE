@@ -46,12 +46,14 @@ namespace mlndex_backend
 	  // ── Memory Cache (cho OTP + Token Blacklist) ────────────
 	  builder.Services.AddMemoryCache();
 
-			// Database Configuration
-	  builder.Services.AddDbContext<MlndexDbContext>(options =>
-          options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
-          sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
-              .EnableRetryOnFailure()
-      ));
+            // Database Configuration
+            builder.Services.AddDbContext<MlndexDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
+                sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+                    .EnableRetryOnFailure()
+                    
+            )
+				.EnableSensitiveDataLogging());
       builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
 			// ── Auth Services ───────────────────────────────────────
@@ -59,6 +61,8 @@ namespace mlndex_backend
 			builder.Services.AddScoped<ITokenService, TokenService>();
 			builder.Services.AddScoped<IOtpService, OtpService>();
 			builder.Services.AddScoped<IEmailService, EmailService>();
+			builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
+			builder.Services.AddScoped<IFacebookOAuthService, FacebookOAuthService>();
 
 			// Storage & Content Services
 			builder.Services.AddSingleton<IStorageService, CloudinaryService>();

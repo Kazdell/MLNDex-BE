@@ -75,6 +75,7 @@ namespace Infrastructure.Persistence.Data
 				e.HasIndex(x => x.Username).IsUnique();
 				e.HasIndex(x => x.Email).IsUnique();
 				e.Property(x => x.Username).HasMaxLength(25).IsRequired();
+				e.Property(x => x.PasswordHash).IsRequired(false);
 				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
 				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
 				e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
