@@ -1,4 +1,4 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -66,6 +66,7 @@ namespace Application.DTOs.Creator
 
         // Creator info (Simplified)
         public int CreatorId { get; set; }
+        public int CreatorUserId { get; set; }
         public string CreatorName { get; set; } = null!;
 
         // Genres

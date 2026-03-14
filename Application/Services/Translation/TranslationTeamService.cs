@@ -1,3 +1,4 @@
+using Application.Interfaces.Notification;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation;
@@ -11,11 +12,13 @@ namespace Application.Services.Translation
     {
         private readonly IMlndexDbContext _context;
         private readonly IUserContext _userContext;
+        private readonly INotificationService _notificationService;
 
-        public TranslationTeamService(IMlndexDbContext context, IUserContext userContext)
+        public TranslationTeamService(IMlndexDbContext context, IUserContext userContext, INotificationService notificationService)
         {
             _context = context;
             _userContext = userContext;
+            _notificationService = notificationService;
         }
 
         public async Task<TranslationTeamDto> CreateTeamAsync(CreateTranslationTeamDto createDto)
@@ -226,6 +229,15 @@ namespace Application.Services.Translation
             _context.TeamInvitations.Add(invitation);
             await _context.SaveChangesAsync();
 
+            // Send notification to invitee
+            await _notificationService.CreateNotificationAsync(
+                inviteDto.UserId,
+                team.TeamName,
+                $"Mời bạn gia nhập nhóm với vai trò {inviteDto.Role}",
+                $"/teams/{teamId}",
+                NotificationType.TEAM_INVITATION
+            );
+
             return invitation.InvitationId;
         }
 
@@ -249,6 +261,21 @@ namespace Application.Services.Translation
 
             _context.TeamMembers.Add(member);
             await _context.SaveChangesAsync();
+
+            // Send notification to leader
+            var invitee = await _context.Users.FindAsync(userId);
+            var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
+            if (invitee != null && team != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    team.LeaderId,
+                    invitee.DisplayName ?? invitee.Username,
+                    $"Đã chấp nhận lời mời gia nhập nhóm {team.TeamName}",
+                    $"/teams/{team.TeamId}/members",
+                    NotificationType.TEAM_INVITATION_ACCEPTED
+                );
+            }
+
             return true;
         }
 
@@ -262,6 +289,21 @@ namespace Application.Services.Translation
             invitation.RespondedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Send notification to leader
+            var invitee = await _context.Users.FindAsync(userId);
+            var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
+            if (invitee != null && team != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    team.LeaderId,
+                    invitee.DisplayName ?? invitee.Username,
+                    $"Đã từ chối lời mời gia nhập nhóm {team.TeamName}",
+                    $"/teams/{team.TeamId}/members",
+                    NotificationType.TEAM_INVITATION_REJECTED
+                );
+            }
+
             return true;
         }
 
@@ -291,6 +333,21 @@ namespace Application.Services.Translation
 
             _context.TeamJoinRequests.Add(request);
             await _context.SaveChangesAsync();
+
+            // Notify leader about new join request
+            var team = await _context.TranslationTeams.FindAsync(teamId);
+            var requester = await _context.Users.FindAsync(userId.Value);
+            if (team != null && requester != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    team.LeaderId,
+                    team.TeamName,
+                    $"{requester.DisplayName ?? requester.Username} đã gửi yêu cầu tham gia nhóm",
+                    $"/teams/{teamId}/requests",
+                    NotificationType.TEAM_JOIN_REQUEST
+                );
+            }
+
             return request.RequestId;
         }
 
@@ -314,6 +371,19 @@ namespace Application.Services.Translation
 
             _context.TeamMembers.Add(member);
             await _context.SaveChangesAsync();
+
+            // Notify requester about approval
+            if (request.Team != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    request.UserId,
+                    request.Team.TeamName,
+                    "Yêu cầu tham gia nhóm của bạn đã được phê duyệt",
+                    $"/teams/{request.TeamId}",
+                    NotificationType.TEAM_JOIN_APPROVED
+                );
+            }
+
             return true;
         }
 
@@ -327,6 +397,19 @@ namespace Application.Services.Translation
             request.RespondedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Notify requester about rejection
+            if (request.Team != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    request.UserId,
+                    request.Team.TeamName,
+                    "Yêu cầu tham gia nhóm của bạn đã bị từ chối",
+                    $"/teams/{request.TeamId}",
+                    NotificationType.TEAM_JOIN_REJECTED
+                );
+            }
+
             return true;
         }
 
@@ -392,6 +475,16 @@ namespace Application.Services.Translation
 
             _context.TeamMembers.Remove(member);
             await _context.SaveChangesAsync();
+
+            // Notify removed member
+            await _notificationService.CreateNotificationAsync(
+                targetUserId,
+                team.TeamName,
+                "Bạn đã bị gỡ khỏi nhóm",
+                $"/teams",
+                NotificationType.TEAM_MEMBER_REMOVED
+            );
+
             return true;
         }
 
@@ -408,6 +501,15 @@ namespace Application.Services.Translation
 
             member.Role = roleDto.Role;
             await _context.SaveChangesAsync();
+
+            // Notify member about role update
+            await _notificationService.CreateNotificationAsync(
+                targetUserId,
+                team.TeamName,
+                $"Vai trò của bạn trong nhóm đã được cập nhật thành {roleDto.Role}",
+                $"/teams/{teamId}/members",
+                NotificationType.TEAM_ROLE_CHANGED
+            );
 
             return new TeamMemberDto
             {
@@ -527,9 +629,9 @@ namespace Application.Services.Translation
                 TeamId = team.TeamId,
                 LeaderId = team.LeaderId,
                 TeamName = team.TeamName,
-                Slug = team.Slug,
+                Slug = team.Slug ?? string.Empty,
                 Description = team.Description,
-                Language = team.Language,
+                Language = team.Language ?? "Unknown",
                 RequireApproval = team.RequireApproval,
                 ReputationScore = team.ReputationScore,
                 LockStatus = team.LockStatus.ToString(),

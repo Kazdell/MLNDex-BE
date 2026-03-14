@@ -71,7 +71,7 @@ namespace Application.Services.Translation
                 creatorUserId,
                 "Yêu cầu dịch truyện mới",
                 $"Nhóm dịch {teamName ?? "đối tác"} vừa gửi yêu cầu muốn dịch bộ truyện {series.Title} của bạn.",
-                $"/creator/series/{series.SeriesId}/translation-requests",
+                "/creator/translation-requests",
                 NotificationType.TRANSLATION_REQUEST
             );
 
@@ -121,7 +121,7 @@ namespace Application.Services.Translation
                 .Select(m => m.UserId)
                 .ToListAsync();
 
-            var resultText = dto.IsApproved ? "CHẤP THUẬN" : "TỪ CHỐI";
+            var resultTitle = dto.IsApproved ? "Yêu cầu dịch truyện được chấp thuận" : "Yêu cầu dịch truyện bị từ chối";
             var resultMessage = dto.IsApproved 
                 ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
                 : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch của nhóm bạn.";
@@ -131,7 +131,7 @@ namespace Application.Services.Translation
             {
                 await _notificationService.CreateNotificationAsync(
                     memberId,
-                    $"Don xin dich bi {resultText.ToLower()}", // Simplified title (no accents)
+                    resultTitle,
                     resultMessage,
                     link,
                     dto.IsApproved ? NotificationType.TRANSLATION_GRANTED : NotificationType.TRANSLATION_REVOKED
