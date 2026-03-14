@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -7,15 +6,27 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-
-
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Domain\Domain.csproj" />
+    <Folder Include="DTOs/Financial/" />
+    <Folder Include="Interfaces/Financial/" />
+    <Folder Include="Services/Financial/" />
+    <Folder Include="DTOs/System/" />
+    <Folder Include="Interfaces/System/" />
+    <Folder Include="Services/System/" />
+    <Folder Include="DTOs/Community/" />
+    <Folder Include="Interfaces/Community/" />
+    <Folder Include="Services/Community/" />
+    <Folder Include="DTOs/Moderation/" />
+    <Folder Include="Interfaces/Moderation/" />
+    <Folder Include="Services/Moderation/" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
 </Project>
