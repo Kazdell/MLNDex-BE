@@ -1,6 +1,7 @@
 using Application.DTOs.Moderation;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,12 @@ namespace Application.Services.Moderation
     public class ContentModerationService : IContentModerationService
     {
         private readonly IMlndexDbContext _context;
+        private readonly INotificationService _notificationService;
 
-        public ContentModerationService(IMlndexDbContext context)
+        public ContentModerationService(IMlndexDbContext context, INotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
         public async Task<ModerationQueueDto> DecideAsync(
@@ -66,6 +69,9 @@ namespace Application.Services.Moderation
 
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Send notification to content owner
+            await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
+
             return new ModerationQueueDto
             {
                 QueueId = queue.QueueId,
@@ -113,6 +119,76 @@ namespace Application.Services.Moderation
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private async Task SendModerationNotificationAsync(ModerationQueue queue, ModerationStatus status, string? reason, CancellationToken cancellationToken)
+        {
+            int? ownerUserId = null;
+            string contentTitle = "";
+            string actionUrl = "";
+
+            switch (queue.ContentType)
+            {
+                case ModerationQueueContentType.SERIES:
+                    var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+                    if (series != null)
+                    {
+                        ownerUserId = series.Creator.UserId;
+                        contentTitle = series.Title;
+                        actionUrl = $"/series/{series.SeriesId}";
+                    }
+                    break;
+                case ModerationQueueContentType.CHAPTER:
+                    var chapter = await _context.Chapters.Include(c => c.Series).ThenInclude(s => s.Creator).Include(c => c.Team).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+                    if (chapter != null)
+                    {
+                        ownerUserId = chapter.TeamId != null ? 
+                            (await _context.TranslationTeams.FindAsync(chapter.TeamId))?.LeaderId : 
+                            chapter.Series.Creator.UserId;
+                        contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
+                        actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
+                    }
+                    break;
+                case ModerationQueueContentType.TRANSLATION:
+                    var translation = await _context.Translations.Include(t => t.Chapter).ThenInclude(c => c.Series).Include(t => t.Permission).ThenInclude(p => p.Team).FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+                    if (translation != null)
+                    {
+                        ownerUserId = translation.Permission.Team.LeaderId;
+                        contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
+                        actionUrl = $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
+                    }
+                    break;
+            }
+
+            if (ownerUserId.HasValue)
+            {
+                var type = status switch
+                {
+                    ModerationStatus.APPROVED => NotificationType.CONTENT_APPROVED,
+                    ModerationStatus.REJECTED => NotificationType.CONTENT_REJECTED,
+                    ModerationStatus.BANNED => NotificationType.CONTENT_BANNED,
+                    _ => NotificationType.SYSTEM
+                };
+
+                var statusText = status switch
+                {
+                    ModerationStatus.APPROVED => "được duyệt",
+                    ModerationStatus.REJECTED => "bị từ chối",
+                    ModerationStatus.BANNED => "bị khóa",
+                    _ => "xử lý"
+                };
+
+                var message = $"Nội dung '{contentTitle}' đã {statusText}.";
+                if (!string.IsNullOrEmpty(reason)) message += $" Lý do: {reason}";
+
+                await _notificationService.CreateNotificationAsync(
+                    ownerUserId.Value,
+                    "Kiểm duyệt nội dung",
+                    message,
+                    actionUrl,
+                    type
+                );
             }
         }
     }

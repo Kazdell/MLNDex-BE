@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Application.Interfaces.AIModeration;
+using Application.Interfaces.Notification;
 
 namespace Application.Services.Creator
 {
@@ -21,17 +22,20 @@ namespace Application.Services.Creator
     private readonly IStorageService _storage;
     private readonly ILogger<ChapterService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly INotificationService _notificationService;
 
     public ChapterService(
         IMlndexDbContext db,
         IStorageService storage,
         ILogger<ChapterService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        INotificationService notificationService)
     {
       _db = db;
       _storage = storage;
       _logger = logger;
       _scopeFactory = scopeFactory;
+      _notificationService = notificationService;
     }
 
     public async Task<CreateChapterResponseDto> CreateAsync(
@@ -48,7 +52,9 @@ namespace Application.Services.Creator
       }
       else
       {
-          series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId, cancellationToken);
+          series = await _db.Series
+              .Include(s => s.Creator)
+              .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId, cancellationToken);
           if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại.");
 
           var isAuthorizedMember = await _db.TeamMembers.AnyAsync(m => 
@@ -125,6 +131,22 @@ namespace Application.Services.Creator
           }
 
           await _db.SaveChangesAsync(cancellationToken);
+
+          // Send notification to author if uploaded by team
+          if (dto.TeamId != null && series?.Creator != null)
+          {
+              var team = await _db.TranslationTeams.FindAsync(dto.TeamId);
+              if (team != null)
+              {
+                  await _notificationService.CreateNotificationAsync(
+                      series.Creator.UserId,
+                      team.TeamName,
+                      $"Đã đăng chương {chapter.ChapterNumber} cho bộ {series.Title}",
+                      $"/series/{series.SeriesId}/chapters/{chapter.ChapterId}",
+                      NotificationType.NEW_CHAPTER
+                  );
+              }
+          }
 
           // ── Gọi AI Moderation chạy ngầm ───────────────────────────
           _ = Task.Run(async () =>

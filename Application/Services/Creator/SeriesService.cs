@@ -246,11 +246,11 @@ namespace Application.Services.Creator
         }
 
         public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
-            int userId,
+            int creatorId,
             CancellationToken cancellationToken = default)
         {
             var series = await _context.Series
-                .Where(s => s.Creator.UserId == userId)
+                .Where(s => s.CreatorId == creatorId)
                 .Include(s => s.Chapters)
                 .ThenInclude(c => c.ReadingHistories)
                 .Include(s => s.SeriesGenres)
@@ -367,6 +367,7 @@ namespace Application.Services.Creator
                 TotalRatings = series.TotalRatings,
                 CreatedAt = series.CreatedAt,
                 CreatorId = series.CreatorId,
+                CreatorUserId = series.Creator.UserId,
                 CreatorName = series.Creator.PenName,
                 Genres = series.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
                 Chapters = series.Chapters.OrderByDescending(c => c.PublishedAt).Select(c => new SeriesChapterDto
@@ -466,6 +467,7 @@ namespace Application.Services.Creator
                 TotalRatings = s.TotalRatings,
                 CreatedAt = s.CreatedAt,
                 CreatorId = s.CreatorId,
+                CreatorUserId = s.Creator.UserId,
                 CreatorName = s.Creator.PenName,
                 Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
                 LatestChapters = s.Chapters

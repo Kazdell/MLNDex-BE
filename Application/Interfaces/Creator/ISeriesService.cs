@@ -22,7 +22,7 @@ namespace Application.Interfaces.Creator
 
 
     Task<List<SeriesListItemDto>> GetByCreatorAsync(
-        int userId,
+        int creatorId,
         CancellationToken cancellationToken = default);
 
     Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20);
