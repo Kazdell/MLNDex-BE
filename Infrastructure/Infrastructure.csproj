@@ -16,12 +16,6 @@
 		<PackageReference Include="Tesseract" Version="5.2.0" />
 	</ItemGroup>
 
-
-	<ItemGroup>
-		<Folder Include="Hubs\" />
-		<Folder Include="Migrations\" />
-	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\Application\Application.csproj" />
 	</ItemGroup>

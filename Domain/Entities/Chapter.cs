@@ -22,7 +22,8 @@ namespace Domain.Entities
 		public DateTime? UnlockTime { get; set; }
 		public ChapterStatus Status { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
-		public DateTime? PublishedAt { get; set; }
+        public string? AiScoresJson { get; set; }
+        public DateTime? PublishedAt { get; set; }
 		public int Views { get; set; } = 0;
 
 		// Navigation

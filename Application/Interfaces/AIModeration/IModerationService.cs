@@ -15,14 +15,14 @@ namespace Application.Interfaces.AIModeration
         /// - Safe   → tự động set ModerationStatus = AutoApproved
         /// - Flagged → set ModerationStatus = Flagged, thông báo cho tác giả
         Task<AiModerationResultDto> RunAiModerationAsync(int chapterId);
-        Task RunSeriesModerationAsync(int seriesId);
+        Task<AiModerationResultDto> RunSeriesModerationAsync(int seriesId); 
 
 
-		/// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
-		/// Tạo 1 record mới trong ModerationQueue.
-		Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason);
-
-		TextCheckResponse PreCheckText(TextCheckRequest request);
+        /// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
+        /// Tạo 1 record mới trong ModerationQueue.
+        Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason);
+        Task<AiModerationResultDto?> GetResultAsync(int chapterId, CancellationToken ct = default);
+        TextCheckResponse PreCheckText(TextCheckRequest request);
 		OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request);
 		List<RejectionTemplateDto> GetRejectionTemplates();
 		List<BannedTagDto> GetBannedTags();

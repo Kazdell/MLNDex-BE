@@ -13,9 +13,10 @@ namespace Application.Interfaces.Creator
         int userId,
         CreateChapterDto dto,
         CancellationToken cancellationToken = default);
-
-    Task<ChapterDetailDto?> GetChapterDetailAsync(
+        Task<ChapterDetailDto?> GetChapterDetailAsync(
         int chapterId,
         CancellationToken cancellationToken = default);
-  }
+        Task<ChapterModerationStatusDto> GetModerationStatusAsync(int chapterId, CancellationToken ct = default);
+        Task RetryModerationAsync(int chapterId, CancellationToken ct = default);
+    }
 }

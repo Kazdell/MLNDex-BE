@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
-[Route("api/creator/chapters")]
+[Route("api")]
 [Authorize(Roles = "CREATOR,ADMIN")]
 public class ChapterController : BaseController
 {
@@ -20,7 +20,7 @@ public class ChapterController : BaseController
         _service = service;
     }
 
-    [HttpPost("create")]
+    [HttpPost("creator/chapters/create")]
     [RequestSizeLimit(300 * 1024 * 1024)]
     public async Task<IActionResult> Create(
         [FromForm] int seriesId,
@@ -77,7 +77,7 @@ public class ChapterController : BaseController
     }
 
     [AllowAnonymous]
-    [HttpGet("{id:int}")]
+    [HttpGet("chapters/{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         try
@@ -91,4 +91,43 @@ public class ChapterController : BaseController
             return ErrorResponse(ex.Message);
         }
     }
+
+    [HttpGet("chapters/{chapterId:int}/moderation-status")]
+    public async Task<IActionResult> GetModerationStatus(
+    int chapterId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _service.GetModerationStatusAsync(chapterId, cancellationToken);
+            return OkResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex.Message);
+        }
+    }
+
+    [HttpPost("chapters/{chapterId:int}/moderation-retry")]
+    public async Task<IActionResult> RetryModeration(
+        int chapterId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _service.RetryModerationAsync(chapterId, cancellationToken);
+            return OkResponse<object>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFoundResponse(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequestResponse(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex.Message);
+        }
+    }
+
 }
