@@ -28,5 +28,11 @@ namespace Application.DTOs.Translation
         public DateTime? GrantedAt { get; set; }
         public DateTime? RevokedAt { get; set; }
         public string? Note { get; set; }
+        
+        // Team Details for Review
+        public string? Facebook { get; set; }
+        public string? Discord { get; set; }
+        public string? Website { get; set; }
+        public string? Certificates { get; set; }
     }
 }

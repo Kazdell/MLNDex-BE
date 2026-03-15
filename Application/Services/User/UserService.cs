@@ -105,5 +105,59 @@ namespace Application.Services.User
                 })
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<List<UserSearchDto>> SearchUsersAsync(string query, CancellationToken cancellationToken)
+        {
+            var usersQuery = _context.Users.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                usersQuery = usersQuery.Where(u => u.Username.Contains(query) || (u.DisplayName != null && u.DisplayName.Contains(query)));
+            }
+
+            return await usersQuery
+                .Take(20)
+                .Select(u => new UserSearchDto
+                {
+                    UserId = u.UserId,
+                    Username = u.Username,
+                    DisplayName = u.DisplayName,
+                    Avatar = u.DisplayAvatar
+                })
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<UserProfileDto?> GetPublicProfileAsync(string username, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+                .Include(u => u.ReadingHistories)
+                .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
+                .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
+
+            if (user == null) return null;
+
+            var activeSubscription = user.VipSubscriptions
+                .Where(vs => vs.Status == SubscriptionStatus.ACTIVE && vs.EndDate > DateTime.UtcNow)
+                .OrderByDescending(vs => vs.EndDate)
+                .FirstOrDefault();
+
+            return new UserProfileDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                Email = string.Empty, // Hide email for public profile
+                DisplayName = user.DisplayName,
+                Bio = user.Bio,
+                Avatar = user.DisplayAvatar,
+                CreatedAt = user.CreatedAt,
+                Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                TotalReadSeries = user.ReadingHistories.Select(h => h.SeriesId).Distinct().Count(),
+                TotalReadChapters = user.ReadingHistories.Count(),
+                WalletBalance = 0, // Hide wallet balance
+                SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
+                BannerUrl = user.BannerUrl
+            };
+        }
     }
 }

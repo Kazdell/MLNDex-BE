@@ -18,6 +18,7 @@ namespace Application.DTOs.Translation
         public string? Facebook { get; set; }
         public string? Discord { get; set; }
         public string? Website { get; set; }
+        public string? Certificates { get; set; }
     }
 
     public class InviteTeamMemberDto
@@ -39,6 +40,7 @@ namespace Application.DTOs.Translation
         public string? Facebook { get; set; }
         public string? Discord { get; set; }
         public string? Website { get; set; }
+        public string? Certificates { get; set; }
     }
 
     public class AssignTeamMemberRoleDto
@@ -72,6 +74,7 @@ namespace Application.DTOs.Translation
         public string? Facebook { get; set; }
         public string? Discord { get; set; }
         public string? Website { get; set; }
+        public string? Certificates { get; set; }
 
         public int MemberCount { get; set; }
         public string Role { get; set; } = string.Empty;
