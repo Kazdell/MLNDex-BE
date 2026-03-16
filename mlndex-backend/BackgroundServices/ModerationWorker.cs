@@ -54,37 +54,37 @@ namespace mlndex_backend.BackgroundServices
                 using var scope = _scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
 
-                var pendingChapters = await db.Chapters
+                var pendingChapterIds = await db.Chapters
                     .Where(c => c.ModerationStatus == ModerationStatus.PENDING)
-                    .Select(c => new { c.ChapterId, c.Series.CreatorId })
+                    .Select(c => c.ChapterId)
                     .ToListAsync(cancellationToken);
 
-                foreach (var ch in pendingChapters)
+                foreach (var chId in pendingChapterIds)
                 {
                     await _queue.EnqueueAsync(
-                        new ModerationJob(ch.ChapterId, ch.CreatorId, ModerationContentType.Chapter),
+                        new ModerationJob(chId, ModerationContentType.Chapter),
                         cancellationToken);
-                    _logger.LogInformation("Re-enqueued stuck chapter {ChapterId}", ch.ChapterId);
+                    _logger.LogInformation("Re-enqueued stuck chapter {ChapterId}", chId);
                 }
 
-                if (pendingChapters.Count > 0)
-                    _logger.LogWarning("Crash recovery: re-enqueued {Count} stuck chapters", pendingChapters.Count);
+                if (pendingChapterIds.Count > 0)
+                    _logger.LogWarning("Crash recovery: re-enqueued {Count} stuck chapters", pendingChapterIds.Count);
 
-                var pendingSeries = await db.Series
+                var pendingSeriesIds = await db.Series
                     .Where(s => s.ModerationStatus == ModerationStatus.PENDING)
-                    .Select(s => new { s.SeriesId, s.CreatorId })
+                    .Select(s => s.SeriesId)
                     .ToListAsync(cancellationToken);
 
-                foreach (var s in pendingSeries)
+                foreach (var sId in pendingSeriesIds)
                 {
                     await _queue.EnqueueAsync(
-                        new ModerationJob(s.SeriesId, s.CreatorId, ModerationContentType.Series),
+                        new ModerationJob(sId, ModerationContentType.Series),
                         cancellationToken);
-                    _logger.LogInformation("Re-enqueued stuck series {SeriesId}", s.SeriesId);
+                    _logger.LogInformation("Re-enqueued stuck series {SeriesId}", sId);
                 }
 
-                if (pendingSeries.Count > 0)
-                    _logger.LogWarning("Crash recovery: re-enqueued {Count} stuck series", pendingSeries.Count);
+                if (pendingSeriesIds.Count > 0)
+                    _logger.LogWarning("Crash recovery: re-enqueued {Count} stuck series", pendingSeriesIds.Count);
             }
             catch (Exception ex)
             {
@@ -136,7 +136,9 @@ namespace mlndex_backend.BackgroundServices
                     var result = await moderationService.RunAiModerationAsync(job.ContentId);
 
                     // Save AI scores JSON
-                    var chapter = await db.Chapters.FirstOrDefaultAsync(c => c.ChapterId == job.ContentId, ct);
+                    var chapter = await db.Chapters
+                        .Include(c => c.Series)
+                        .FirstOrDefaultAsync(c => c.ChapterId == job.ContentId, ct);
                     if (chapter != null)
                     {
                         chapter.AiScoresJson = JsonSerializer.Serialize(result.CategoryScores);
@@ -158,7 +160,7 @@ namespace mlndex_backend.BackgroundServices
                             .SendAsync("ReceiveModerationResult", statusDto, ct);
 
                         await _hubContext.Clients
-                            .Group($"User_{job.UploaderId}")
+                            .Group($"User_{chapter.Series.CreatorId}")
                             .SendAsync("ReceiveModerationResult", statusDto, ct);
                     }
                 }
@@ -171,7 +173,7 @@ namespace mlndex_backend.BackgroundServices
                     {
                         var statusDto = new ModerationStatusDto
                         {
-                            ChapterId = job.ContentId, // Using ChapterId since statusDto doesn't have SeriesId explicitly
+                            ChapterId = job.ContentId,
                             Status = series.ModerationStatus.ToString(),
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -181,7 +183,7 @@ namespace mlndex_backend.BackgroundServices
                             .SendAsync("ReceiveSeriesModerationResult", statusDto, ct);
 
                         await _hubContext.Clients
-                            .Group($"User_{job.UploaderId}")
+                            .Group($"User_{series.CreatorId}")
                             .SendAsync("ReceiveSeriesModerationResult", statusDto, ct);
                     }
                 }

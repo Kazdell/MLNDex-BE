@@ -115,16 +115,32 @@ namespace Application.Services.Creator
         {
           var pageFolder = $"chapters/{chapter.ChapterId}/pages";
 
-          foreach (var (page, index) in dto.Pages.Select((p, i) => (p, i)))
+          var semaphore = new SemaphoreSlim(4); // Upload song song, tối đa 4 ảnh cùng lúc
+          var uploadResults = new (int index, string url)[dto.Pages.Count];
+
+          var uploadTasks = dto.Pages.Select(async (page, index) =>
           {
-            var url = await _storage.UploadAsync(
-                page.FileStream,
-                page.FileName,
-                pageFolder,
-                cancellationToken);
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+              var url = await _storage.UploadAsync(
+                  page.FileStream,
+                  page.FileName,
+                  pageFolder,
+                  cancellationToken);
+              uploadResults[index] = (index, url);
+              uploadedUrls.Add(url);
+            }
+            finally
+            {
+              semaphore.Release();
+            }
+          }).ToArray();
 
-            uploadedUrls.Add(url);
+          await Task.WhenAll(uploadTasks);
 
+          foreach (var (index, url) in uploadResults.OrderBy(r => r.index))
+          {
             _db.ChapterPages.Add(new ChapterPage
             {
               ChapterId = chapter.ChapterId,
@@ -153,7 +169,7 @@ namespace Application.Services.Creator
 
           // ── Enqueue AI Moderation (crash-safe queue) ────────────────
           await _moderationQueue.EnqueueAsync(
-              new ModerationJob(chapter.ChapterId, userId));
+              new ModerationJob(chapter.ChapterId), cancellationToken);
         }
 
         _logger.LogInformation(
@@ -354,6 +370,49 @@ namespace Application.Services.Creator
                     
                     var existingPagesInfo = chapter.Pages.ToDictionary(p => p.PageId);
 
+                    // Phase 1: Collect new files to upload in parallel
+                    var newUploads = new List<(int layoutIndex, int fileIndex)>();
+                    for (int i = 0; i < layout.Count; i++)
+                    {
+                        var item = layout[i];
+                        if (item.Type == "new" && item.FileIndex.HasValue &&
+                            newPages != null && newPages.Count > item.FileIndex.Value)
+                        {
+                            newUploads.Add((i, item.FileIndex.Value));
+                        }
+                    }
+
+                    // Phase 2: Upload new files in parallel (max 4 concurrent)
+                    var uploadSemaphore = new SemaphoreSlim(4);
+                    var uploadMap = new Dictionary<int, string>(); // layoutIndex -> url
+                    
+                    if (newUploads.Count > 0)
+                    {
+                        var uploadTasks = newUploads.Select(async u =>
+                        {
+                            await uploadSemaphore.WaitAsync(cancellationToken);
+                            try
+                            {
+                                var fileToUpload = newPages![u.fileIndex];
+                                using var stream = fileToUpload.OpenReadStream();
+                                var url = await _storage.UploadAsync(
+                                    stream,
+                                    fileToUpload.FileName,
+                                    pageFolder,
+                                    cancellationToken);
+                                lock (uploadMap) { uploadMap[u.layoutIndex] = url; }
+                                lock (uploadedUrls) { uploadedUrls.Add(url); }
+                            }
+                            finally
+                            {
+                                uploadSemaphore.Release();
+                            }
+                        }).ToArray();
+
+                        await Task.WhenAll(uploadTasks);
+                    }
+
+                    // Phase 3: Build final page list
                     for (int i = 0; i < layout.Count; i++)
                     {
                         var item = layout[i];
@@ -363,33 +422,21 @@ namespace Application.Services.Creator
                             {
                                 existingPage.PageNumber = i + 1;
                                 updatedPages.Add(existingPage);
-                                existingPagesInfo.Remove(item.Id.Value); // Mark as kept
+                                existingPagesInfo.Remove(item.Id.Value);
                             }
                         }
-                        else if (item.Type == "new" && item.FileIndex.HasValue)
+                        else if (item.Type == "new" && uploadMap.TryGetValue(i, out var newUrl))
                         {
-                            if (newPages != null && newPages.Count > item.FileIndex.Value)
+                            updatedPages.Add(new ChapterPage
                             {
-                                var fileToUpload = newPages[item.FileIndex.Value];
-                                using var stream = fileToUpload.OpenReadStream();
-                                var url = await _storage.UploadAsync(
-                                    stream,
-                                    fileToUpload.FileName,
-                                    pageFolder,
-                                    cancellationToken);
-                                
-                                uploadedUrls.Add(url);
-                                updatedPages.Add(new ChapterPage
-                                {
-                                    ChapterId = chapter.ChapterId,
-                                    PageNumber = i + 1,
-                                    ImageUrl = url
-                                });
-                            }
+                                ChapterId = chapter.ChapterId,
+                                PageNumber = i + 1,
+                                ImageUrl = newUrl
+                            });
                         }
                     }
 
-                    // Delete abandoned pages from Cloudinary and DB (we have them in existingPagesInfo)
+                    // Delete abandoned pages from Cloudinary and DB
                     foreach (var abandonedPage in existingPagesInfo.Values)
                     {
                         if (!string.IsNullOrEmpty(abandonedPage.ImageUrl))
@@ -420,7 +467,7 @@ namespace Application.Services.Creator
             await _db.SaveChangesAsync(cancellationToken);
             
             // Re-enqueue moderation
-            await _moderationQueue.EnqueueAsync(new ModerationJob(chapter.ChapterId, userId));
+            await _moderationQueue.EnqueueAsync(new ModerationJob(chapter.ChapterId), cancellationToken);
 
             return new CreateChapterResponseDto
             {
@@ -499,7 +546,7 @@ namespace Application.Services.Creator
       chapter.AiScoresJson = null;
       await _db.SaveChangesAsync();
 
-      await _moderationQueue.EnqueueAsync(new ModerationJob(chapterId, userId));
+      await _moderationQueue.EnqueueAsync(new ModerationJob(chapterId));
       _logger.LogInformation("User {UserId} requested moderation retry for chapter {ChapterId}", userId, chapterId);
     }
   }

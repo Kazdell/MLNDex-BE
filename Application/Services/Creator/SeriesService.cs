@@ -117,7 +117,7 @@ namespace Application.Services.Creator
                     await _context.SaveChangesAsync(cancellationToken);
                 }
                 await _queue.EnqueueAsync(
-                    new ModerationJob(series.SeriesId, series.CreatorId, ModerationContentType.Series),
+                    new ModerationJob(series.SeriesId, ModerationContentType.Series),
                     cancellationToken);
                 _logger.LogInformation(
                     "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
@@ -227,7 +227,7 @@ namespace Application.Services.Creator
 
                 await _context.SaveChangesAsync(cancellationToken);
                 await _queue.EnqueueAsync(
-                    new ModerationJob(series.SeriesId, series.CreatorId, ModerationContentType.Series),
+                    new ModerationJob(series.SeriesId, ModerationContentType.Series),
                     cancellationToken);
 
                 return new CreateSeriesResponseDto

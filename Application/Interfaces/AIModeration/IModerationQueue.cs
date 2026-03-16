@@ -25,7 +25,6 @@ namespace Application.Interfaces.AIModeration
     /// <summary>Represents a single AI moderation job.</summary>
     public record ModerationJob(
         int ContentId,
-        int UploaderId,
         ModerationContentType ContentType = ModerationContentType.Chapter,
         int RetryCount = 0
     );
