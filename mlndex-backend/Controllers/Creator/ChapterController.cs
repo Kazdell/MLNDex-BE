@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
-[Route("api/creator/chapters")]
+[Route("api")]
 [Authorize(Roles = "CREATOR,ADMIN")]
 public class ChapterController : BaseController
 {
@@ -20,7 +20,7 @@ public class ChapterController : BaseController
         _service = service;
     }
 
-    [HttpPost("create")]
+    [HttpPost("creator/chapters/create")]
     [RequestSizeLimit(300 * 1024 * 1024)]
     public async Task<IActionResult> Create(
         [FromForm] int seriesId,
@@ -76,7 +76,7 @@ public class ChapterController : BaseController
     }
 
     [AllowAnonymous]
-    [HttpGet("{id:int}")]
+    [HttpGet("chapters/{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         try
@@ -91,21 +91,14 @@ public class ChapterController : BaseController
         }
     }
 
-    [HttpGet("{id:int}/edit")]
-    public async Task<IActionResult> GetForEdit(int id, CancellationToken cancellationToken)
+    [HttpGet("chapters/{chapterId:int}/moderation-status")]
+    public async Task<IActionResult> GetModerationStatus(
+    int chapterId, CancellationToken cancellationToken)
     {
-        int userId = GetUserId();
-        if (userId == 0) return UnauthorizedResponse();
-
         try
         {
-            var result = await _service.GetForEditAsync(id, userId, cancellationToken);
-            if (result == null) return NotFoundResponse("Không tìm thấy chương truyện.");
+            var result = await _service.GetModerationStatusAsync(chapterId, cancellationToken);
             return OkResponse(result);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return UnauthorizedResponse(ex.Message);
         }
         catch (Exception ex)
         {
@@ -113,46 +106,22 @@ public class ChapterController : BaseController
         }
     }
 
-    [HttpPut("{id:int}")]
-    [RequestSizeLimit(300 * 1024 * 1024)]
-    public async Task<IActionResult> Update(
-        int id,
-        [FromForm] UpdateChapterDto dto,
-        [FromForm] IFormFileCollection? newPages,
-        CancellationToken cancellationToken)
+    [HttpPost("chapters/{chapterId:int}/moderation-retry")]
+    public async Task<IActionResult> RetryModeration(
+        int chapterId, CancellationToken cancellationToken)
     {
-        int userId = GetUserId();
-        if (userId == 0) return UnauthorizedResponse();
-
-        if (newPages != null)
-        {
-            foreach (var file in newPages)
-            {
-                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                if (!AllowedExtensions.Contains(ext))
-                    return BadRequestResponse($"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp");
-
-                if (file.Length > MaxFileSizeBytes)
-                    return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
-            }
-        }
-
         try
         {
-            var result = await _service.UpdateAsync(id, userId, dto, newPages, cancellationToken);
-            return OkResponse(result, "Cập nhật chương truyện thành công.");
+            await _service.RetryModerationAsync(chapterId, cancellationToken);
+            return OkResponse<object>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
         }
         catch (KeyNotFoundException ex)
         {
             return NotFoundResponse(ex.Message);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return UnauthorizedResponse(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequestResponse(ex.Message); // For duplicate chapter error
+            return BadRequestResponse(ex.Message);
         }
         catch (Exception ex)
         {
@@ -160,44 +129,4 @@ public class ChapterController : BaseController
         }
     }
 
-    // ── NEW: Moderation Status (for frontend polling) ──────────────────
-
-    /// <summary>GET /api/creator/chapters/{id}/moderation-status</summary>
-    [HttpGet("{id:int}/moderation-status")]
-    public async Task<IActionResult> GetModerationStatus(int id)
-    {
-        try
-        {
-            var status = await _service.GetModerationStatusAsync(id);
-            return OkResponse(status, "OK");
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFoundResponse(ex.Message);
-        }
-    }
-
-    // ── NEW: Retry Moderation (re-enqueue AI check) ────────────────────
-
-    /// <summary>POST /api/creator/chapters/{id}/moderation-retry</summary>
-    [HttpPost("{id:int}/moderation-retry")]
-    public async Task<IActionResult> RetryModeration(int id)
-    {
-        int userId = GetUserId();
-        if (userId == 0) return UnauthorizedResponse();
-
-        try
-        {
-            await _service.RetryModerationAsync(id, userId);
-            return OkResponse<object?>(null, "Đã gửi yêu cầu kiểm duyệt lại");
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFoundResponse(ex.Message);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return UnauthorizedResponse(ex.Message);
-        }
-    }
 }
