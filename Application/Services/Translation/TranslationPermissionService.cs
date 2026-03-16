@@ -26,33 +26,29 @@ namespace Application.Services.Translation
             var requesterId = _userContext.UserId;
             if (requesterId == null) throw new UnauthorizedAccessException();
 
-            // Verify team leader or translator
             var isMember = await _context.TeamMembers
                 .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
 
             if (!isMember)
                 throw new Exception("You are not an active member of this translation team.");
 
-            // Verify series exists
             var series = await _context.Series
                 .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId);
 
             if (series == null)
                 throw new Exception("Series not found.");
 
-            // Tìm UserId của Tác giả từ CreatorId
             var creatorProfile = await _context.CreatorProfiles
                 .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);
 
             if (creatorProfile == null)
                 throw new Exception("Creator profile not found for this series.");
 
-            // Create permission record
             var permission = new TranslationPermission
             {
                 SeriesId = dto.SeriesId,
                 TeamId = dto.TeamId,
-                GrantedBy = creatorProfile.UserId, // Use UserId here
+                GrantedBy = creatorProfile.UserId,
                 Status = TranslationPermissionStatus.PENDING,
                 Note = dto.Note
             };
@@ -60,7 +56,6 @@ namespace Application.Services.Translation
             _context.TranslationPermissions.Add(permission);
             await _context.SaveChangesAsync();
 
-            // Gửi thông báo cho Tác giả bằng SignalR
             var teamName = await _context.TranslationTeams.Where(t => t.TeamId == dto.TeamId).Select(t => t.TeamName).FirstOrDefaultAsync();
             var creatorUserId = await _context.CreatorProfiles
                 .Where(c => c.CreatorId == series.CreatorId)
@@ -90,7 +85,6 @@ namespace Application.Services.Translation
             if (permission == null)
                 throw new Exception("Permission request not found.");
 
-            // Ensure the person reviewing is the owner of the creator profile associated with the series
             var seriesCreatorUserId = await _context.CreatorProfiles
                 .Where(c => c.CreatorId == permission.Series.CreatorId)
                 .Select(c => c.UserId)
@@ -110,22 +104,20 @@ namespace Application.Services.Translation
                 permission.RevokedAt = DateTime.UtcNow;
             }
 
-            // Fix legacy records that might have wrong GrantedBy ID
             permission.GrantedBy = seriesCreatorUserId;
 
             await _context.SaveChangesAsync();
 
-            // Gửi thông báo cho toàn bộ thành viên của nhóm dịch
             var teamMembers = await _context.TeamMembers
                 .Where(m => m.TeamId == permission.TeamId && m.IsActive)
                 .Select(m => m.UserId)
                 .ToListAsync();
 
             var resultTitle = dto.IsApproved ? "Yêu cầu dịch truyện được chấp thuận" : "Yêu cầu dịch truyện bị từ chối";
-            var resultMessage = dto.IsApproved 
+            var resultMessage = dto.IsApproved
                 ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
                 : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch của nhóm bạn.";
-            var link = $"/translation/sent-requests/{permission.TeamId}"; // Trang yêu cầu gửi đi của nhóm
+            var link = $"/translation/sent-requests/{permission.TeamId}";
 
             foreach (var memberId in teamMembers)
             {
@@ -181,7 +173,7 @@ namespace Application.Services.Translation
         private async Task<TranslationPermissionDto> MapToDtoAsync(TranslationPermission p)
         {
             var seriesTitle = await _context.Series.Where(s => s.SeriesId == p.SeriesId).Select(s => s.Title).FirstOrDefaultAsync();
-            var teamName = await _context.TranslationTeams.Where(t => t.TeamId == p.TeamId).Select(t => t.TeamName).FirstOrDefaultAsync();
+            var team = await _context.TranslationTeams.Where(t => t.TeamId == p.TeamId).FirstOrDefaultAsync();
 
             return new TranslationPermissionDto
             {
@@ -189,13 +181,17 @@ namespace Application.Services.Translation
                 SeriesId = p.SeriesId,
                 SeriesTitle = seriesTitle,
                 TeamId = p.TeamId,
-                TeamName = teamName,
+                TeamName = team?.TeamName,
                 GrantedBy = p.GrantedBy,
                 Status = p.Status.ToString(),
                 RequestedAt = p.CreatedAt,
                 GrantedAt = p.GrantedAt,
                 RevokedAt = p.RevokedAt,
-                Note = p.Note
+                Note = p.Note,
+                Facebook = team?.Facebook,
+                Discord = team?.Discord,
+                Website = team?.Website,
+                Certificates = team?.Certificates
             };
         }
     }

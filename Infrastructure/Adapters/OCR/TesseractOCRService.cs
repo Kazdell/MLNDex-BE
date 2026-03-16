@@ -1,11 +1,13 @@
-﻿using Application.Interfaces.Moderation;
+using Application.Interfaces.Moderation;
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Tesseract;
+using SixLabors.ImageSharp;
 
 namespace Infrastructure.Adapters.Tesseract
 {
@@ -27,8 +29,18 @@ namespace Infrastructure.Adapters.Tesseract
             {
                 try
                 {
+                    // Chuyển đổi WebP (hoặc các định dạng khác) sang PNG cho Tesseract dễ đọc vì Tesseract/Leptonica build sẵn thường thiếu webp
+                    byte[] pngBytes;
+                    using (var memStream = new MemoryStream(imageBytes))
+                    {
+                        using var image = Image.Load(memStream);
+                        using var outStream = new MemoryStream();
+                        image.SaveAsPng(outStream);
+                        pngBytes = outStream.ToArray();
+                    }
+
                     using var engine = new TesseractEngine(_dataPath, "vie+eng", EngineMode.Default);
-                    using var img = Pix.LoadFromMemory(imageBytes);
+                    using var img = Pix.LoadFromMemory(pngBytes);
                     using var page = engine.Process(img);
 
                     var text = page.GetText();

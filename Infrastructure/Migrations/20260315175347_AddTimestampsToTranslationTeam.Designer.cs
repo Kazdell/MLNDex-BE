@@ -4,6 +4,7 @@ using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    partial class MlndexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260315175347_AddTimestampsToTranslationTeam")]
+    partial class AddTimestampsToTranslationTeam
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,9 +67,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ChapterId"));
-
-                    b.Property<string>("AiScoresJson")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<float>("ChapterNumber")
                         .HasColumnType("real");
@@ -1164,6 +1164,9 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(140)
                         .HasColumnType("nvarchar(140)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Website")
                         .HasMaxLength(255)

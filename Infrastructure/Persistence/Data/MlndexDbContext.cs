@@ -40,6 +40,7 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<Translation> Translations { get; set; }
 		public DbSet<TranslationPage> TranslationPages { get; set; }
 		public DbSet<TranslationText> TranslationTexts { get; set; }
+		public DbSet<Language> Languages { get; set; }
 
 		// ==================== FINANCIAL ====================
 		public DbSet<Wallet> Wallets { get; set; }
@@ -264,7 +265,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
 				e.Property(x => x.Slug).HasMaxLength(140).IsRequired();
 				e.Property(x => x.Description).HasMaxLength(1000);
-				e.Property(x => x.Language).HasMaxLength(50).IsRequired().HasDefaultValue("Tiếng Việt");
+				e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
 				e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
 				e.Property(x => x.ReputationScore).IsRequired();
 				e.Property(x => x.LockStatus)
@@ -284,6 +285,11 @@ namespace Infrastructure.Persistence.Data
 				e.HasOne(x => x.Leader)
 					.WithMany(u => u.LeadingTeams)
 					.HasForeignKey(x => x.LeaderId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.Language)
+					.WithMany(l => l.TranslationTeams)
+					.HasForeignKey(x => x.LanguageId)
 					.OnDelete(DeleteBehavior.Restrict);
 
 				e.HasOne(x => x.LockedByUser)
@@ -403,9 +409,15 @@ namespace Infrastructure.Persistence.Data
                     .HasForeignKey(x => x.SeriesId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(x => x.Team)
+                				e.HasOne(x => x.Team)
                     .WithMany(t => t.Chapters)
                     .HasForeignKey(x => x.TeamId)
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired(false);
+
+                e.HasOne(x => x.Language)
+                    .WithMany(l => l.Chapters)
+                    .HasForeignKey(x => x.LanguageId)
                     .OnDelete(DeleteBehavior.Restrict)
                     .IsRequired(false);
             });
@@ -453,7 +465,7 @@ namespace Infrastructure.Persistence.Data
                 e.ToTable("Translation");
                 e.HasKey(x => x.TranslationId);
                 e.Property(x => x.TranslationId).UseIdentityColumn();
-                e.Property(x => x.Language).HasMaxLength(25).IsRequired();
+                e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
                 e.Property(x => x.ContentType).HasConversion<string>().IsRequired();
                 e.Property(x => x.QualityStatus).HasConversion<string>().IsRequired();
                 e.Property(x => x.ModerationStatus).HasConversion<string>().IsRequired();
@@ -467,6 +479,11 @@ namespace Infrastructure.Persistence.Data
                 e.HasOne(x => x.Permission)
                     .WithMany(p => p.Translations)
                     .HasForeignKey(x => x.PermissionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Language)
+                    .WithMany(l => l.Translations)
+                    .HasForeignKey(x => x.LanguageId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -895,6 +912,20 @@ namespace Infrastructure.Persistence.Data
                     .HasForeignKey(x => x.GenreId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
+			// ====================================================
+			// LANGUAGE
+			// ====================================================
+			modelBuilder.Entity<Language>(e =>
+			{
+				e.ToTable("Language");
+				e.HasKey(x => x.LanguageId);
+				e.Property(x => x.LanguageId).UseIdentityColumn();
+				e.HasIndex(x => x.Code).IsUnique();
+				e.HasIndex(x => x.Name).IsUnique();
+				e.Property(x => x.Code).HasMaxLength(10).IsRequired();
+				e.Property(x => x.Name).HasMaxLength(50).IsRequired();
+			});
         }
     }
 }

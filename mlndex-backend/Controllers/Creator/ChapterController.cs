@@ -1,8 +1,8 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Creator;
 
@@ -26,7 +26,7 @@ public class ChapterController : BaseController
         [FromForm] int seriesId,
         [FromForm] float chapterNumber,
         [FromForm] string? title,
-        [FromForm] string? language,
+        [FromForm] int? languageId,
         [FromForm] int? teamId,
         [FromForm] IFormFileCollection pages,
         CancellationToken cancellationToken)
@@ -34,7 +34,7 @@ public class ChapterController : BaseController
         int userId = GetUserId();
         if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-        // 1. Kiểm tra tính hợp lệ của file
+        // 1. Validate files
         if (pages == null || pages.Count == 0)
             return BadRequestResponse("Chưa có trang nào được gửi lên.");
 
@@ -48,13 +48,13 @@ public class ChapterController : BaseController
                 return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
         }
 
-        // 2. Chuyển đổi dữ liệu sang DTO
+        // 2. Build DTO
         var dto = new CreateChapterDto
         {
             SeriesId = seriesId,
             ChapterNumber = chapterNumber,
             Title = title,
-            Language = language,
+            LanguageId = languageId,
             TeamId = teamId,
             Pages = pages.Select((file, index) => new UploadPageDto
             {
@@ -66,7 +66,6 @@ public class ChapterController : BaseController
 
         try
         {
-            // 3. Gọi Service xử lý nghiệp vụ
             var result = await _service.CreateAsync(userId, dto, cancellationToken);
             return OkResponse(result, "Đăng chương truyện thành công.");
         }

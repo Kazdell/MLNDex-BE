@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Common;
+using Application.DTOs.Common;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 
@@ -61,8 +61,7 @@ namespace mlndex_backend.Middleware
 
 				default:
 					statusCode = (int)HttpStatusCode.InternalServerError;
-					//response = new ApiResponse<object>(false, "An unexpected error occurred", null, ErrorCodes.INTERNAL_SERVER_ERROR);
-					response = new ApiResponse<object>(false, $"An unexpected error occurred {exception.Message}", null, ErrorCodes.INTERNAL_SERVER_ERROR);
+					response = new ApiResponse<object>(false, $"An unexpected error occurred {exception.Message}. StackTrace: {exception.StackTrace}", null, ErrorCodes.INTERNAL_SERVER_ERROR);
 					break;
 			}
 

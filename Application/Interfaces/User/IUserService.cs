@@ -10,5 +10,7 @@ namespace Application.Interfaces.User
         Task<bool> UpdateProfileAsync(int userId, UpdateProfileDto dto, CancellationToken cancellationToken);
         Task<List<ReadingHistoryDto>> GetReadingHistoryAsync(int userId, CancellationToken cancellationToken);
         Task<List<VipPlanDto>> GetVipPlansAsync(CancellationToken cancellationToken);
+        Task<List<UserSearchDto>> SearchUsersAsync(string query, CancellationToken cancellationToken);
+        Task<UserProfileDto?> GetPublicProfileAsync(string username, CancellationToken cancellationToken);
     }
 }

@@ -21,6 +21,7 @@ namespace Application.Interfaces.Data
         DbSet<ChapterPage> ChapterPages { get; set; }
         DbSet<ChapterText> ChapterTexts { get; set; }
         DbSet<TranslationPermission> TranslationPermissions { get; set; }
+        DbSet<Domain.Entities.Language> Languages { get; set; }
         DbSet<Domain.Entities.Translation> Translations { get; set; }
         DbSet<TranslationPage> TranslationPages { get; set; }
         DbSet<TranslationText> TranslationTexts { get; set; }

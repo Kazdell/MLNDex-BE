@@ -49,7 +49,7 @@ namespace Application.Services.Translation
             {
                 ChapterId = dto.ChapterId,
                 PermissionId = dto.PermissionId,
-                Language = dto.Language,
+                LanguageId = dto.LanguageId,
                 ContentType = dto.ContentType,
                 QualityStatus = TranslationQualityStatus.DRAFT,
                 ModerationStatus = ModerationStatus.APPROVED // Assuming auto-approve for now
@@ -132,9 +132,9 @@ namespace Application.Services.Translation
                 throw new Exception("Unauthorized to edit.");
             }
 
-            if (!string.IsNullOrEmpty(dto.Language))
+            if (dto.LanguageId > 0)
             {
-                translation.Language = dto.Language;
+                translation.LanguageId = dto.LanguageId;
             }
 
             await _context.SaveChangesAsync();
@@ -170,7 +170,7 @@ namespace Application.Services.Translation
             {
                 TranslationId = t.TranslationId,
                 ChapterId = t.ChapterId,
-                Language = t.Language,
+                LanguageId = t.LanguageId,
                 ContentType = t.ContentType.ToString(),
                 QualityStatus = t.QualityStatus.ToString(),
                 ModerationStatus = t.ModerationStatus.ToString(),

@@ -15,6 +15,7 @@ namespace Application.DTOs.Creator
         public string Language { get; set; } = null!;
         public List<int> GenreIds { get; set; } = new List<int>();
         public IFormFile? CoverImage { get; set; }
+        public string? CoverImageUrl { get; set; }
         // Moderation fields
         public int Violence { get; set; }
         public int Nudity { get; set; }
@@ -23,6 +24,7 @@ namespace Application.DTOs.Creator
         public int Substances { get; set; }
         public int SensitiveContent { get; set; }
         public AgeRating AgeRating { get; set; }
+        public string ModerationStatus { get; set; } = null!;
     }
 
     public class CreateSeriesResponseDto

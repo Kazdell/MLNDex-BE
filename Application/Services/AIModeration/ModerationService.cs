@@ -3,6 +3,7 @@ using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Text.Json;
 
@@ -43,6 +45,9 @@ namespace Application.Services.AIModeration
             _ocr = ocr;
         }
 
+		private static string TruncateMessage(string msg, int maxLen = 250)
+			=> msg.Length > maxLen ? msg[..(maxLen - 3)] + "..." : msg;
+
         // ─────────────────────────────────────────────────────────────
         // Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
         // ─────────────────────────────────────────────────────────────
@@ -65,6 +70,15 @@ namespace Application.Services.AIModeration
                     chapter.ModerationStatus = ModerationStatus.REJECTED;
                     await _db.SaveChangesAsync();
                     _logger.LogWarning("Chapter {ChapterId} bị reject do tiêu đề vi phạm.", chapterId);
+                    
+                    await _notificationService.CreateNotificationAsync(
+                        chapter.Series.Creator.UserId,
+                        "Chapter bị từ chối tự động",
+                        TruncateMessage($"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' đã bị từ chối do tiêu đề chứa nội dung cấm."),
+                        $"/creator/chapters/{chapterId}/edit",
+                        Domain.Entities.NotificationType.SYSTEM
+                    );
+                    
                     return new AiModerationResultDto
                     {
                         Flagged = true,
@@ -94,8 +108,44 @@ namespace Application.Services.AIModeration
             var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
             // 2. OCR & Text Check (Dùng cho image content)
-            // ... (Omit OCR implementation for now as requested)
+            var extractedTextBuilder = new StringBuilder();
+            using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
+            foreach (var url in imageUrls)
+            {
+                try
+                {
+                    var imageBytes = await httpClient.GetByteArrayAsync(url);
+                    var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        extractedTextBuilder.AppendLine(text);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "OCR lỗi ở ảnh {Url}", url);
+                }
+            }
 
+            var fullText = extractedTextBuilder.ToString();
+            if (!string.IsNullOrWhiteSpace(fullText))
+            {
+                var textResult = PreCheckText(new TextCheckRequest
+                {
+                    Text = fullText,
+                    UserReputation = chapter.Series.Creator.ReputationScore,
+                    IsComment = false
+                });
+
+                if (textResult.Action != ModerationActionType.AutoPass.ToString())
+                {
+                    aiResult.Flagged = true;
+                    var textReason = string.Join(", ", textResult.Reasons);
+                    var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
+                    // Truncate to avoid excessively long strings from OCR
+                    aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
+                }
+            }
             // 3. Scoring Engine
             var scoreRequest = new OpenAiScoreRequest
             {
