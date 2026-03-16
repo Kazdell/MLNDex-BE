@@ -26,7 +26,6 @@ using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Common;
 using Infrastructure.Hubs;
 using Infrastructure.Persistence.Data;
-using Infrastructure.Services.AIModeration;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

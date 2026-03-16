@@ -4,7 +4,6 @@ using Application.Interfaces.AIModeration;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Application.Interfaces.Notification;
-using Application.Interfaces.Queue;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,6 @@ namespace Application.Services.Creator
         private readonly IStorageService _storage;
         private readonly ILogger<ChapterService> _logger;
         private readonly INotificationService _notificationService;
-        private readonly IModerationQueue _moderationQueue;
         private readonly IModerationService _moderationService;
 
         public ChapterService(
@@ -31,14 +29,12 @@ namespace Application.Services.Creator
             IStorageService storage,
             ILogger<ChapterService> logger,
             INotificationService notificationService,
-            IModerationQueue moderationQueue,
             IModerationService moderationService)
         {
             _db = db;
             _storage = storage;
             _logger = logger;
             _notificationService = notificationService;
-            _moderationQueue = moderationQueue;
             _moderationService = moderationService;
         }
 
@@ -169,22 +165,8 @@ namespace Application.Services.Creator
                     }
 
                     // ── Gọi AI Moderation chạy ngầm ───────────────────────────
-                    _db.ModerationQueues.Add(new ModerationQueue
-                    {
-                        ContentId = chapter.ChapterId,
-                        ContentType = ModerationQueueContentType.CHAPTER,
-                        Priority = QueuePriority.HIGH,
-                        Status = QueueStatus.PENDING,
-                        FlaggedAt = DateTime.UtcNow,
-                        ReportCount = 0,
-                        AppealCount = 0,
-                    });
-                    await _db.SaveChangesAsync(cancellationToken);
-
-                    await _moderationQueue.EnqueueAsync(chapter.ChapterId, cancellationToken);
-                    _logger.LogInformation(
-                        "[ChapterService] ChapterId={ChapterId} đã vào moderation queue.",
-                        chapter.ChapterId);
+                    await _moderationService.EnqueueChapterForModerationAsync(
+                        chapter.ChapterId, cancellationToken);
                 }
 
                 _logger.LogInformation(
@@ -338,7 +320,8 @@ namespace Application.Services.Creator
             job.AssignedTo = null;
             await _db.SaveChangesAsync(ct);
 
-            await _moderationQueue.EnqueueAsync(chapterId, ct);
+            // Re-enqueue thông qua ModerationService
+            await _moderationService.EnqueueChapterForModerationAsync(chapterId, ct);
 
             _logger.LogInformation(
                 "[ChapterService] ChapterId={ChapterId} đã được retry vào moderation queue.",

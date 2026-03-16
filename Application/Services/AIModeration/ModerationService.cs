@@ -4,6 +4,7 @@ using Application.Interfaces.AIModeration;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.Queue;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,6 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Text.Json;
 
 namespace Application.Services.AIModeration
 {
@@ -24,6 +24,8 @@ namespace Application.Services.AIModeration
         private readonly ILogger<ModerationService> _logger;
         private readonly IBlacklistProvider _blacklist;
         private readonly IOCRService _ocr;
+        private readonly IModerationQueue _queue;
+        private readonly INotificationService _notificationService;
 
         private static readonly Dictionary<char, char> TeencodeMap = new()
         {
@@ -36,13 +38,17 @@ namespace Application.Services.AIModeration
             IAiModerationClient aiClient,
             ILogger<ModerationService> logger,
             IBlacklistProvider blacklist,
-            IOCRService ocr)
+            IOCRService ocr,
+            IModerationQueue queue,
+            INotificationService notificationService)
         {
             _db = db;
             _aiClient = aiClient;
             _logger = logger;
             _blacklist = blacklist;
             _ocr = ocr;
+            _queue = queue;
+            _notificationService = notificationService;
         }
 
 		private static string TruncateMessage(string msg, int maxLen = 250)
@@ -56,6 +62,7 @@ namespace Application.Services.AIModeration
             var chapter = await _db.Chapters
                 .Include(c => c.Pages)
                 .Include(c => c.Series) // Lấy Series để biết AgeRating
+                    .ThenInclude(s => s.Creator) // Lấy Creator để biết ReputationScore
                 .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
                 ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
 
@@ -697,6 +704,48 @@ namespace Application.Services.AIModeration
                                     .Trim(),
                 CategoryScores = categoryScores
             };
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Enqueue: tạo DB ModerationQueue record + gửi signal Channel
+        // ─────────────────────────────────────────────────────────────
+
+        public async Task EnqueueChapterForModerationAsync(int chapterId, CancellationToken ct = default)
+        {
+            _db.ModerationQueues.Add(new ModerationQueue
+            {
+                ContentId = chapterId,
+                ContentType = ModerationQueueContentType.CHAPTER,
+                Priority = QueuePriority.HIGH,
+                Status = QueueStatus.PENDING,
+                FlaggedAt = DateTime.UtcNow,
+                ReportCount = 0,
+                AppealCount = 0,
+            });
+            await _db.SaveChangesAsync(ct);
+            await _queue.EnqueueAsync(chapterId, ct);
+
+            _logger.LogInformation(
+                "[ModerationService] ChapterId={ChapterId} đã vào moderation queue.", chapterId);
+        }
+
+        public async Task EnqueueSeriesForModerationAsync(int seriesId, CancellationToken ct = default)
+        {
+            _db.ModerationQueues.Add(new ModerationQueue
+            {
+                ContentId = seriesId,
+                ContentType = ModerationQueueContentType.SERIES,
+                Priority = QueuePriority.HIGH,
+                Status = QueueStatus.PENDING,
+                FlaggedAt = DateTime.UtcNow,
+                ReportCount = 0,
+                AppealCount = 0,
+            });
+            await _db.SaveChangesAsync(ct);
+            await _queue.EnqueueAsync(seriesId, ct);
+
+            _logger.LogInformation(
+                "[ModerationService] SeriesId={SeriesId} đã vào moderation queue.", seriesId);
         }
     }
 }

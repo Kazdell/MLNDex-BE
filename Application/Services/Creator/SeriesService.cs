@@ -14,20 +14,17 @@ namespace Application.Services.Creator
         private readonly IMlndexDbContext _context;
         private readonly IStorageService _storage;
         private readonly IModerationService _moderation;
-        private readonly IModerationQueue _queue;
         private readonly ILogger<SeriesService> _logger;
 
         public SeriesService(
             IMlndexDbContext context,
             IStorageService storage,
             IModerationService moderation,
-            IModerationQueue queue,
             ILogger<SeriesService> logger)
         {
             _context = context;
             _storage = storage;
             _moderation = moderation;
-            _queue = queue;
             _logger = logger;
         }
 
@@ -116,9 +113,8 @@ namespace Application.Services.Creator
                     _context.SeriesGenres.AddRange(seriesGenres);
                     await _context.SaveChangesAsync(cancellationToken);
                 }
-                await _queue.EnqueueAsync(
-                    new ModerationJob(series.SeriesId, ModerationContentType.Series),
-                    cancellationToken);
+                await _moderation.EnqueueSeriesForModerationAsync(
+                    series.SeriesId, cancellationToken);
                 _logger.LogInformation(
                     "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
                     series.SeriesId, series.Title, userId);
@@ -226,9 +222,8 @@ namespace Application.Services.Creator
                 }
 
                 await _context.SaveChangesAsync(cancellationToken);
-                await _queue.EnqueueAsync(
-                    new ModerationJob(series.SeriesId, ModerationContentType.Series),
-                    cancellationToken);
+                await _moderation.EnqueueSeriesForModerationAsync(
+                    series.SeriesId, cancellationToken);
 
                 return new CreateSeriesResponseDto
                 {
