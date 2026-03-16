@@ -1,17 +1,13 @@
+using Application.DTOs.AIModeration;
 using Application.DTOs.Chapter;
+using Application.Interfaces.AIModeration;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using Application.Interfaces.AIModeration;
-using Application.Interfaces.Notification;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Creator
 {
@@ -23,19 +19,25 @@ namespace Application.Services.Creator
     private readonly ILogger<ChapterService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly INotificationService _notificationService;
+    private readonly IModerationQueue _moderationQueue;
+    private readonly IModerationService _moderationService;
 
     public ChapterService(
         IMlndexDbContext db,
         IStorageService storage,
         ILogger<ChapterService> logger,
         IServiceScopeFactory scopeFactory,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IModerationQueue moderationQueue,
+        IModerationService moderationService)
     {
       _db = db;
       _storage = storage;
       _logger = logger;
       _scopeFactory = scopeFactory;
       _notificationService = notificationService;
+      _moderationQueue = moderationQueue;
+      _moderationService = moderationService;
     }
 
     public async Task<CreateChapterResponseDto> CreateAsync(
@@ -99,6 +101,7 @@ namespace Application.Services.Creator
           Title = dto.Title,
           ContentType = ContentType.IMAGE,
           PageCount = dto.Pages?.Count ?? 0,
+          LanguageId = dto.LanguageId,
           Status = ChapterStatus.DRAFT,
           ModerationStatus = ModerationStatus.PENDING,
           PublishedAt = null,
@@ -148,20 +151,9 @@ namespace Application.Services.Creator
               }
           }
 
-          // ── Gọi AI Moderation chạy ngầm ───────────────────────────
-          _ = Task.Run(async () =>
-          {
-            try
-            {
-              using var scope = _scopeFactory.CreateScope();
-              var moderationService = scope.ServiceProvider.GetRequiredService<IModerationService>();
-              await moderationService.RunAiModerationAsync(chapter.ChapterId);
-            }
-            catch (Exception ex)
-            {
-              _logger.LogError(ex, "Lỗi khi chạy background AI kiểm duyệt cho Chapter {ChapterId}", chapter.ChapterId);
-            }
-          });
+          // ── Enqueue AI Moderation (crash-safe queue) ────────────────
+          await _moderationQueue.EnqueueAsync(
+              new ModerationJob(chapter.ChapterId, userId));
         }
 
         _logger.LogInformation(
@@ -248,6 +240,267 @@ namespace Application.Services.Creator
           ImageUrl = p.ImageUrl
         }).ToList()
       };
+    }
+
+    public async Task<ChapterDetailDto?> GetForEditAsync(
+        int chapterId,
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        var chapter = await _db.Chapters
+            .Include(c => c.Series)
+                .ThenInclude(s => s.Creator)
+            .Include(c => c.Language)
+            .Include(c => c.Pages.OrderBy(p => p.PageNumber))
+            .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+
+        if (chapter == null) return null;
+
+        // Check permissions: Must be original creator or an authorized team member
+        if (chapter.TeamId == null)
+        {
+            if (chapter.Series.Creator.UserId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa chương này (không phải tác giả).");
+        }
+        else
+        {
+            var isTeamMember = await _db.TeamMembers.AnyAsync(m => 
+                m.TeamId == chapter.TeamId && 
+                m.UserId == userId && 
+                m.IsActive &&
+                (m.Role == TeamMemberRole.LEADER || m.Role == TeamMemberRole.EDITOR || m.Role == TeamMemberRole.TRANSLATOR),
+                cancellationToken);
+            if (!isTeamMember)
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa chương này (không phải thành viên nhóm dịch).");
+        }
+
+        return new ChapterDetailDto
+        {
+            ChapterId = chapter.ChapterId,
+            SeriesId = chapter.SeriesId,
+            ChapterNumber = chapter.ChapterNumber,
+            Title = chapter.Title,
+            Pages = chapter.Pages.Select(p => new ChapterPageResponseDto
+            {
+                PageId = p.PageId,
+                ChapterId = p.ChapterId,
+                PageNumber = p.PageNumber,
+                ImageUrl = p.ImageUrl
+            }).ToList(),
+            ModerationStatus = chapter.ModerationStatus.ToString(),
+            Language = chapter.Language?.Name,
+            ModerationReason = ParseModerationReason(chapter.AiScoresJson)
+        };
+    }
+
+    public async Task<CreateChapterResponseDto> UpdateAsync(
+        int chapterId,
+        int userId,
+        UpdateChapterDto dto,
+        Microsoft.AspNetCore.Http.IFormFileCollection? newPages,
+        CancellationToken cancellationToken = default)
+    {
+        var chapter = await _db.Chapters
+            .Include(c => c.Series)
+                .ThenInclude(s => s.Creator)
+            .Include(c => c.Pages.OrderBy(p => p.PageNumber))
+            .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+        if (chapter == null) throw new KeyNotFoundException($"Không tìm thấy chương {chapterId}.");
+
+        // Check permissions
+        if (chapter.TeamId == null)
+        {
+            if (chapter.Series.Creator.UserId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa chương này.");
+        }
+        else
+        {
+            var isTeamMember = await _db.TeamMembers.AnyAsync(m => 
+                m.TeamId == chapter.TeamId && 
+                m.UserId == userId && 
+                m.IsActive &&
+                (m.Role == TeamMemberRole.LEADER || m.Role == TeamMemberRole.EDITOR || m.Role == TeamMemberRole.TRANSLATOR),
+                cancellationToken);
+            if (!isTeamMember)
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa chương này.");
+        }
+
+        // Check duplicate chapter number if changed
+        if (chapter.ChapterNumber != dto.ChapterNumber)
+        {
+            bool duplicate = await _db.Chapters.AnyAsync(
+                c => c.SeriesId == chapter.SeriesId && c.ChapterNumber == dto.ChapterNumber,
+                cancellationToken);
+            if (duplicate)
+                throw new InvalidOperationException($"Chương {dto.ChapterNumber} của truyện này đã tồn tại.");
+        }
+
+        // Basic details updates
+        chapter.ChapterNumber = dto.ChapterNumber;
+        chapter.Title = dto.Title;
+        chapter.LanguageId = dto.LanguageId;
+
+        // Process Pages using PageLayoutJson
+        var uploadedUrls = new List<string>();
+        try
+        {
+            if (!string.IsNullOrEmpty(dto.PageLayoutJson))
+            {
+                var layout = global::System.Text.Json.JsonSerializer.Deserialize<List<PageLayoutItem>>(dto.PageLayoutJson);
+                if (layout != null)
+                {
+                    var pageFolder = $"chapters/{chapter.ChapterId}/pages";
+                    var updatedPages = new List<ChapterPage>();
+                    
+                    var existingPagesInfo = chapter.Pages.ToDictionary(p => p.PageId);
+
+                    for (int i = 0; i < layout.Count; i++)
+                    {
+                        var item = layout[i];
+                        if (item.Type == "existing")
+                        {
+                            if (item.Id.HasValue && existingPagesInfo.TryGetValue(item.Id.Value, out var existingPage))
+                            {
+                                existingPage.PageNumber = i + 1;
+                                updatedPages.Add(existingPage);
+                                existingPagesInfo.Remove(item.Id.Value); // Mark as kept
+                            }
+                        }
+                        else if (item.Type == "new" && item.FileIndex.HasValue)
+                        {
+                            if (newPages != null && newPages.Count > item.FileIndex.Value)
+                            {
+                                var fileToUpload = newPages[item.FileIndex.Value];
+                                using var stream = fileToUpload.OpenReadStream();
+                                var url = await _storage.UploadAsync(
+                                    stream,
+                                    fileToUpload.FileName,
+                                    pageFolder,
+                                    cancellationToken);
+                                
+                                uploadedUrls.Add(url);
+                                updatedPages.Add(new ChapterPage
+                                {
+                                    ChapterId = chapter.ChapterId,
+                                    PageNumber = i + 1,
+                                    ImageUrl = url
+                                });
+                            }
+                        }
+                    }
+
+                    // Delete abandoned pages from Cloudinary and DB (we have them in existingPagesInfo)
+                    foreach (var abandonedPage in existingPagesInfo.Values)
+                    {
+                        if (!string.IsNullOrEmpty(abandonedPage.ImageUrl))
+                        {
+                            try {
+                                await _storage.DeleteAsync(abandonedPage.ImageUrl, cancellationToken);
+                            } catch (Exception ex) {
+                                _logger.LogWarning(ex, "Failed to delete Cloudinary image: {Url}", abandonedPage.ImageUrl);
+                            }
+                        }
+                    }
+
+                    // Replace pages
+                    _db.ChapterPages.RemoveRange(existingPagesInfo.Values);
+                    foreach(var p in updatedPages.Where(p => p.PageId == 0)) {
+                        _db.ChapterPages.Add(p);
+                    }
+
+                    chapter.PageCount = layout.Count;
+                }
+            }
+
+            // Need to resend to moderation because content might have changed
+            chapter.ModerationStatus = ModerationStatus.PENDING;
+            chapter.Status = ChapterStatus.DRAFT; // You can also revert this to draft if needed
+            chapter.AiScoresJson = null;
+
+            await _db.SaveChangesAsync(cancellationToken);
+            
+            // Re-enqueue moderation
+            await _moderationQueue.EnqueueAsync(new ModerationJob(chapter.ChapterId, userId));
+
+            return new CreateChapterResponseDto
+            {
+                ChapterId = chapter.ChapterId,
+                SeriesId = chapter.SeriesId,
+                ChapterNumber = chapter.ChapterNumber,
+                Title = chapter.Title,
+                PageCount = chapter.PageCount ?? 0,
+            };
+        }
+        catch (Exception ex)
+        {
+            // Cleanup any newly uploaded files if DB failed
+            if (uploadedUrls.Count > 0)
+            {
+                _logger.LogWarning(ex, "Lưu file thất bại. Đang xóa {Count} ảnh mới upload.", uploadedUrls.Count);
+                foreach (var url in uploadedUrls)
+                    await _storage.DeleteAsync(url, cancellationToken);
+            }
+            throw;
+        }
+    }
+
+    private static string? ParseModerationReason(string? aiScoresJson)
+    {
+        if (string.IsNullOrEmpty(aiScoresJson)) return null;
+        try
+        {
+            var scores = global::System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, double>>(aiScoresJson);
+            if (scores == null || scores.Count == 0) return null;
+            // Find the category with the highest score
+            var worst = scores.OrderByDescending(kvp => kvp.Value).First();
+            if (worst.Value < 0.1) return null; // Below threshold, no meaningful reason
+            return $"{worst.Key} ({worst.Value:P0})";
+        }
+        catch { return null; }
+    }
+
+    private class PageLayoutItem
+    {
+        [global::System.Text.Json.Serialization.JsonPropertyName("type")]
+        public string? Type { get; set; } // "existing" or "new"
+        
+        [global::System.Text.Json.Serialization.JsonPropertyName("id")]
+        public int? Id { get; set; } // For "existing"
+        
+        [global::System.Text.Json.Serialization.JsonPropertyName("fileIndex")]
+        public int? FileIndex { get; set; } // For "new"
+    }
+
+    // ── Moderation Status & Retry ──────────────────────────────────
+
+    public async Task<ModerationStatusDto> GetModerationStatusAsync(int chapterId)
+    {
+      return await _moderationService.GetModerationStatusAsync(chapterId);
+    }
+
+    public async Task RetryModerationAsync(int chapterId, int userId)
+    {
+      var chapter = await _db.Chapters
+          .Include(c => c.Series)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+
+      // Only creator or team member can retry
+      if (chapter.Series.CreatorId != userId)
+      {
+        var isTeamMember = chapter.TeamId != null && await _db.TeamMembers.AnyAsync(
+            m => m.TeamId == chapter.TeamId && m.UserId == userId && m.IsActive);
+        if (!isTeamMember)
+          throw new UnauthorizedAccessException("Bạn không có quyền yêu cầu kiểm duyệt lại.");
+      }
+
+      // Reset status and re-enqueue
+      chapter.ModerationStatus = ModerationStatus.PENDING;
+      chapter.AiScoresJson = null;
+      await _db.SaveChangesAsync();
+
+      await _moderationQueue.EnqueueAsync(new ModerationJob(chapterId, userId));
+      _logger.LogInformation("User {UserId} requested moderation retry for chapter {ChapterId}", userId, chapterId);
     }
   }
 }

@@ -8,7 +8,7 @@ namespace Application.DTOs.Translation
     {
         public int ChapterId { get; set; }
         public int PermissionId { get; set; }
-        public string Language { get; set; } = string.Empty;
+        public int LanguageId { get; set; }
         public ContentType ContentType { get; set; } // IMAGE or TEXT
         public List<string>? ImageUrls { get; set; } // If Manga
         public string? ContentUrl { get; set; } // If Light Novel
@@ -17,7 +17,7 @@ namespace Application.DTOs.Translation
 
     public class EditTranslationDto
     {
-        public string Language { get; set; } = string.Empty;
+        public int LanguageId { get; set; }
         // Optionally update content...
         public List<string>? ImageUrls { get; set; }
         public string? ContentUrl { get; set; }
@@ -28,7 +28,7 @@ namespace Application.DTOs.Translation
     {
         public int TranslationId { get; set; }
         public int ChapterId { get; set; }
-        public string Language { get; set; } = string.Empty;
+        public int LanguageId { get; set; }
         public string ContentType { get; set; } = string.Empty;
         public string QualityStatus { get; set; } = string.Empty;
         public string ModerationStatus { get; set; } = string.Empty;

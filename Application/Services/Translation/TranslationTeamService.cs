@@ -26,13 +26,11 @@ namespace Application.Services.Translation
             var userId = _userContext.UserId;
             if (userId == null) throw new UnauthorizedAccessException();
 
-            // Check if name already exists
             if (await _context.TranslationTeams.AnyAsync(t => t.TeamName == createDto.TeamName))
             {
                 throw new Exception("Team name already exists.");
             }
 
-            // Check if slug already exists
             if (await _context.TranslationTeams.AnyAsync(t => t.Slug == createDto.Slug))
             {
                 throw new Exception("Slug already exists.");
@@ -44,23 +42,23 @@ namespace Application.Services.Translation
                 TeamName = createDto.TeamName,
                 Slug = createDto.Slug,
                 Description = createDto.Description,
-                Language = createDto.Language,
+                LanguageId = createDto.LanguageId,
                 RequireApproval = createDto.RequireApproval,
-                ReputationScore = 100, // Default starting score
+                ReputationScore = 100,
                 LockStatus = TeamLockStatus.ACTIVE,
-                ModerationStatus = ModerationStatus.APPROVED, // Auto approve for now
+                ModerationStatus = ModerationStatus.APPROVED,
                 IsMonetizationEnabled = false,
                 AvatarUrl = createDto.AvatarUrl,
                 BannerUrl = createDto.BannerUrl,
                 Facebook = createDto.Facebook,
                 Discord = createDto.Discord,
-                Website = createDto.Website
+                Website = createDto.Website,
+                Certificates = createDto.Certificates
             };
 
             _context.TranslationTeams.Add(team);
             await _context.SaveChangesAsync();
 
-            // Add Genres
             if (createDto.GenreIds != null && createDto.GenreIds.Any())
             {
                 foreach (var genreId in createDto.GenreIds)
@@ -74,7 +72,6 @@ namespace Application.Services.Translation
                 await _context.SaveChangesAsync();
             }
 
-            // Auto-add leader as a team member
             var member = new TeamMember
             {
                 TeamId = team.TeamId,
@@ -117,15 +114,15 @@ namespace Application.Services.Translation
             }
 
             if (updateDto.Description != null) team.Description = updateDto.Description;
-            if (updateDto.Language != null) team.Language = updateDto.Language;
+            if (updateDto.LanguageId.HasValue) team.LanguageId = updateDto.LanguageId.Value;
             if (updateDto.RequireApproval.HasValue) team.RequireApproval = updateDto.RequireApproval.Value;
             if (updateDto.AvatarUrl != null) team.AvatarUrl = updateDto.AvatarUrl;
             if (updateDto.BannerUrl != null) team.BannerUrl = updateDto.BannerUrl;
             if (updateDto.Facebook != null) team.Facebook = updateDto.Facebook;
             if (updateDto.Discord != null) team.Discord = updateDto.Discord;
             if (updateDto.Website != null) team.Website = updateDto.Website;
+            if (updateDto.Certificates != null) team.Certificates = updateDto.Certificates;
 
-            // Update Genres
             if (updateDto.GenreIds != null)
             {
                 var currentGenres = await _context.TeamGenres.Where(tg => tg.TeamId == teamId).ToListAsync();
@@ -153,7 +150,6 @@ namespace Application.Services.Translation
 
             if (team == null) return false;
 
-            // Remove members first
             var members = await _context.TeamMembers.Where(m => m.TeamId == teamId).ToListAsync();
             _context.TeamMembers.RemoveRange(members);
 
@@ -229,7 +225,6 @@ namespace Application.Services.Translation
             _context.TeamInvitations.Add(invitation);
             await _context.SaveChangesAsync();
 
-            // Send notification to invitee
             await _notificationService.CreateNotificationAsync(
                 inviteDto.UserId,
                 team.TeamName,
@@ -262,7 +257,6 @@ namespace Application.Services.Translation
             _context.TeamMembers.Add(member);
             await _context.SaveChangesAsync();
 
-            // Send notification to leader
             var invitee = await _context.Users.FindAsync(userId);
             var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
             if (invitee != null && team != null)
@@ -290,7 +284,6 @@ namespace Application.Services.Translation
 
             await _context.SaveChangesAsync();
 
-            // Send notification to leader
             var invitee = await _context.Users.FindAsync(userId);
             var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
             if (invitee != null && team != null)
@@ -334,7 +327,6 @@ namespace Application.Services.Translation
             _context.TeamJoinRequests.Add(request);
             await _context.SaveChangesAsync();
 
-            // Notify leader about new join request
             var team = await _context.TranslationTeams.FindAsync(teamId);
             var requester = await _context.Users.FindAsync(userId.Value);
             if (team != null && requester != null)
@@ -372,7 +364,6 @@ namespace Application.Services.Translation
             _context.TeamMembers.Add(member);
             await _context.SaveChangesAsync();
 
-            // Notify requester about approval
             if (request.Team != null)
             {
                 await _notificationService.CreateNotificationAsync(
@@ -398,7 +389,6 @@ namespace Application.Services.Translation
 
             await _context.SaveChangesAsync();
 
-            // Notify requester about rejection
             if (request.Team != null)
             {
                 await _notificationService.CreateNotificationAsync(
@@ -476,7 +466,6 @@ namespace Application.Services.Translation
             _context.TeamMembers.Remove(member);
             await _context.SaveChangesAsync();
 
-            // Notify removed member
             await _notificationService.CreateNotificationAsync(
                 targetUserId,
                 team.TeamName,
@@ -502,7 +491,6 @@ namespace Application.Services.Translation
             member.Role = roleDto.Role;
             await _context.SaveChangesAsync();
 
-            // Notify member about role update
             await _notificationService.CreateNotificationAsync(
                 targetUserId,
                 team.TeamName,
@@ -562,10 +550,10 @@ namespace Application.Services.Translation
             return new TeamStatsDto
             {
                 TotalViews = totalViews,
-                TotalBookmarks = 0, // Placeholder for now - depends on Bookmark entity integration
+                TotalBookmarks = 0, 
                 ActiveSeriesCount = activeSeriesCount,
                 TotalChaptersTranslated = chapters.Count,
-                AverageRating = 0 // Placeholder
+                AverageRating = 0 
             };
         }
 
@@ -596,7 +584,6 @@ namespace Application.Services.Translation
 
             if (!userTeams.Any())
             {
-                // Thêm leader condition in case member table missed leader
                 userTeams = await _context.TranslationTeams
                     .Include(t => t.TeamMembers)
                     .Where(t => t.LeaderId == userId)
@@ -631,7 +618,7 @@ namespace Application.Services.Translation
                 TeamName = team.TeamName,
                 Slug = team.Slug ?? string.Empty,
                 Description = team.Description,
-                Language = team.Language ?? "Unknown",
+                LanguageId = team.LanguageId,
                 RequireApproval = team.RequireApproval,
                 ReputationScore = team.ReputationScore,
                 LockStatus = team.LockStatus.ToString(),
@@ -643,6 +630,7 @@ namespace Application.Services.Translation
                 Facebook = team.Facebook,
                 Discord = team.Discord,
                 Website = team.Website,
+                Certificates = team.Certificates,
                 Genres = team.TeamGenres?.Select(tg => tg.Genre.Name).ToList()
             };
         }

@@ -58,5 +58,21 @@ namespace mlndex_backend.Controllers.User
             var plans = await _userService.GetVipPlansAsync(cancellationToken);
             return Ok(new ApiResponse<List<VipPlanDto>>(true, "Lấy danh sách gói VIP thành công", plans));
         }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string? q, CancellationToken cancellationToken)
+        {
+            var users = await _userService.SearchUsersAsync(q ?? "", cancellationToken);
+            return Ok(new ApiResponse<List<UserSearchDto>>(true, "Tìm kiếm người dùng thành công", users));
+        }
+
+        [HttpGet("profile/{username}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicProfile(string username, CancellationToken cancellationToken)
+        {
+            var profile = await _userService.GetPublicProfileAsync(username, cancellationToken);
+            if (profile == null) return NotFoundResponse("Người dùng không tồn tại");
+            return OkResponse(profile);
+        }
     }
 }

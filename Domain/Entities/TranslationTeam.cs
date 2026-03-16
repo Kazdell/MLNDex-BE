@@ -1,9 +1,5 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domain.Entities
 {
@@ -14,23 +10,25 @@ namespace Domain.Entities
 		public string TeamName { get; set; } = null!;
 		public string? Slug { get; set; }
 		public string? Description { get; set; }
-		public string? Language { get; set; } = "Tiếng Việt";
+		public int LanguageId { get; set; } = 1;
 		public bool RequireApproval { get; set; } = true;
 		public int ReputationScore { get; set; }
 		public TeamLockStatus LockStatus { get; set; }
-		public bool IsMonetizationEnabled { get; set; }
-		public int? LockedBy { get; set; }
-		public DateTime? LockedAt { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
+		public bool IsMonetizationEnabled { get; set; }
 		public string? AvatarUrl { get; set; }
 		public string? BannerUrl { get; set; }
-
-		// Social links
 		public string? Facebook { get; set; }
 		public string? Discord { get; set; }
 		public string? Website { get; set; }
+		public string? Certificates { get; set; }
+		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+		public DateTime? UpdatedAt { get; set; }
+		public DateTime? LockedAt { get; set; }
+		public int? LockedBy { get; set; }
 
 		// Navigation
+		public Language Language { get; set; } = null!;
 		public User Leader { get; set; } = null!;
 		public User? LockedByUser { get; set; }
 		public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();

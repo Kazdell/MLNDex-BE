@@ -50,7 +50,7 @@ namespace mlndex_backend.Controllers.Creator
             var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
             if (creator == null) return NotFoundResponse("Không tìm thấy hồ sơ người sáng tạo.");
 
-            var result = await _service.CreateAsync(creator.CreatorId, dto, cancellationToken);
+            var result = await _service.CreateAsync(userId, dto, cancellationToken);
             return Ok(result);
         }
 
@@ -64,7 +64,7 @@ namespace mlndex_backend.Controllers.Creator
             var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
             if (creator == null) return NotFoundResponse("Không tìm thấy hồ sơ người sáng tạo.");
 
-            var result = await _service.GetForEditAsync(id, creator.CreatorId);
+            var result = await _service.GetForEditAsync(id, userId);
             if (result == null)
                 return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
             return OkResponse(result);
@@ -81,7 +81,7 @@ namespace mlndex_backend.Controllers.Creator
             var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
             if (creator == null) return NotFoundResponse("Không tìm thấy hồ sơ người sáng tạo.");
 
-            var result = await _service.UpdateAsync(id, creator.CreatorId, dto, cancellationToken);
+            var result = await _service.UpdateAsync(id, userId, dto, cancellationToken);
             return Ok(result);
         }
 
@@ -95,7 +95,7 @@ namespace mlndex_backend.Controllers.Creator
             var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == userId);
             if (creator == null) return NotFoundResponse("Không tìm thấy hồ sơ người sáng tạo.");
 
-            await _service.DeleteAsync(id, creator.CreatorId);
+            await _service.DeleteAsync(id, userId);
             return NoContent();
         }
 

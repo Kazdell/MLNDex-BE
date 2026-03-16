@@ -1,0 +1,23 @@
+COLUMN_NAME                                                                                                                     
+--------------------------------------------------------------------------------------------------------------------------------
+TeamId                                                                                                                          
+LeaderId                                                                                                                        
+TeamName                                                                                                                        
+Description                                                                                                                     
+ReputationScore                                                                                                                 
+LockStatus                                                                                                                      
+IsMonetizationEnabled                                                                                                           
+LockedBy                                                                                                                        
+LockedAt                                                                                                                        
+ModerationStatus                                                                                                                
+AvatarUrl                                                                                                                       
+BannerUrl                                                                                                                       
+Slug                                                                                                                            
+Language                                                                                                                        
+RequireApproval                                                                                                                 
+Facebook                                                                                                                        
+Discord                                                                                                                         
+Website                                                                                                                         
+Certificates                                                                                                                    
+
+(19 rows affected)
