@@ -251,11 +251,15 @@ namespace Application.Services.Creator
         }
 
         public async Task<List<SeriesListItemDto>> GetByCreatorAsync(
-            int creatorId,
+            int userId,
             CancellationToken cancellationToken = default)
         {
+            var creator = await _context.CreatorProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
+                ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
+
             var series = await _context.Series
-                .Where(s => s.CreatorId == creatorId)
+                .Where(s => s.CreatorId == creator.CreatorId)
                 .Include(s => s.Chapters)
                 .ThenInclude(c => c.ReadingHistories)
                 .Include(s => s.SeriesGenres)

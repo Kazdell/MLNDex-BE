@@ -9,25 +9,10 @@ namespace Application.Interfaces.Creator
         int userId,
         CreateChapterDto dto,
         CancellationToken cancellationToken = default);
-
-    Task<ChapterDetailDto?> GetChapterDetailAsync(
+        Task<ChapterDetailDto?> GetChapterDetailAsync(
         int chapterId,
         CancellationToken cancellationToken = default);
-
-    Task<ChapterDetailDto?> GetForEditAsync(
-        int chapterId,
-        int userId,
-        CancellationToken cancellationToken = default);
-
-    Task<CreateChapterResponseDto> UpdateAsync(
-        int chapterId,
-        int userId,
-        UpdateChapterDto dto,
-        Microsoft.AspNetCore.Http.IFormFileCollection? newPages,
-        CancellationToken cancellationToken = default);
-
-    Task<ModerationStatusDto> GetModerationStatusAsync(int chapterId);
-
-    Task RetryModerationAsync(int chapterId, int userId);
-  }
+        Task<ChapterModerationStatusDto> GetModerationStatusAsync(int chapterId, CancellationToken ct = default);
+        Task RetryModerationAsync(int chapterId, CancellationToken ct = default);
+    }
 }

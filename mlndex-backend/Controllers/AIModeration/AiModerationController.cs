@@ -1,10 +1,11 @@
-using System.Security.Claims;
 using Application.DTOs.AIModeration;
 using Application.Interfaces.AIModeration;
+using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using mlndex_backend.Controllers;
+using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.AIModeration
 {
@@ -24,6 +25,13 @@ namespace mlndex_backend.Controllers.AIModeration
         public async Task<IActionResult> RunAiModeration(int chapterId)
         {
             var result = await _moderationService.RunAiModerationAsync(chapterId);
+            return OkResponse(result, "Kiểm duyệt hoàn tất");
+        }
+
+        [HttpPost("series/{seriesId}/run")]
+        public async Task<IActionResult> RunSeriesModeration(int seriesId)
+        {
+            var result = await _moderationService.RunSeriesModerationAsync(seriesId);
             return OkResponse(result, "Kiểm duyệt hoàn tất");
         }
 

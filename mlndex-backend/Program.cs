@@ -19,22 +19,22 @@ using Application.Services.Moderation;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
-using Infrastructure.Common;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Common;
+using Infrastructure.Hubs;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Services.AIModeration;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
-using mlndex_backend.BackgroundServices;
-using mlndex_backend.Hubs;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using mlndex_backend.Extension;
+using mlndex_backend.Hubs;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -101,13 +101,14 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IReportService, ReportService>();
 			builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
 			builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
-			
-			// AI & Chapter Processing
-			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
-			// ── In-Memory Moderation Queue + Background Worker ───────
-			builder.Services.AddSingleton<IModerationQueue, ModerationQueue>();
-			builder.Services.AddHostedService<ModerationWorker>();
+            // AI & Chapter Processing
+            builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
+            builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
+                sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
+            builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
+
+            builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 			
 			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
 
@@ -139,9 +140,16 @@ namespace mlndex_backend
 			var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");
 			builder.Services.AddScoped<ISystemConfigService>(_ => new SystemConfigService(systemConfigFilePath));
 
+            // Increase timeout
+            builder.Services.Configure<KestrelServerOptions>(options =>
+            {
+                options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(20);
+                options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(20);
+            });
 
-			//enable jwt token
-			var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey");
+
+            //enable jwt token
+            var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey");
 			builder.Services.AddAuthentication(item =>
 			{
 				item.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -159,23 +167,22 @@ namespace mlndex_backend
 					ValidateLifetime = true,
 					ClockSkew = TimeSpan.FromMinutes(5)
 				};
-
-				// SignalR auth: read JWT from query string for WebSocket connections
-				item.Events = new JwtBearerEvents
-				{
-					OnMessageReceived = context =>
-					{
-						var accessToken = context.Request.Query["access_token"];
-						var path = context.HttpContext.Request.Path;
-						if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-						{
-							context.Token = accessToken;
-						}
-						return Task.CompletedTask;
-					}
-				};
-
-			});
+                // ← Thêm đoạn này để SignalR đọc được token từ query string
+                item.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
+                };
+            });
 
 			builder.Services.AddCors(options =>
       {

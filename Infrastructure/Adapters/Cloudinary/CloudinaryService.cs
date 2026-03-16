@@ -36,41 +36,48 @@ namespace Infrastructure.Adapters.Cloudinary
 			};
 		}
 
-		public async Task<string> UploadAsync(
-		Stream stream,
-		string fileName,
-		string folder,
-		CancellationToken cancellationToken = default)
-		{
-			var uploadParams = new ImageUploadParams
-			{
-				File = new FileDescription(fileName, stream),
-				Folder = folder,                        // vd: "chapters/5/pages"
-				PublicId = Guid.NewGuid().ToString("N"), // tên file unique, tránh trùng
-				Overwrite = false,
-				// Tự động convert sang WebP + tối ưu quality → ảnh nhẹ hơn ~40%
-				Transformation = new Transformation()
-					.FetchFormat("webp")
-					.Quality("auto:good")
-			};
+        public async Task<string> UploadAsync(
+    Stream stream,
+    string fileName,
+    string folder,
+    CancellationToken cancellationToken = default)
+        {
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(fileName, stream),
+                Folder = folder,
+                PublicId = Guid.NewGuid().ToString("N"),
+                Overwrite = false,
+                Transformation = new Transformation()
+                    .FetchFormat("webp")
+                    .Quality("auto:good")
+            };
 
-			_logger.LogInformation("Uploading {FileName} to Cloudinary folder: {Folder}", fileName, folder);
+            _logger.LogInformation("Uploading {FileName} to Cloudinary folder: {Folder}", fileName, folder);
 
-			var result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
+            // Tạo token riêng cho upload: 3 phút timeout, độc lập với request token
+            using var uploadCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
 
-			if (result.Error != null)
-			{
-				_logger.LogError("Cloudinary upload lỗi: {Error}", result.Error.Message);
-				throw new InvalidOperationException($"Upload thất bại: {result.Error.Message}");
-			}
+            // Link với request token — nếu request cancel thì upload cũng cancel
+            // Nhưng upload có timeout riêng 3 phút, không phụ thuộc Kestrel request timeout
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                uploadCts.Token,
+                cancellationToken
+            );
 
-			_logger.LogInformation("Upload thành công: {Url}", result.SecureUrl);
+            var result = await _cloudinary.UploadAsync(uploadParams, linkedCts.Token);
 
-			// Trả về URL public để lưu vào DB (Chapter_Page.image_url)
-			return result.SecureUrl.ToString();
-		}
+            if (result.Error != null)
+            {
+                _logger.LogError("Cloudinary upload lỗi: {Error}", result.Error.Message);
+                throw new InvalidOperationException($"Upload thất bại: {result.Error.Message}");
+            }
 
-		public async Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default)
+            _logger.LogInformation("Upload thành công: {Url}", result.SecureUrl);
+            return result.SecureUrl.ToString();
+        }
+
+        public async Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default)
 		{
 			var publicId = ExtractPublicId(fileUrl);
 

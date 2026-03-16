@@ -22,8 +22,6 @@
     <Folder Include="Interfaces/Community/" />
     <Folder Include="Services/Community/" />
     <Folder Include="DTOs/Moderation/" />
-    <Folder Include="Interfaces/Moderation/" />
-    <Folder Include="Services/Moderation/" />
   </ItemGroup>
 
   <ItemGroup>
