@@ -22,6 +22,10 @@ namespace Application.Interfaces.AIModeration
 		/// Tạo 1 record mới trong ModerationQueue.
 		Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason);
 
+		/// Get current moderation status for a chapter (from DB).
+		Task<ModerationStatusDto> GetModerationStatusAsync(int chapterId);
+
+
 		TextCheckResponse PreCheckText(TextCheckRequest request);
 		OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request);
 		List<RejectionTemplateDto> GetRejectionTemplates();

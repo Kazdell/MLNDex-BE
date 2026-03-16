@@ -10,7 +10,7 @@ namespace Application.DTOs.Translation
         public string TeamName { get; set; } = string.Empty;
         public string Slug { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Language { get; set; } = "Tiếng Việt";
+        public int LanguageId { get; set; } = 1;
         public bool RequireApproval { get; set; } = true;
         public string? AvatarUrl { get; set; }
         public string? BannerUrl { get; set; }
@@ -32,7 +32,7 @@ namespace Application.DTOs.Translation
         public string? TeamName { get; set; }
         public string? Slug { get; set; }
         public string? Description { get; set; }
-        public string? Language { get; set; }
+        public int? LanguageId { get; set; }
         public bool? RequireApproval { get; set; }
         public string? AvatarUrl { get; set; }
         public string? BannerUrl { get; set; }
@@ -61,7 +61,7 @@ namespace Application.DTOs.Translation
         public string TeamName { get; set; } = string.Empty;
         public string Slug { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Language { get; set; } = string.Empty;
+        public int LanguageId { get; set; }
         public bool RequireApproval { get; set; }
         public int ReputationScore { get; set; }
         public string LockStatus { get; set; } = string.Empty;

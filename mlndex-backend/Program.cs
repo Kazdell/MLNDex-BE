@@ -25,8 +25,10 @@ using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Persistence.Data;
+using Infrastructure.Services.AIModeration;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
+using mlndex_backend.BackgroundServices;
 using mlndex_backend.Hubs;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -102,6 +104,10 @@ namespace mlndex_backend
 			
 			// AI & Chapter Processing
 			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+
+			// ── In-Memory Moderation Queue + Background Worker ───────
+			builder.Services.AddSingleton<IModerationQueue, ModerationQueue>();
+			builder.Services.AddHostedService<ModerationWorker>();
 			
 			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
 
@@ -154,6 +160,21 @@ namespace mlndex_backend
 					ClockSkew = TimeSpan.FromMinutes(5)
 				};
 
+				// SignalR auth: read JWT from query string for WebSocket connections
+				item.Events = new JwtBearerEvents
+				{
+					OnMessageReceived = context =>
+					{
+						var accessToken = context.Request.Query["access_token"];
+						var path = context.HttpContext.Request.Path;
+						if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+						{
+							context.Token = accessToken;
+						}
+						return Task.CompletedTask;
+					}
+				};
+
 			});
 
 			builder.Services.AddCors(options =>
@@ -184,6 +205,7 @@ namespace mlndex_backend
             app.UseStaticFiles();
 
             app.MapHub<NotificationHub>("/hubs/notification");
+            app.MapHub<ModerationHub>("/hubs/moderation");
 
             app.MapControllers();
             using (var scope = app.Services.CreateScope())

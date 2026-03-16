@@ -10,7 +10,7 @@ namespace Domain.Entities
 		public string TeamName { get; set; } = null!;
 		public string? Slug { get; set; }
 		public string? Description { get; set; }
-		public string? Language { get; set; } = "Tiếng Việt";
+		public int LanguageId { get; set; } = 1;
 		public bool RequireApproval { get; set; } = true;
 		public int ReputationScore { get; set; }
 		public TeamLockStatus LockStatus { get; set; }
@@ -28,6 +28,7 @@ namespace Domain.Entities
 		public int? LockedBy { get; set; }
 
 		// Navigation
+		public Language Language { get; set; } = null!;
 		public User Leader { get; set; } = null!;
 		public User? LockedByUser { get; set; }
 		public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();

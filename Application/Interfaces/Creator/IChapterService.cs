@@ -1,9 +1,5 @@
+using Application.DTOs.AIModeration;
 using Application.DTOs.Chapter;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Application.Interfaces.Creator
 {
@@ -17,5 +13,21 @@ namespace Application.Interfaces.Creator
     Task<ChapterDetailDto?> GetChapterDetailAsync(
         int chapterId,
         CancellationToken cancellationToken = default);
+
+    Task<ChapterDetailDto?> GetForEditAsync(
+        int chapterId,
+        int userId,
+        CancellationToken cancellationToken = default);
+
+    Task<CreateChapterResponseDto> UpdateAsync(
+        int chapterId,
+        int userId,
+        UpdateChapterDto dto,
+        Microsoft.AspNetCore.Http.IFormFileCollection? newPages,
+        CancellationToken cancellationToken = default);
+
+    Task<ModerationStatusDto> GetModerationStatusAsync(int chapterId);
+
+    Task RetryModerationAsync(int chapterId, int userId);
   }
 }

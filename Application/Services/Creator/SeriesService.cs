@@ -14,17 +14,20 @@ namespace Application.Services.Creator
         private readonly IMlndexDbContext _context;
         private readonly IStorageService _storage;
         private readonly IModerationService _moderation;
+        private readonly IModerationQueue _queue;
         private readonly ILogger<SeriesService> _logger;
 
         public SeriesService(
             IMlndexDbContext context,
             IStorageService storage,
             IModerationService moderation,
+            IModerationQueue queue,
             ILogger<SeriesService> logger)
         {
             _context = context;
             _storage = storage;
             _moderation = moderation;
+            _queue = queue;
             _logger = logger;
         }
 
@@ -113,9 +116,9 @@ namespace Application.Services.Creator
                     _context.SeriesGenres.AddRange(seriesGenres);
                     await _context.SaveChangesAsync(cancellationToken);
                 }
-
-                _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
-
+                await _queue.EnqueueAsync(
+                    new ModerationJob(series.SeriesId, series.CreatorId, ModerationContentType.Series),
+                    cancellationToken);
                 _logger.LogInformation(
                     "Tạo novel thành công. SeriesId: {SeriesId}, Title: {Title}, UserId: {UserId}.",
                     series.SeriesId, series.Title, userId);
@@ -223,7 +226,9 @@ namespace Application.Services.Creator
                 }
 
                 await _context.SaveChangesAsync(cancellationToken);
-                _ = _moderation.RunSeriesModerationAsync(series.SeriesId);
+                await _queue.EnqueueAsync(
+                    new ModerationJob(series.SeriesId, series.CreatorId, ModerationContentType.Series),
+                    cancellationToken);
 
                 return new CreateSeriesResponseDto
                 {
@@ -395,6 +400,7 @@ namespace Application.Services.Creator
             {
                 Title = series.Title,
                 Description = series.Description,
+                CoverImageUrl = series.CoverImageUrl,
                 GenreIds = series.SeriesGenres.Select(sg => sg.GenreId).ToList(),
                 Violence = series.ViolenceScore,
                 Nudity = series.NudityScore,
@@ -402,7 +408,8 @@ namespace Application.Services.Creator
                 LanguageScore = series.LanguageScore,
                 Substances = series.SubstancesScore,
                 SensitiveContent = series.SensitiveScore,
-                AgeRating = series.AgeRating
+                AgeRating = series.AgeRating,
+                ModerationStatus = series.ModerationStatus.ToString()
             };
         }
 

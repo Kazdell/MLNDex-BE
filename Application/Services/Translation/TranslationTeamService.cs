@@ -42,7 +42,7 @@ namespace Application.Services.Translation
                 TeamName = createDto.TeamName,
                 Slug = createDto.Slug,
                 Description = createDto.Description,
-                Language = createDto.Language,
+                LanguageId = createDto.LanguageId,
                 RequireApproval = createDto.RequireApproval,
                 ReputationScore = 100,
                 LockStatus = TeamLockStatus.ACTIVE,
@@ -114,7 +114,7 @@ namespace Application.Services.Translation
             }
 
             if (updateDto.Description != null) team.Description = updateDto.Description;
-            if (updateDto.Language != null) team.Language = updateDto.Language;
+            if (updateDto.LanguageId.HasValue) team.LanguageId = updateDto.LanguageId.Value;
             if (updateDto.RequireApproval.HasValue) team.RequireApproval = updateDto.RequireApproval.Value;
             if (updateDto.AvatarUrl != null) team.AvatarUrl = updateDto.AvatarUrl;
             if (updateDto.BannerUrl != null) team.BannerUrl = updateDto.BannerUrl;
@@ -618,7 +618,7 @@ namespace Application.Services.Translation
                 TeamName = team.TeamName,
                 Slug = team.Slug ?? string.Empty,
                 Description = team.Description,
-                Language = team.Language ?? "Unknown",
+                LanguageId = team.LanguageId,
                 RequireApproval = team.RequireApproval,
                 ReputationScore = team.ReputationScore,
                 LockStatus = team.LockStatus.ToString(),

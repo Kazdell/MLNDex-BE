@@ -16,5 +16,8 @@ namespace Application.DTOs.Chapter
     public int? NextChapterId { get; set; }
     public List<ChapterPageResponseDto> Pages { get; set; } = new();
     public List<ChapterSummaryDto> Chapters { get; set; } = new();
+    public string ModerationStatus { get; set; } = string.Empty;
+    public string? Language { get; set; }
+    public string? ModerationReason { get; set; }
   }
 }

@@ -3,6 +3,7 @@ using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Application.Services.AIModeration
@@ -21,6 +23,7 @@ namespace Application.Services.AIModeration
 		private readonly ILogger<ModerationService> _logger;
 		private readonly IBlacklistProvider _blacklist;
 		private readonly IOCRService _ocr;
+		private readonly INotificationService _notificationService;
 
 		private static readonly Dictionary<char, char> TeencodeMap = new()
 		{
@@ -33,14 +36,19 @@ namespace Application.Services.AIModeration
 			IAiModerationClient aiClient,
 			ILogger<ModerationService> logger,
 			IBlacklistProvider blacklist,
-            IOCRService ocr)
+            IOCRService ocr,
+            INotificationService notificationService)
 		{
 			_db = db;
 			_aiClient = aiClient;
 			_logger = logger;
 			_blacklist = blacklist;
 			_ocr = ocr;
+			_notificationService = notificationService;
 		}
+
+		private static string TruncateMessage(string msg, int maxLen = 250)
+			=> msg.Length > maxLen ? msg[..(maxLen - 3)] + "..." : msg;
 
         // ─────────────────────────────────────────────────────────────
         // Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
@@ -50,6 +58,7 @@ namespace Application.Services.AIModeration
 			var chapter = await _db.Chapters
 				.Include(c => c.Pages)
                 .Include(c => c.Series) // Lấy Series để biết AgeRating
+					.ThenInclude(s => s.Creator)
 				.FirstOrDefaultAsync(c => c.ChapterId == chapterId)
 				?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
 
@@ -64,6 +73,15 @@ namespace Application.Services.AIModeration
                     chapter.ModerationStatus = ModerationStatus.REJECTED;
                     await _db.SaveChangesAsync();
                     _logger.LogWarning("Chapter {ChapterId} bị reject do tiêu đề vi phạm.", chapterId);
+                    
+                    await _notificationService.CreateNotificationAsync(
+                        chapter.Series.Creator.UserId,
+                        "Chapter bị từ chối tự động",
+                        TruncateMessage($"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' đã bị từ chối do tiêu đề chứa nội dung cấm."),
+                        $"/creator/chapters/{chapterId}/edit",
+                        Domain.Entities.NotificationType.SYSTEM
+                    );
+                    
                     return new AiModerationResultDto
                     {
                         Flagged = true,
@@ -93,8 +111,44 @@ namespace Application.Services.AIModeration
 			var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
             // 2. OCR & Text Check (Dùng cho image content)
-            // ... (Omit OCR implementation for now as requested)
+            var extractedTextBuilder = new StringBuilder();
+            using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
+            foreach (var url in imageUrls)
+            {
+                try
+                {
+                    var imageBytes = await httpClient.GetByteArrayAsync(url);
+                    var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        extractedTextBuilder.AppendLine(text);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "OCR lỗi ở ảnh {Url}", url);
+                }
+            }
 
+            var fullText = extractedTextBuilder.ToString();
+            if (!string.IsNullOrWhiteSpace(fullText))
+            {
+                var textResult = PreCheckText(new TextCheckRequest
+                {
+                    Text = fullText,
+                    UserReputation = chapter.Series.Creator.ReputationScore,
+                    IsComment = false
+                });
+
+                if (textResult.Action != ModerationActionType.AutoPass.ToString())
+                {
+                    aiResult.Flagged = true;
+                    var textReason = string.Join(", ", textResult.Reasons);
+                    var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
+                    // Truncate to avoid excessively long strings from OCR
+                    aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
+                }
+            }
             // 3. Scoring Engine
             var scoreRequest = new OpenAiScoreRequest {
                 Scores = aiResult.CategoryScores,
@@ -106,7 +160,10 @@ namespace Application.Services.AIModeration
 			// 4. Quyết định hành động
 			if (analysis.Action == ModerationActionType.AutoReject.ToString() || analysis.Action == ModerationActionType.FlagForReview.ToString() || aiResult.Flagged)
 			{
-				chapter.ModerationStatus = ModerationStatus.PENDING; 
+                var isAutoReject = analysis.Action == ModerationActionType.AutoReject.ToString();
+                
+                // Nếu bị AutoReject, đánh tạch luôn, nếu là FlagForReview thì để PENDING cho Admin duyệt
+                chapter.ModerationStatus = isAutoReject ? ModerationStatus.REJECTED : ModerationStatus.PENDING;
 
 				var queueItem = await _db.ModerationQueues.FirstOrDefaultAsync(q => q.ContentId == chapterId && q.ContentType == ModerationQueueContentType.CHAPTER);
                 if (queueItem == null)
@@ -115,8 +172,8 @@ namespace Application.Services.AIModeration
                     {
                         ContentId = chapterId,
                         ContentType = ModerationQueueContentType.CHAPTER,
-                        Priority = (analysis.Action == ModerationActionType.AutoReject.ToString()) ? QueuePriority.HIGH : QueuePriority.MEDIUM,
-                        Status = QueueStatus.PENDING,
+                        Priority = isAutoReject ? QueuePriority.HIGH : QueuePriority.MEDIUM,
+                        Status = isAutoReject ? QueueStatus.RESOLVED : QueueStatus.PENDING,
                         FlaggedAt = DateTime.UtcNow,
                         ReportCount = 0,
                         AppealCount = 0
@@ -125,13 +182,15 @@ namespace Application.Services.AIModeration
                 }
                 else
                 {
-                    queueItem.Priority = (analysis.Action == ModerationActionType.AutoReject.ToString()) ? QueuePriority.HIGH : QueuePriority.MEDIUM;
-                    queueItem.Status = QueueStatus.PENDING;
+                    queueItem.Priority = isAutoReject ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+                    queueItem.Status = isAutoReject ? QueueStatus.RESOLVED : QueueStatus.PENDING;
                     queueItem.FlaggedAt = DateTime.UtcNow;
                 }
 
                 // Lưu lý do vi phạm vào Report với prefix AI_
-                var aiReason = aiResult.Flagged ? aiResult.FlaggedReason : $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+                var aiReason = aiResult.Flagged ? aiResult.FlaggedReason : $"{analysis.WorstCategory}";
+                // Safety truncate aiReason before using in notification
+                if (aiReason != null && aiReason.Length > 150) aiReason = aiReason[..147] + "...";
                 var report = new Report
                 {
                     ContentId = chapterId,
@@ -147,13 +206,32 @@ namespace Application.Services.AIModeration
                 queueItem.ReportCount += 1;
 
 				_logger.LogWarning("Chapter {ChapterId} bị {Action}: {Reason}", chapterId, analysis.Action, aiReason);
+                
+                await _notificationService.CreateNotificationAsync(
+                    chapter.Series.Creator.UserId,
+                    isAutoReject ? "Chapter bị từ chối tự động" : "Chapter đang chờ duyệt",
+                    TruncateMessage(isAutoReject ? $"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' đã bị AI từ chối do vi phạm quy định (Lý do: {aiReason})."
+                                 : $"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' có nội dung nghi vấn (Lý do: {aiReason}) và đang chờ Admin duyệt thủ công."),
+                    $"/creator/chapters/{chapterId}/edit",
+                    Domain.Entities.NotificationType.SYSTEM
+                );
 			}
 			else
 			{
 				chapter.ModerationStatus = ModerationStatus.APPROVED;
 				_logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt", chapterId);
+                
+                await _notificationService.CreateNotificationAsync(
+                    chapter.Series.Creator.UserId,
+                    "Chapter duyệt thành công",
+                    $"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' đã được kiểm duyệt tự động thành công và đang hiển thị.",
+                    $"/chapter/{chapterId}",
+                    Domain.Entities.NotificationType.SYSTEM
+                );
 			}
 
+			// Persist AI scores for later retrieval
+			chapter.AiScoresJson = JsonSerializer.Serialize(aiResult.CategoryScores);
 			await _db.SaveChangesAsync();
             return aiResult;
         }
@@ -161,6 +239,7 @@ namespace Application.Services.AIModeration
         public async Task RunSeriesModerationAsync(int seriesId)
         {
             var series = await _db.Series
+                .Include(s => s.Creator)
                 .FirstOrDefaultAsync(s => s.SeriesId == seriesId)
                 ?? throw new KeyNotFoundException($"Không tìm thấy series {seriesId}");
 
@@ -179,6 +258,10 @@ namespace Application.Services.AIModeration
 
             if (analysis.Action == ModerationActionType.AutoReject.ToString() || analysis.Action == ModerationActionType.FlagForReview.ToString() || aiResult.Flagged)
             {
+                var isAutoReject = analysis.Action == ModerationActionType.AutoReject.ToString();
+
+                series.ModerationStatus = isAutoReject ? ModerationStatus.REJECTED : ModerationStatus.PENDING;
+
                 var queueItem = await _db.ModerationQueues.FirstOrDefaultAsync(q => q.ContentId == seriesId && q.ContentType == ModerationQueueContentType.SERIES);
                 if (queueItem == null)
                 {
@@ -186,14 +269,20 @@ namespace Application.Services.AIModeration
                     {
                         ContentId = seriesId,
                         ContentType = ModerationQueueContentType.SERIES,
-                        Priority = QueuePriority.HIGH,
-                        Status = QueueStatus.PENDING,
+                        Priority = isAutoReject ? QueuePriority.HIGH : QueuePriority.MEDIUM,
+                        Status = isAutoReject ? QueueStatus.RESOLVED : QueueStatus.PENDING,
                         FlaggedAt = DateTime.UtcNow
                     };
                     _db.ModerationQueues.Add(queueItem);
                 }
+                else
+                {
+                    queueItem.Priority = isAutoReject ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+                    queueItem.Status = isAutoReject ? QueueStatus.RESOLVED : QueueStatus.PENDING;
+                    queueItem.FlaggedAt = DateTime.UtcNow;
+                }
 
-                var aiReason = aiResult.Flagged ? aiResult.FlaggedReason : $"Cover Score High: {analysis.WorstCategory} ({analysis.WorstScore:F2})";
+                var aiReason = aiResult.Flagged ? aiResult.FlaggedReason : $"{analysis.WorstCategory}";
                 var report = new Report
                 {
                     ContentId = seriesId,
@@ -209,6 +298,28 @@ namespace Application.Services.AIModeration
                 queueItem.ReportCount += 1;
 
                 _logger.LogWarning("Series {SeriesId} bị flag ảnh bìa: {Reason}", seriesId, aiReason);
+                
+                await _notificationService.CreateNotificationAsync(
+                    series.Creator.UserId,
+                    isAutoReject ? "Truyện bị từ chối tự động" : "Truyện đang chờ duyệt",
+                    TruncateMessage(isAutoReject ? $"Truyện '{series.Title}' của bạn đã bị AI từ chối do ảnh bìa vi phạm quy định (Lý do: {aiReason})."
+                                 : $"Ảnh bìa truyện '{series.Title}' của bạn có nội dung nghi vấn (Lý do: {aiReason}) và đang chờ Admin duyệt thủ công."),
+                    $"/creator/series/{seriesId}/edit",
+                    Domain.Entities.NotificationType.SYSTEM
+                );
+            }
+            else
+            {
+                series.ModerationStatus = ModerationStatus.APPROVED;
+                _logger.LogInformation("Series {SeriesId} đã được AI tự động duyệt ảnh bìa", seriesId);
+
+                await _notificationService.CreateNotificationAsync(
+                    series.Creator.UserId,
+                    "Truyện duyệt thành công",
+                    $"Truyện '{series.Title}' của bạn đã được AI kiểm duyệt ảnh bìa thành công.",
+                    $"/series/{seriesId}",
+                    Domain.Entities.NotificationType.SYSTEM
+                );
             }
 
             await _db.SaveChangesAsync();
@@ -526,5 +637,38 @@ namespace Application.Services.AIModeration
 			if (overallMax >= 0.2) return AgeRating.TEEN;
 			return AgeRating.ALL;
 		}
+
+		// ─────────────────────────────────────────────────────────────
+		// Public API: Get moderation status & result from DB
+		// ─────────────────────────────────────────────────────────────
+
+		public async Task<ModerationStatusDto> GetModerationStatusAsync(int chapterId)
+		{
+			var chapter = await _db.Chapters
+				.AsNoTracking()
+				.FirstOrDefaultAsync(c => c.ChapterId == chapterId)
+				?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+
+			Dictionary<string, double>? scores = null;
+			if (!string.IsNullOrEmpty(chapter.AiScoresJson))
+			{
+				try { scores = JsonSerializer.Deserialize<Dictionary<string, double>>(chapter.AiScoresJson); }
+				catch { /* Ignore parse errors */ }
+			}
+
+			var lastReason = await GetLastAiFlaggedReasonAsync(chapterId);
+
+			return new ModerationStatusDto
+			{
+				ChapterId = chapterId,
+				Status = chapter.ModerationStatus.ToString(),
+				Flagged = chapter.ModerationStatus == ModerationStatus.PENDING
+				       || chapter.ModerationStatus == ModerationStatus.REJECTED,
+				FlaggedReason = lastReason?.Replace("AI_", ""),
+				CategoryScores = scores,
+				UpdatedAt = DateTime.UtcNow
+			};
+		}
+
 	}
 }

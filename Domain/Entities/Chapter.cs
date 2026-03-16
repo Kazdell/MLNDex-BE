@@ -12,6 +12,7 @@ namespace Domain.Entities
 		public int ChapterId { get; set; }
 		public int SeriesId { get; set; }
 		public int? TeamId { get; set; }  // NULL = original, NOT NULL = translated
+		public int? LanguageId { get; set; }
 		public float ChapterNumber { get; set; }
 		public string? Title { get; set; }
 		public ContentType ContentType { get; set; }
@@ -22,12 +23,14 @@ namespace Domain.Entities
 		public DateTime? UnlockTime { get; set; }
 		public ChapterStatus Status { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
+		public string? AiScoresJson { get; set; }
 		public DateTime? PublishedAt { get; set; }
 		public int Views { get; set; } = 0;
 
 		// Navigation
 		public Series Series { get; set; } = null!;
 		public TranslationTeam? Team { get; set; }
+		public Language? Language { get; set; }
 		public ChapterText? ChapterText { get; set; }
 		public ICollection<ChapterPage> Pages { get; set; } = new List<ChapterPage>();
 		public ICollection<Translation> Translations { get; set; } = new List<Translation>();
