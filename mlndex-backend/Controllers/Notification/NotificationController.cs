@@ -17,10 +17,10 @@ namespace mlndex_backend.Controllers.Notification
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUserNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetUserNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool? isRead = null)
         {
             int currentUserId = GetUserId();
-            var result = await _notificationService.GetUserNotificationsAsync(currentUserId, page, pageSize);
+            var result = await _notificationService.GetUserNotificationsAsync(currentUserId, page, pageSize, isRead);
             return OkResponse(result);
         }
 
@@ -42,6 +42,14 @@ namespace mlndex_backend.Controllers.Notification
             int currentUserId = GetUserId();
             int count = await _notificationService.MarkAllAsReadAsync(currentUserId);
             return OkResponse($"Marked {count} notifications as read.");
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteAll()
+        {
+            int currentUserId = GetUserId();
+            int count = await _notificationService.DeleteAllAsync(currentUserId);
+            return OkResponse($"Deleted {count} notifications.");
         }
     }
 }

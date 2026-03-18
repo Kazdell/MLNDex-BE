@@ -108,6 +108,16 @@ namespace Application.Services.Moderation
                             cancellationToken
                         ) ?? throw new KeyNotFoundException("Chapter không tồn tại.");
                     chapter.ModerationStatus = status;
+                    // Auto-publish when approved, keep DRAFT otherwise
+                    if (status == ModerationStatus.APPROVED)
+                    {
+                        chapter.Status = ChapterStatus.PUBLISHED;
+                        chapter.PublishedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        chapter.Status = ChapterStatus.DRAFT;
+                    }
                     break;
                 case ModerationQueueContentType.TRANSLATION:
                     var translation =

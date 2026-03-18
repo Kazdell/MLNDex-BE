@@ -78,6 +78,23 @@ namespace mlndex_backend.Controllers.Creator
             return NoContent();
         }
 
+        [HttpPatch("{id}/status")]
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateSeriesStatusRequest request, CancellationToken ct)
+        {
+            var userId = CurrentUserId;
+            if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+            try
+            {
+                await _service.UpdateStatusAsync(id, userId, request.Status, ct);
+                return OkResponse<object>(null, "Cập nhật trạng thái thành công.");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex.Message);
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetSeries([FromQuery] string sortBy = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {

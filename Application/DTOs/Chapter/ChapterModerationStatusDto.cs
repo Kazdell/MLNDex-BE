@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Application.DTOs.AIModeration;
 
 namespace Application.DTOs.Chapter
 {
@@ -14,5 +15,6 @@ namespace Application.DTOs.Chapter
         public string? FlaggedReason { get; set; }
         public Dictionary<string, double>? CategoryScores { get; set; }
         public bool? Flagged { get; set; }              // ← thêm: để frontend biết isFlagged
+        public List<PageModerationDto>? PerPageResults { get; set; } // ← per-image results
     }
 }

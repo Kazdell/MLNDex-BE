@@ -26,5 +26,12 @@ namespace Application.Interfaces.AIModeration
 		OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request);
 		List<RejectionTemplateDto> GetRejectionTemplates();
 		List<BannedTagDto> GetBannedTags();
+
+        /// <summary>
+        /// Tạo ModerationQueue record trong DB + gửi signal vào Channel để Worker xử lý.
+        /// Gọi từ ChapterService/SeriesService khi upload xong.
+        /// </summary>
+        Task EnqueueChapterForModerationAsync(int chapterId, CancellationToken ct = default);
+        Task EnqueueSeriesForModerationAsync(int seriesId, CancellationToken ct = default);
 	}
 }

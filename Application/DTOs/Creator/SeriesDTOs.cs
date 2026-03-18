@@ -23,8 +23,10 @@ namespace Application.DTOs.Creator
         public int LanguageScore { get; set; }
         public int Substances { get; set; }
         public int SensitiveContent { get; set; }
-        public AgeRating AgeRating { get; set; }
-        public string ModerationStatus { get; set; } = null!;
+        public AgeRating? AgeRating { get; set; }
+        public string? ModerationStatus { get; set; }
+        // Series status (On-going, Hiatus, Completed, Dropped)
+        public string? Status { get; set; }
     }
 
     public class CreateSeriesResponseDto
@@ -81,6 +83,7 @@ namespace Application.DTOs.Creator
     public class SeriesDetailDto : SeriesDto
     {
         public List<SeriesChapterDto> Chapters { get; set; } = new List<SeriesChapterDto>();
+        public string? OriginalLanguage { get; set; }  // Language code of the series (e.g. "vi")
     }
 
     public class SeriesChapterDto
@@ -92,6 +95,12 @@ namespace Application.DTOs.Creator
         public DateTime PublishedAt { get; set; }
         public int ViewCount { get; set; }
         public string? GroupName { get; set; }
+        public int? TeamId { get; set; }
+        public bool IsOriginal { get; set; }        // true if TeamId == null (author upload)
+        public string? LanguageCode { get; set; }   // "vi", "ja", "en"...
+        public string? LanguageName { get; set; }    // "Tiếng Việt", "日本語"...
+        public string? UploaderName { get; set; }    // Uploader display name
+        public int CommentCount { get; set; }
     }
 
     public class SeriesSearchRequest
@@ -112,5 +121,10 @@ namespace Application.DTOs.Creator
         public int Page { get; set; }
         public int PageSize { get; set; }
         public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    }
+
+    public class UpdateSeriesStatusRequest
+    {
+        public string Status { get; set; } = null!;
     }
 }

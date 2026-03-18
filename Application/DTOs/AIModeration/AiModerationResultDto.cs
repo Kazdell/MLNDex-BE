@@ -17,5 +17,23 @@ namespace Application.DTOs.AIModeration
 
         [JsonPropertyName("categoryScores")]
         public Dictionary<string, double> CategoryScores { get; set; } = new();
+
+        [JsonPropertyName("perPageResults")]
+        public List<PageModerationDto>? PerPageResults { get; set; }
+    }
+
+    public class PageModerationDto
+    {
+        [JsonPropertyName("pageNumber")]
+        public int PageNumber { get; set; }
+
+        [JsonPropertyName("imageUrl")]
+        public string ImageUrl { get; set; } = string.Empty;
+
+        [JsonPropertyName("flagged")]
+        public bool Flagged { get; set; }
+
+        [JsonPropertyName("categoryScores")]
+        public Dictionary<string, double> CategoryScores { get; set; } = new();
     }
 }
