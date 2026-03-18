@@ -70,13 +70,16 @@ public class ModerationWorker : BackgroundService
                 resumeCount++;
             }
 
-            // ② Re-enqueue orphan chapters (PENDING in Chapters but no queue entry)
+            // ② Re-enqueue orphan chapters (PENDING in Chapters but NO queue entry at all)
+            //    Chapters already processed (RESOLVED/DISMISSED) should NOT be re-queued
             var orphanChapterIds = await db.Chapters
                 .Where(c => c.ModerationStatus == ModerationStatus.PENDING)
                 .Where(c => !db.ModerationQueues.Any(q =>
                     q.ContentId == c.ChapterId
                     && q.ContentType == ModerationQueueContentType.CHAPTER
-                    && q.Status == QueueStatus.PENDING))
+                    && (q.Status == QueueStatus.PENDING
+                        || q.Status == QueueStatus.IN_REVIEW
+                        || q.Status == QueueStatus.RESOLVED)))
                 .Select(c => c.ChapterId)
                 .ToListAsync(cancellationToken);
 
@@ -100,7 +103,9 @@ public class ModerationWorker : BackgroundService
                 .Where(s => !db.ModerationQueues.Any(q =>
                     q.ContentId == s.SeriesId
                     && q.ContentType == ModerationQueueContentType.SERIES
-                    && q.Status == QueueStatus.PENDING))
+                    && (q.Status == QueueStatus.PENDING
+                        || q.Status == QueueStatus.IN_REVIEW
+                        || q.Status == QueueStatus.RESOLVED)))
                 .Select(s => s.SeriesId)
                 .ToListAsync(cancellationToken);
 

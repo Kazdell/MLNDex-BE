@@ -14,5 +14,7 @@ namespace Application.DTOs.Chapter
         public int? LanguageId { get; set; }
         // Defines the sequence of pages. Example: [{"type":"existing", "id": 12}, {"type":"new", "fileIndex": 0}]
         public string? PageLayoutJson { get; set; } 
+        // Comma-separated list of existing page IDs to retain. Pages not in this list will be deleted.
+        public string? RetainedPageIds { get; set; }
     }
 }

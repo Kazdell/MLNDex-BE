@@ -25,6 +25,8 @@ namespace Domain.Entities
 		public ModerationStatus ModerationStatus { get; set; }
         public string? AiScoresJson { get; set; }
         public DateTime? PublishedAt { get; set; }
+		public DateTime CreatedAt { get; set; }
+		public DateTime? UpdatedAt { get; set; }
 		public int Views { get; set; } = 0;
 
 		// Navigation

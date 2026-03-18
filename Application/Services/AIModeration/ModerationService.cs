@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Application.Services.AIModeration
@@ -144,9 +145,18 @@ namespace Application.Services.AIModeration
                     IsComment = false
                 });
 
-                if (textResult.Action != ModerationActionType.AutoPass.ToString())
+                // Only auto-flag on severe violations (AutoReject/InstantBan)
+                // FlagForReview (mild profanity) is recorded but doesn't force rejection
+                // — the scoring engine will decide based on image scores + age rating
+                if (textResult.Action == ModerationActionType.AutoReject.ToString()
+                    || textResult.Action == ModerationActionType.InstantBan.ToString())
                 {
                     aiResult.Flagged = true;
+                }
+
+                // Always record the OCR reasons for transparency (even if not flagged)
+                if (textResult.Action != ModerationActionType.AutoPass.ToString())
+                {
                     var textReason = string.Join(", ", textResult.Reasons);
                     var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
                     // Truncate to avoid excessively long strings from OCR
@@ -167,7 +177,8 @@ namespace Application.Services.AIModeration
                                 || analysis.Action == ModerationActionType.FlagForReview.ToString()
                                 || aiResult.Flagged)
             {
-                chapter.ModerationStatus = ModerationStatus.PENDING;
+                chapter.ModerationStatus = ModerationStatus.REJECTED;
+                chapter.Status = ChapterStatus.DRAFT; // Rejected = not visible publicly
 
                 var queueItem = await _db.ModerationQueues
                     .FirstOrDefaultAsync(q => q.ContentId == chapterId
@@ -182,6 +193,7 @@ namespace Application.Services.AIModeration
                     // Update Priority dựa vào mức độ vi phạm
                     queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
                                           ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+                    queueItem.Status = QueueStatus.RESOLVED; // Mark as done
                     queueItem.FlaggedAt = DateTime.UtcNow;
                     queueItem.ReportCount += 1;
 
@@ -204,10 +216,27 @@ namespace Application.Services.AIModeration
             else
             {
                 chapter.ModerationStatus = ModerationStatus.APPROVED;
-                _logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt", chapterId);
+                chapter.Status = ChapterStatus.PUBLISHED;
+                chapter.PublishedAt = DateTime.UtcNow;
+
+                // Mark queue as resolved for approved chapters too
+                var approvedQueueItem = await _db.ModerationQueues
+                    .FirstOrDefaultAsync(q => q.ContentId == chapterId
+                        && q.ContentType == ModerationQueueContentType.CHAPTER);
+                if (approvedQueueItem != null)
+                    approvedQueueItem.Status = QueueStatus.RESOLVED;
+
+                _logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt → PUBLISHED", chapterId);
             }
 
-            chapter.AiScoresJson = JsonSerializer.Serialize(aiResult.CategoryScores);
+            // Save both aggregate scores and per-page results as structured JSON
+            var scoresData = new Dictionary<string, object>
+            {
+                ["categoryScores"] = aiResult.CategoryScores,
+            };
+            if (aiResult.PerPageResults?.Count > 0)
+                scoresData["perPageResults"] = aiResult.PerPageResults;
+            chapter.AiScoresJson = JsonSerializer.Serialize(scoresData);
 
             await _db.SaveChangesAsync();
             return aiResult;
@@ -618,17 +647,39 @@ namespace Application.Services.AIModeration
             return string.Join(" ", result);
         }
 
+        // Cache compiled regexes for short words to avoid repeated compilation
+        private static readonly global::System.Collections.Concurrent.ConcurrentDictionary<string, Regex> _wordBoundaryCache = new();
+
         private static bool ContainsWord(string text, BlacklistEntry entry)
         {
-            if (text.Contains(entry.Word, StringComparison.OrdinalIgnoreCase))
+            if (MatchesWord(text, entry.Word))
                 return true;
 
             foreach (var variant in entry.Variants)
             {
-                if (text.Contains(variant, StringComparison.OrdinalIgnoreCase))
+                if (MatchesWord(text, variant))
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// For short words (< 4 chars), use word-boundary regex to avoid false positives
+        /// from OCR text (e.g. "document" matching "cu", "admin" matching "dm").
+        /// For longer words, substring match is sufficient and faster.
+        /// </summary>
+        private static bool MatchesWord(string text, string word)
+        {
+            if (string.IsNullOrEmpty(word)) return false;
+
+            // Long words: substring match is safe enough (low false positive risk)
+            if (word.Length >= 4)
+                return text.Contains(word, StringComparison.OrdinalIgnoreCase);
+
+            // Short words: require word boundaries to prevent "document" matching "cu"
+            var regex = _wordBoundaryCache.GetOrAdd(word.ToLowerInvariant(), w =>
+                new Regex($@"\b{Regex.Escape(w)}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled));
+            return regex.IsMatch(text);
         }
 
         private static int SeverityToPoints(string severity) => severity.ToLower() switch
@@ -672,10 +723,54 @@ namespace Application.Services.AIModeration
 
             if (chapter == null) return null;
 
-            // Deserialize scores từ JSON
-            var categoryScores = chapter.AiScoresJson != null
-                ? JsonSerializer.Deserialize<Dictionary<string, double>>(chapter.AiScoresJson)
-                : new Dictionary<string, double>();
+            // Deserialize scores — backward-compatible with old flat dict format
+            var categoryScores = new Dictionary<string, double>();
+            List<PageModerationDto>? perPageResults = null;
+
+            if (!string.IsNullOrEmpty(chapter.AiScoresJson))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(chapter.AiScoresJson);
+
+                    // Format 1 (new): { categoryScores: {...}, perPageResults: [...] }
+                    if (doc.RootElement.TryGetProperty("categoryScores", out var scoresEl))
+                    {
+                        categoryScores = JsonSerializer.Deserialize<Dictionary<string, double>>(scoresEl.GetRawText())
+                                         ?? new Dictionary<string, double>();
+
+                        if (doc.RootElement.TryGetProperty("perPageResults", out var pagesEl))
+                        {
+                            perPageResults = JsonSerializer.Deserialize<List<PageModerationDto>>(pagesEl.GetRawText());
+                        }
+                    }
+                    else
+                    {
+                        // Format 2 (old/hybrid): flat dict possibly mixed with perPageResults at root
+                        // Iterate properties: numbers → categoryScores, array → perPageResults
+                        foreach (var prop in doc.RootElement.EnumerateObject())
+                        {
+                            if (prop.Value.ValueKind == JsonValueKind.Number)
+                            {
+                                categoryScores[prop.Name] = prop.Value.GetDouble();
+                            }
+                            else if (prop.Name == "perPageResults" && prop.Value.ValueKind == JsonValueKind.Array)
+                            {
+                                perPageResults = JsonSerializer.Deserialize<List<PageModerationDto>>(prop.Value.GetRawText());
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize AiScoresJson for chapter {ChapterId}", chapterId);
+                }
+            }
+
+            // Filter out foreign_profanity_* sub-categories (false positives on image-only content)
+            categoryScores = categoryScores
+                .Where(kvp => !kvp.Key.StartsWith("foreign_profanity"))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Chapter APPROVED — không vi phạm
             if (chapter.ModerationStatus == ModerationStatus.APPROVED)
@@ -683,7 +778,8 @@ namespace Application.Services.AIModeration
                 {
                     Flagged = false,
                     FlaggedReason = null,
-                    CategoryScores = categoryScores
+                    CategoryScores = categoryScores,
+                    PerPageResults = perPageResults
                 };
 
             // Chapter PENDING/REJECTED — lấy flagged reason từ Report
@@ -702,7 +798,8 @@ namespace Application.Services.AIModeration
                                     .Replace("AI_", "")
                                     .Split(" (Score:")[0]
                                     .Trim(),
-                CategoryScores = categoryScores
+                CategoryScores = categoryScores,
+                PerPageResults = perPageResults
             };
         }
 
@@ -712,6 +809,33 @@ namespace Application.Services.AIModeration
 
         public async Task EnqueueChapterForModerationAsync(int chapterId, CancellationToken ct = default)
         {
+            // Clean up ALL existing queue entries for this chapter
+            // to prevent duplicate processing and duplicate notifications
+            var oldEntries = await _db.ModerationQueues
+                .Where(q => q.ContentId == chapterId
+                         && q.ContentType == ModerationQueueContentType.CHAPTER)
+                .ToListAsync(ct);
+            if (oldEntries.Count > 0)
+            {
+                // Delete linked Reports first (FK constraint: Report.QueueId → ModerationQueue)
+                var queueIds = oldEntries.Select(q => q.QueueId).ToList();
+                var linkedReports = await _db.Reports
+                    .Where(r => queueIds.Contains(r.QueueId))
+                    .ToListAsync(ct);
+                if (linkedReports.Count > 0)
+                    _db.Reports.RemoveRange(linkedReports);
+
+                // Delete linked ModerationActions (FK constraint: ModerationAction.QueueId → ModerationQueue)
+                var linkedActions = await _db.ModerationActions
+                    .Where(a => queueIds.Contains(a.QueueId))
+                    .ToListAsync(ct);
+                if (linkedActions.Count > 0)
+                    _db.ModerationActions.RemoveRange(linkedActions);
+
+                _db.ModerationQueues.RemoveRange(oldEntries);
+                await _db.SaveChangesAsync(ct);
+            }
+
             _db.ModerationQueues.Add(new ModerationQueue
             {
                 ContentId = chapterId,
@@ -724,6 +848,24 @@ namespace Application.Services.AIModeration
             });
             await _db.SaveChangesAsync(ct);
             await _queue.EnqueueAsync(chapterId, ct);
+
+            // Send "queued" notification to creator
+            var chapter = await _db.Chapters
+                .Include(c => c.Series)
+                    .ThenInclude(s => s.Creator)
+                .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+
+            if (chapter?.Series?.Creator != null)
+            {
+                var creatorId = chapter.Series.Creator.UserId;
+                await _notificationService.CreateNotificationAsync(
+                    creatorId,
+                    "Hàng chờ kiểm duyệt",
+                    $"Chương {chapter.ChapterNumber} của \"{chapter.Series.Title}\" đã vào hàng chờ kiểm duyệt AI",
+                    $"/creator/moderation-result?chapterId={chapterId}",
+                    NotificationType.SYSTEM
+                );
+            }
 
             _logger.LogInformation(
                 "[ModerationService] ChapterId={ChapterId} đã vào moderation queue.", chapterId);

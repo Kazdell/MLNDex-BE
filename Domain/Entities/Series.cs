@@ -27,6 +27,7 @@ namespace Domain.Entities
 		public decimal AverageRating { get; set; }
 		public int TotalRatings { get; set; }
 		public DateTime CreatedAt { get; set; }
+		public DateTime? UpdatedAt { get; set; }
 
 		// Navigation
 		public CreatorProfile Creator { get; set; } = null!;

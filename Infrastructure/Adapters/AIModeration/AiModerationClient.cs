@@ -35,22 +35,38 @@ namespace Infrastructure.Adapters.AIModeration
 
             var maxScores = new Dictionary<string, double>();
             bool overallFlagged = false;
+            var perPageResults = new List<PageModerationDto>();
 
-            foreach (var url in urls)
+            for (int i = 0; i < urls.Count; i++)
             {
                 try
                 {
-                    var result = await ModerateOneImageWithFlagAsync(url);
+                    var result = await ModerateOneImageWithFlagAsync(urls[i]);
                     foreach (var kvp in result.Scores)
                     {
                         if (!maxScores.ContainsKey(kvp.Key) || kvp.Value > maxScores[kvp.Key])
                             maxScores[kvp.Key] = kvp.Value;
                     }
                     if (result.Flagged) overallFlagged = true;
+
+                    // Collect per-page data for flagged pages or pages with notable scores
+                    bool hasNotableScore = result.Scores.Values.Any(v => v >= 0.05);
+                    if (result.Flagged || hasNotableScore)
+                    {
+                        perPageResults.Add(new PageModerationDto
+                        {
+                            PageNumber = i + 1,
+                            ImageUrl = urls[i],
+                            Flagged = result.Flagged,
+                            CategoryScores = result.Scores
+                                .Where(s => s.Value >= 0.01)
+                                .ToDictionary(s => s.Key, s => s.Value)
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
-                    var safeUrl = url.Length > 100 ? url[..100] + "..." : url;
+                    var safeUrl = urls[i].Length > 100 ? urls[i][..100] + "..." : urls[i];
                     _logger.LogError(ex, "Lỗi khi kiểm duyệt ảnh: {Url}", safeUrl);
                 }
             }
@@ -62,7 +78,8 @@ namespace Infrastructure.Adapters.AIModeration
                 FlaggedReason = string.Join(", ", maxScores
                     .Where(s => s.Value >= 0.1)
                     .OrderByDescending(s => s.Value)
-                    .Select(s => s.Key))
+                    .Select(s => s.Key)),
+                PerPageResults = perPageResults.Count > 0 ? perPageResults : null
             };
         }
 

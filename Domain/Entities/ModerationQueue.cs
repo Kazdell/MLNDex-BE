@@ -18,6 +18,7 @@ namespace Domain.Entities
 		public DateTime FlaggedAt { get; set; }
 		public DateTime? AssignedAt { get; set; }
 		public int RetryCount { get; set; } = 0;
+		public DateTime? LastRetryAt { get; set; }
 
 
 		// ── Appeal (tác giả yêu cầu review lại) ────────

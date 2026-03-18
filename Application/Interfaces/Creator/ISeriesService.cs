@@ -31,6 +31,7 @@ namespace Application.Interfaces.Creator
     Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10);
     Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int userId);
     Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default);
+    Task UpdateStatusAsync(int seriesId, int userId, string status, CancellationToken cancellationToken = default);
   }
 }
 

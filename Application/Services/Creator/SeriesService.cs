@@ -37,7 +37,16 @@ namespace Application.Services.Creator
                 .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
 
-            // 1. Check Title Duplicate
+            // 1. Rate Limit: Max 5 series/ngày
+            var todayUtc = DateTime.UtcNow.Date;
+            var seriesToday = await _context.Series
+                .Where(s => s.Creator.UserId == userId && s.CreatedAt >= todayUtc)
+                .CountAsync(cancellationToken);
+            if (seriesToday >= 5)
+                throw new InvalidOperationException(
+                    "Bạn đã đạt giới hạn 5 bộ truyện/ngày. Vui lòng quay lại ngày mai.");
+
+            // 2. Check Title Duplicate
             var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower(), cancellationToken);
             if (titleExists)
                 throw new ArgumentException("Tiêu đề truyện này đã tồn tại trên hệ thống.");
@@ -156,6 +165,15 @@ namespace Application.Services.Creator
                 throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
             }
 
+            // ── Update Cooldown: 10 phút giữa 2 lần sửa ────────────────────
+            if (series.UpdatedAt.HasValue
+                && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
+            {
+                var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
+                throw new InvalidOperationException(
+                    $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi chỉnh sửa lại.");
+            }
+
             if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId, cancellationToken))
                 throw new ArgumentException("Tiêu đề mới đã tồn tại.");
 
@@ -208,6 +226,13 @@ namespace Application.Services.Creator
                 series.Title = dto.Title;
                 series.Description = dto.Description;
 
+                // Update series status if provided
+                if (!string.IsNullOrEmpty(dto.Status)
+                    && Enum.TryParse<SeriesStatus>(dto.Status, true, out var newStatus))
+                {
+                    series.Status = newStatus;
+                }
+
                 if (dto.GenreIds != null)
                 {
                     _context.SeriesGenres.RemoveRange(series.SeriesGenres);
@@ -221,6 +246,7 @@ namespace Application.Services.Creator
                     _context.SeriesGenres.AddRange(seriesGenres);
                 }
 
+                series.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync(cancellationToken);
                 await _moderation.EnqueueSeriesForModerationAsync(
                     series.SeriesId, cancellationToken);
@@ -289,6 +315,7 @@ namespace Application.Services.Creator
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters).ThenInclude(c => c.Language)
                 .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                 .AsQueryable();
 
@@ -315,6 +342,7 @@ namespace Application.Services.Creator
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters).ThenInclude(c => c.Language)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Keyword))
@@ -353,10 +381,17 @@ namespace Application.Services.Creator
             var series = await _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Include(s => s.Chapters)
+                .Include(s => s.Chapters).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters).ThenInclude(c => c.Language)
                 .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
             if (series == null) return null;
+
+            // Detect original language from the first original chapter (TeamId == null)
+            var firstOriginalChapter = series.Chapters
+                .Where(c => c.TeamId == null && c.Language != null)
+                .OrderBy(c => c.ChapterNumber)
+                .FirstOrDefault();
 
             return new SeriesDetailDto
             {
@@ -374,15 +409,25 @@ namespace Application.Services.Creator
                 CreatorUserId = series.Creator.UserId,
                 CreatorName = series.Creator.PenName,
                 Genres = series.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
-                Chapters = series.Chapters.OrderByDescending(c => c.PublishedAt).Select(c => new SeriesChapterDto
-                {
-                    ChapterId = c.ChapterId,
-                    Title = c.Title ?? "Untitled",
-                    ChapterNumber = (int)c.ChapterNumber,
-                    Price = c.UnlockPriceCoins ?? 0,
-                    PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-                    ViewCount = c.ReadingHistories?.Count ?? 0
-                }).ToList()
+                OriginalLanguage = firstOriginalChapter?.Language?.Code,
+                Chapters = series.Chapters
+                    .Where(c => c.Status == ChapterStatus.PUBLISHED)
+                    .OrderByDescending(c => c.PublishedAt)
+                    .Select(c => new SeriesChapterDto
+                    {
+                        ChapterId = c.ChapterId,
+                        Title = c.Title ?? "Untitled",
+                        ChapterNumber = (int)c.ChapterNumber,
+                        Price = c.UnlockPriceCoins ?? 0,
+                        PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
+                        ViewCount = c.ReadingHistories?.Count ?? 0,
+                        GroupName = c.Team?.TeamName,
+                        TeamId = c.TeamId,
+                        IsOriginal = c.TeamId == null,
+                        LanguageCode = c.Language?.Code,
+                        LanguageName = c.Language?.Name,
+                        CommentCount = 0
+                    }).ToList()
             };
         }
 
@@ -408,7 +453,8 @@ namespace Application.Services.Creator
                 Substances = series.SubstancesScore,
                 SensitiveContent = series.SensitiveScore,
                 AgeRating = series.AgeRating,
-                ModerationStatus = series.ModerationStatus.ToString()
+                ModerationStatus = series.ModerationStatus.ToString(),
+                Status = series.Status.ToString()
             };
         }
 
@@ -435,10 +481,35 @@ namespace Application.Services.Creator
             return randomSeries.Select(MapToDto).ToList();
         }
 
+        // ── Status-only update (no moderation, no cooldown) ──────────────────
+        public async Task UpdateStatusAsync(
+            int seriesId, int userId, string status,
+            CancellationToken cancellationToken = default)
+        {
+            var series = await _context.Series
+                .Include(s => s.Creator)
+                .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
+                ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+
+            if (series.Creator.UserId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
+
+            if (!Enum.TryParse<SeriesStatus>(status, true, out var newStatus))
+                throw new ArgumentException($"Trạng thái '{status}' không hợp lệ. Chấp nhận: ONGOING, COMPLETED, HALTED, DROPPED.");
+
+            series.Status = newStatus;
+            series.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Cập nhật trạng thái truyện {SeriesId} → {Status}", seriesId, newStatus);
+        }
+
         public async Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default)
         {
             var series = await _context.Series
                 .Include(s => s.Creator)
+                .Include(s => s.Chapters).ThenInclude(c => c.Pages)
+                .Include(s => s.SeriesGenres)
                 .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
 
@@ -447,15 +518,79 @@ namespace Application.Services.Creator
                 throw new UnauthorizedAccessException("Bạn không có quyền xóa bộ truyện này.");
             }
 
-            if (!string.IsNullOrEmpty(series.CoverImageUrl))
+            try
             {
-                await _storage.DeleteAsync(series.CoverImageUrl, cancellationToken);
+                // 1. Delete chapter pages' storage files & page records
+                foreach (var chapter in series.Chapters)
+                {
+                    foreach (var page in chapter.Pages)
+                    {
+                        if (!string.IsNullOrEmpty(page.ImageUrl))
+                            await _storage.DeleteAsync(page.ImageUrl, cancellationToken);
+                    }
+                    _context.ChapterPages.RemoveRange(chapter.Pages);
+                }
+
+                // 2. Collect ALL moderation queue entries (chapter + series level)
+                var chapterIds = series.Chapters.Select(c => c.ChapterId).ToList();
+                
+                var allModerationEntries = await _context.ModerationQueues
+                    .Where(q => (chapterIds.Contains(q.ContentId) && q.ContentType == ModerationQueueContentType.CHAPTER)
+                             || (q.ContentId == seriesId && q.ContentType == ModerationQueueContentType.SERIES))
+                    .ToListAsync(cancellationToken);
+
+                // 3. Delete Reports FIRST (FK → ModerationQueue.QueueId)
+                if (allModerationEntries.Any())
+                {
+                    var queueIds = allModerationEntries.Select(q => q.QueueId).ToList();
+                    var reports = await _context.Reports
+                        .Where(r => queueIds.Contains(r.QueueId))
+                        .ToListAsync(cancellationToken);
+                    _context.Reports.RemoveRange(reports);
+                }
+
+                // 4. Now safe to delete ModerationQueue entries
+                _context.ModerationQueues.RemoveRange(allModerationEntries);
+
+                // 4. Delete chapters
+                _context.Chapters.RemoveRange(series.Chapters);
+
+                // 5. Delete other FK relationships
+                var bookmarks = await _context.Bookmarks
+                    .Where(b => b.SeriesId == seriesId).ToListAsync(cancellationToken);
+                _context.Bookmarks.RemoveRange(bookmarks);
+
+                var ratings = await _context.Ratings
+                    .Where(r => r.SeriesId == seriesId).ToListAsync(cancellationToken);
+                _context.Ratings.RemoveRange(ratings);
+
+                var readingHistories = await _context.ReadingHistories
+                    .Where(r => r.SeriesId == seriesId).ToListAsync(cancellationToken);
+                _context.ReadingHistories.RemoveRange(readingHistories);
+
+                var translationPerms = await _context.TranslationPermissions
+                    .Where(t => t.SeriesId == seriesId).ToListAsync(cancellationToken);
+                _context.TranslationPermissions.RemoveRange(translationPerms);
+
+                // 6. Delete series genres
+                _context.SeriesGenres.RemoveRange(series.SeriesGenres);
+
+                // 7. Delete cover image from storage
+                if (!string.IsNullOrEmpty(series.CoverImageUrl))
+                    await _storage.DeleteAsync(series.CoverImageUrl, cancellationToken);
+
+                // 8. Delete series
+                _context.Series.Remove(series);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, UserId: {UserId}", seriesId, userId);
             }
-
-            _context.Series.Remove(series);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Xóa truyện thành công. SeriesId: {SeriesId}, UserId: {UserId}", seriesId, userId);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa truyện {SeriesId}", seriesId);
+                throw new InvalidOperationException(
+                    "Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau.", ex);
+            }
         }
 
         private SeriesDto MapToDto(Series s)
@@ -477,6 +612,7 @@ namespace Application.Services.Creator
                 CreatorName = s.Creator.PenName,
                 Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
                 LatestChapters = s.Chapters
+                    .Where(c => c.Status == ChapterStatus.PUBLISHED)
                     .OrderByDescending(c => c.PublishedAt)
                     .Take(2)
                     .Select(c => new SeriesChapterDto
@@ -487,7 +623,12 @@ namespace Application.Services.Creator
                         Price = c.UnlockPriceCoins ?? 0,
                         PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
                         ViewCount = c.ReadingHistories?.Count ?? 0,
-                        GroupName = c.Team?.TeamName
+                        GroupName = c.Team?.TeamName,
+                        TeamId = c.TeamId,
+                        IsOriginal = c.TeamId == null,
+                        LanguageCode = c.Language?.Code,
+                        LanguageName = c.Language?.Name,
+                        CommentCount = 0
                     }).ToList()
             };
         }

@@ -106,6 +106,7 @@ namespace mlndex_backend
             builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
                 sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
             builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
+            builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
 
             builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 			

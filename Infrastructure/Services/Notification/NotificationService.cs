@@ -20,11 +20,16 @@ namespace Infrastructure.Services.Notification
             _pusher = pusher;
         }
 
-        public async Task<PaginatedList<NotificationDto>> GetUserNotificationsAsync(int userId, int page = 1, int pageSize = 20)
+        public async Task<PaginatedList<NotificationDto>> GetUserNotificationsAsync(int userId, int page = 1, int pageSize = 20, bool? isRead = null)
         {
             var query = _db.Notifications
-                .Where(n => n.UserId == userId)
-                .OrderByDescending(n => n.CreatedAt);
+                .Where(n => n.UserId == userId);
+
+            // Filter by read status if specified
+            if (isRead.HasValue)
+                query = query.Where(n => n.IsRead == isRead.Value);
+
+            query = query.OrderByDescending(n => n.CreatedAt);
 
             var totalCount = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
@@ -70,6 +75,33 @@ namespace Infrastructure.Services.Notification
                 {
                     n.IsRead = true;
                 }
+                await _db.SaveChangesAsync();
+            }
+            return count;
+        }
+
+        public async Task<int> DeleteAllAsync(int userId)
+        {
+            var all = await _db.Notifications.Where(n => n.UserId == userId).ToListAsync();
+            int count = all.Count;
+            if (count > 0)
+            {
+                _db.Notifications.RemoveRange(all);
+                await _db.SaveChangesAsync();
+            }
+            return count;
+        }
+
+        public async Task<int> CleanupOldNotificationsAsync(int daysOld = 7)
+        {
+            var cutoff = System.DateTime.UtcNow.AddDays(-daysOld);
+            var old = await _db.Notifications
+                .Where(n => n.IsRead && n.CreatedAt < cutoff)
+                .ToListAsync();
+            int count = old.Count;
+            if (count > 0)
+            {
+                _db.Notifications.RemoveRange(old);
                 await _db.SaveChangesAsync();
             }
             return count;
