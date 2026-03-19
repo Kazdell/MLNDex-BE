@@ -59,5 +59,15 @@ namespace mlndex_backend.Controllers.User
       var result = await _historyService.ClearAllHistoryAsync(userId, cancellationToken);
       return Ok(new { success = result, message = result ? "Đã xóa toàn bộ lịch sử." : "Lịch sử đã trống." });
     }
+
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetReadingStats(CancellationToken cancellationToken)
+    {
+      var userId = CurrentUserId;
+      if (userId == 0) return Unauthorized();
+
+      var stats = await _historyService.GetReadingStatsAsync(userId, cancellationToken);
+      return Ok(new { success = true, data = stats });
+    }
   }
 }
