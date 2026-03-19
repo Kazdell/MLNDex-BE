@@ -65,6 +65,10 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<ModerationQueue> ModerationQueues { get; set; }
 		public DbSet<ModerationAction> ModerationActions { get; set; }
 
+		// ==================== LISTS ====================
+		public DbSet<UserList> UserLists { get; set; }
+		public DbSet<UserListItem> UserListItems { get; set; }
+
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
@@ -925,6 +929,48 @@ namespace Infrastructure.Persistence.Data
 				e.HasIndex(x => x.Name).IsUnique();
 				e.Property(x => x.Code).HasMaxLength(10).IsRequired();
 				e.Property(x => x.Name).HasMaxLength(50).IsRequired();
+			});
+
+			// ====================================================
+			// USER_LIST
+			// ====================================================
+			modelBuilder.Entity<UserList>(e =>
+			{
+				e.ToTable("UserList");
+				e.HasKey(x => x.UserListId);
+				e.Property(x => x.UserListId).UseIdentityColumn();
+				e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(500);
+				e.Property(x => x.IsPublic).IsRequired().HasDefaultValue(false);
+				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+
+				e.HasOne(x => x.User)
+					.WithMany()
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ====================================================
+			// USER_LIST_ITEM
+			// ====================================================
+			modelBuilder.Entity<UserListItem>(e =>
+			{
+				e.ToTable("UserListItem");
+				e.HasKey(x => x.UserListItemId);
+				e.Property(x => x.UserListItemId).UseIdentityColumn();
+				e.HasIndex(x => new { x.UserListId, x.SeriesId }).IsUnique();
+				e.Property(x => x.AddedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+
+				e.HasOne(x => x.UserList)
+					.WithMany(l => l.Items)
+					.HasForeignKey(x => x.UserListId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasOne(x => x.Series)
+					.WithMany()
+					.HasForeignKey(x => x.SeriesId)
+					.OnDelete(DeleteBehavior.Restrict);
 			});
         }
     }

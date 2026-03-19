@@ -127,6 +127,9 @@ namespace mlndex_backend
 			// User Services
 			builder.Services.AddScoped<IHistoryService, HistoryService>();
 			builder.Services.AddScoped<IUserService, UserService>();
+			builder.Services.AddScoped<IFollowService, FollowService>();
+			builder.Services.AddScoped<IRatingService, RatingService>();
+			builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 
 			// Notification Services
 			builder.Services.AddScoped<INotificationPusher, NotificationPusher>();
@@ -189,7 +192,11 @@ namespace mlndex_backend
         options.AddPolicy("AllowSpecificOrigin", policy =>
               {
             policy
-                  .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+                  .WithOrigins(
+                      "http://localhost:5173", "http://127.0.0.1:5173",
+                      "http://localhost:5174", "http://127.0.0.1:5174",
+                      "http://localhost:5175", "http://127.0.0.1:5175"
+                  )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();

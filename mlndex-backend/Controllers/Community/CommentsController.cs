@@ -43,6 +43,7 @@ namespace mlndex_backend.Controllers.Community
             }
         }
 
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> Get(
             [FromQuery] int targetId,

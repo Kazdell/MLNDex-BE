@@ -314,8 +314,8 @@ namespace Application.Services.Creator
             var query = _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Include(s => s.Chapters).ThenInclude(c => c.Team)
-                .Include(s => s.Chapters).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
                 .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                 .AsQueryable();
 
@@ -341,8 +341,8 @@ namespace Application.Services.Creator
             var query = _context.Series
                 .Include(s => s.Creator)
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Include(s => s.Chapters).ThenInclude(c => c.Team)
-                .Include(s => s.Chapters).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Keyword))
@@ -412,7 +412,7 @@ namespace Application.Services.Creator
                 OriginalLanguage = firstOriginalChapter?.Language?.Code,
                 Chapters = series.Chapters
                     .Where(c => c.Status == ChapterStatus.PUBLISHED)
-                    .OrderByDescending(c => c.PublishedAt)
+                    .OrderByDescending(c => c.ChapterNumber)
                     .Select(c => new SeriesChapterDto
                     {
                         ChapterId = c.ChapterId,
@@ -460,25 +460,63 @@ namespace Application.Services.Creator
 
         public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10)
         {
-            var randomSeries = await _context.Series
-                .Include(s => s.Creator)
-                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Where(s => s.AverageRating >= 4.0m)
-                .OrderBy(r => Guid.NewGuid())
-                .Take(limit)
-                .ToListAsync();
+            var recommendedSeries = new List<Series>();
+            var excludedIds = new List<int>();
 
-            if (!randomSeries.Any())
+            if (userId > 0)
             {
-                randomSeries = await _context.Series
-                   .Include(s => s.Creator)
-                   .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                   .OrderBy(r => Guid.NewGuid())
-                   .Take(limit)
-                   .ToListAsync();
+                var readSeriesIds = await _context.ReadingHistories
+                    .Where(rh => rh.UserId == userId)
+                    .Select(rh => rh.SeriesId)
+                    .Distinct()
+                    .ToListAsync();
+
+                excludedIds.AddRange(readSeriesIds);
+
+                var userGenres = await _context.ReadingHistories
+                    .Where(rh => rh.UserId == userId)
+                    .SelectMany(rh => rh.Series.SeriesGenres.Select(sg => sg.GenreId))
+                    .Distinct()
+                    .ToListAsync();
+
+                if (userGenres.Any())
+                {
+                    var genreRecommendations = await _context.Series
+                        .Include(s => s.Creator)
+                        .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                        .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+                                    && !excludedIds.Contains(s.SeriesId)
+                                    && s.SeriesGenres.Any(sg => userGenres.Contains(sg.GenreId)))
+                        .OrderByDescending(s => s.ReadingHistories.Count)
+                        .Take(limit)
+                        .ToListAsync();
+
+                    recommendedSeries.AddRange(genreRecommendations);
+                    excludedIds.AddRange(genreRecommendations.Select(s => s.SeriesId));
+                }
             }
 
-            return randomSeries.Select(MapToDto).ToList();
+            if (recommendedSeries.Count < limit)
+            {
+                var remainingLimit = limit - recommendedSeries.Count;
+
+                var popularSeries = await _context.Series
+                    .Include(s => s.Creator)
+                    .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                    .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                    .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                    .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+                                && !excludedIds.Contains(s.SeriesId))
+                    .OrderByDescending(s => s.ReadingHistories.Count)
+                    .Take(remainingLimit)
+                    .ToListAsync();
+
+                recommendedSeries.AddRange(popularSeries);
+            }
+
+            return recommendedSeries.Select(MapToDto).ToList();
         }
 
         // ── Status-only update (no moderation, no cooldown) ──────────────────
@@ -613,7 +651,7 @@ namespace Application.Services.Creator
                 Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
                 LatestChapters = s.Chapters
                     .Where(c => c.Status == ChapterStatus.PUBLISHED)
-                    .OrderByDescending(c => c.PublishedAt)
+                    .OrderByDescending(c => c.ChapterNumber)
                     .Take(2)
                     .Select(c => new SeriesChapterDto
                     {

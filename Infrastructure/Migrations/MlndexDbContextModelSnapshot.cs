@@ -75,6 +75,12 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LanguageId")
+                        .HasColumnType("int");
+
                     b.Property<string>("LockStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -109,6 +115,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("UnlockTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Views")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -118,6 +127,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ChapterId");
+
+                    b.HasIndex("LanguageId");
 
                     b.HasIndex("SeriesId");
 
@@ -384,6 +395,35 @@ namespace Infrastructure.Migrations
                     b.ToTable("Genre", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Language", b =>
+                {
+                    b.Property<int>("LanguageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LanguageId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("LanguageId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Language", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Like", b =>
                 {
                     b.Property<int>("LikeId")
@@ -482,11 +522,17 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("FlaggedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastRetryAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ReportCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RetryCount")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
@@ -745,6 +791,9 @@ namespace Infrastructure.Migrations
                     b.Property<int>("TotalRatings")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("ViolenceScore")
                         .HasColumnType("int");
 
@@ -988,10 +1037,10 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Language")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                    b.Property<int>("LanguageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("ModerationStatus")
                         .IsRequired()
@@ -1010,6 +1059,8 @@ namespace Infrastructure.Migrations
                     b.HasKey("TranslationId");
 
                     b.HasIndex("ChapterId");
+
+                    b.HasIndex("LanguageId");
 
                     b.HasIndex("PermissionId");
 
@@ -1123,12 +1174,10 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsMonetizationEnabled")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Language")
-                        .IsRequired()
+                    b.Property<int>("LanguageId")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasDefaultValue("Tiếng Việt");
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("LeaderId")
                         .HasColumnType("int");
@@ -1165,11 +1214,16 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(140)
                         .HasColumnType("nvarchar(140)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Website")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
                     b.HasKey("TeamId");
+
+                    b.HasIndex("LanguageId");
 
                     b.HasIndex("LeaderId");
 
@@ -1267,6 +1321,77 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("User", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserList", b =>
+                {
+                    b.Property<int>("UserListId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserListId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserListId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserList", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserListItem", b =>
+                {
+                    b.Property<int>("UserListItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserListItemId"));
+
+                    b.Property<DateTime>("AddedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("SeriesId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserListId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserListItemId");
+
+                    b.HasIndex("SeriesId");
+
+                    b.HasIndex("UserListId", "SeriesId")
+                        .IsUnique();
+
+                    b.ToTable("UserListItem", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.UserRole", b =>
@@ -1468,6 +1593,11 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Chapter", b =>
                 {
+                    b.HasOne("Domain.Entities.Language", "Language")
+                        .WithMany("Chapters")
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Domain.Entities.Series", "Series")
                         .WithMany("Chapters")
                         .HasForeignKey("SeriesId")
@@ -1478,6 +1608,8 @@ namespace Infrastructure.Migrations
                         .WithMany("Chapters")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Language");
 
                     b.Navigation("Series");
 
@@ -1837,6 +1969,12 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Language", "Language")
+                        .WithMany("Translations")
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.TranslationPermission", "Permission")
                         .WithMany("Translations")
                         .HasForeignKey("PermissionId")
@@ -1844,6 +1982,8 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Chapter");
+
+                    b.Navigation("Language");
 
                     b.Navigation("Permission");
                 });
@@ -1888,6 +2028,12 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.TranslationTeam", b =>
                 {
+                    b.HasOne("Domain.Entities.Language", "Language")
+                        .WithMany("TranslationTeams")
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.User", "Leader")
                         .WithMany("LeadingTeams")
                         .HasForeignKey("LeaderId")
@@ -1898,6 +2044,8 @@ namespace Infrastructure.Migrations
                         .WithMany("LockedTeams")
                         .HasForeignKey("LockedBy")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Language");
 
                     b.Navigation("Leader");
 
@@ -1913,6 +2061,36 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Translation");
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserList", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserListItem", b =>
+                {
+                    b.HasOne("Domain.Entities.Series", "Series")
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.UserList", "UserList")
+                        .WithMany("Items")
+                        .HasForeignKey("UserListId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Series");
+
+                    b.Navigation("UserList");
                 });
 
             modelBuilder.Entity("Domain.Entities.UserRole", b =>
@@ -2007,6 +2185,15 @@ namespace Infrastructure.Migrations
                     b.Navigation("SeriesGenres");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Language", b =>
+                {
+                    b.Navigation("Chapters");
+
+                    b.Navigation("TranslationTeams");
+
+                    b.Navigation("Translations");
+                });
+
             modelBuilder.Entity("Domain.Entities.ModerationQueue", b =>
                 {
                     b.Navigation("ModerationActions");
@@ -2099,6 +2286,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("VipSubscriptions");
 
                     b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserList", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Domain.Entities.VipPlan", b =>
