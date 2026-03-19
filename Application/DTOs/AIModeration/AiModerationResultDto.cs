@@ -20,6 +20,9 @@ namespace Application.DTOs.AIModeration
 
         [JsonPropertyName("perPageResults")]
         public List<PageModerationDto>? PerPageResults { get; set; }
+
+        [JsonPropertyName("scanMode")]
+        public string? ScanMode { get; set; }
     }
 
     public class PageModerationDto

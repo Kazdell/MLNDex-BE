@@ -233,6 +233,7 @@ namespace Application.Services.AIModeration
             var scoresData = new Dictionary<string, object>
             {
                 ["categoryScores"] = aiResult.CategoryScores,
+                ["scanMode"] = aiResult.ScanMode ?? "unknown",
             };
             if (aiResult.PerPageResults?.Count > 0)
                 scoresData["perPageResults"] = aiResult.PerPageResults;
