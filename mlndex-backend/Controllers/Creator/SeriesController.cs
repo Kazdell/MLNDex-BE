@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Application.DTOs.Creator;
 using Application.Interfaces.Creator;
 using Infrastructure.Persistence.Data;
@@ -5,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-
+using System;
 
 namespace mlndex_backend.Controllers.Creator
 {
@@ -15,11 +16,13 @@ namespace mlndex_backend.Controllers.Creator
     {
         private readonly MlndexDbContext _context;
         private readonly ISeriesService _service;
+        private readonly IMemoryCache _cache;
 
-        public SeriesController(MlndexDbContext context, ISeriesService service)
+        public SeriesController(MlndexDbContext context, ISeriesService service, IMemoryCache cache)
         {
             _context = context;
             _service = service;
+            _cache = cache;
         }
 
         private int CurrentUserId => GetUserId();
@@ -98,8 +101,26 @@ namespace mlndex_backend.Controllers.Creator
         [HttpGet]
         public async Task<IActionResult> GetSeries([FromQuery] string sortBy = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var result = await _service.GetSeriesListAsync(sortBy, page, pageSize);
-            return OkResponse(result);
+            // Only cache the first few pages of newest and popular which are heavily hit by the landing page
+            if ((sortBy == "newest" || sortBy == "popular") && page <= 2)
+            {
+                var cacheKey = $"GetSeries_{sortBy}_{page}_{pageSize}";
+                if (_cache.TryGetValue(cacheKey, out var cachedResult))
+                {
+                    return OkResponse(cachedResult);
+                }
+
+                var result = await _service.GetSeriesListAsync(sortBy, page, pageSize);
+                
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(2));
+                
+                _cache.Set(cacheKey, result, cacheEntryOptions);
+                return OkResponse(result);
+            }
+            
+            var uncachedResult = await _service.GetSeriesListAsync(sortBy, page, pageSize);
+            return OkResponse(uncachedResult);
         }
 
         [HttpGet("search")]
@@ -124,8 +145,29 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10)
         {
             var userId = CurrentUserId;
-            var result = await _service.GetRecommendationsAsync(userId, limit);
-            return OkResponse(result);
+            
+            // If user is not logged in, cache the generalized recommendations
+            if (userId == 0)
+            {
+                var cacheKey = $"GetRecommendations_Anon_{limit}";
+                if (_cache.TryGetValue(cacheKey, out var cachedResult))
+                {
+                    return OkResponse(cachedResult);
+                }
+
+                var result = await _service.GetRecommendationsAsync(0, limit);
+                
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
+                
+                _cache.Set(cacheKey, result, cacheEntryOptions);
+                return OkResponse(result);
+            }
+            else 
+            {
+                var result = await _service.GetRecommendationsAsync(userId, limit);
+                return OkResponse(result);
+            }
         }
     }
 }

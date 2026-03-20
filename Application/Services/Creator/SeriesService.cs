@@ -312,43 +312,55 @@ namespace Application.Services.Creator
         public async Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
         {
             var query = _context.Series
-                .Include(s => s.Creator)
-                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
                 .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                 .AsQueryable();
 
             if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
+            else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
+                query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
 
             var totalCount = await query.CountAsync();
-            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            var seriesData = await query
+                .Select(s => new { s.SeriesId })
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var ids = seriesData.Select(x => x.SeriesId).ToList();
+
+            if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = page, PageSize = pageSize, Items = new List<SeriesDto>() };
+
+            var items = await _context.Series
+                .Include(s => s.Creator)
+                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                .Where(s => ids.Contains(s.SeriesId))
+                .ToListAsync();
+
+            var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
 
             return new PaginatedList<SeriesDto>
             {
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
-                Items = items.Select(MapToDto).ToList()
+                Items = orderedItems.Select(MapToDto).ToList()
             };
         }
 
         public async Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request)
         {
             var query = _context.Series
-                .Include(s => s.Creator)
-                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Keyword))
             {
                 query = query.Where(s => s.Title.Contains(request.Keyword) ||
-                                         (s.Description != null && s.Description.Contains(request.Keyword)));
+                                         (s.Creator != null && s.Creator.PenName.Contains(request.Keyword)));
             }
             if (request.GenreId.HasValue)
                 query = query.Where(s => s.SeriesGenres.Any(sg => sg.GenreId == request.GenreId.Value));
@@ -359,20 +371,49 @@ namespace Application.Services.Creator
             if (request.Format.HasValue)
                 query = query.Where(s => s.SeriesFormat == request.Format.Value);
 
+            if (request.YearFrom.HasValue)
+                query = query.Where(s => s.CreatedAt.Year >= request.YearFrom.Value);
+
+            if (request.YearTo.HasValue)
+                query = query.Where(s => s.CreatedAt.Year <= request.YearTo.Value);
+
+            if (request.MinRating.HasValue)
+                query = query.Where(s => s.AverageRating >= request.MinRating.Value);
+
             if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
+            else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
+                query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
 
             var totalCount = await query.CountAsync();
-            var items = await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToListAsync();
+            var seriesData = await query
+                .Select(s => new { s.SeriesId })
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            var ids = seriesData.Select(x => x.SeriesId).ToList();
+
+            if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = request.Page, PageSize = request.PageSize, Items = new List<SeriesDto>() };
+
+            var items = await _context.Series
+                .Include(s => s.Creator)
+                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                .Where(s => ids.Contains(s.SeriesId))
+                .ToListAsync();
+
+            var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
 
             return new PaginatedList<SeriesDto>
             {
                 TotalCount = totalCount,
                 Page = request.Page,
                 PageSize = request.PageSize,
-                Items = items.Select(MapToDto).ToList()
+                Items = orderedItems.Select(MapToDto).ToList()
             };
         }
 
@@ -481,20 +522,31 @@ namespace Application.Services.Creator
 
                 if (userGenres.Any())
                 {
-                    var genreRecommendations = await _context.Series
-                        .Include(s => s.Creator)
-                        .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                    var genreRecommendationData = await _context.Series
                         .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                                     && !excludedIds.Contains(s.SeriesId)
                                     && s.SeriesGenres.Any(sg => userGenres.Contains(sg.GenreId)))
                         .OrderByDescending(s => s.ReadingHistories.Count)
+                        .Select(s => new { s.SeriesId })
                         .Take(limit)
                         .ToListAsync();
 
-                    recommendedSeries.AddRange(genreRecommendations);
-                    excludedIds.AddRange(genreRecommendations.Select(s => s.SeriesId));
+                    var genreRecIds = genreRecommendationData.Select(x => x.SeriesId).ToList();
+
+                    if (genreRecIds.Any())
+                    {
+                        var genreRecItems = await _context.Series
+                            .Include(s => s.Creator)
+                            .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                            .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                            .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                            .Where(s => genreRecIds.Contains(s.SeriesId))
+                            .ToListAsync();
+
+                        var orderedGenreRecs = genreRecIds.Select(id => genreRecItems.First(i => i.SeriesId == id)).ToList();
+                        recommendedSeries.AddRange(orderedGenreRecs);
+                        excludedIds.AddRange(genreRecIds);
+                    }
                 }
             }
 
@@ -502,18 +554,29 @@ namespace Application.Services.Creator
             {
                 var remainingLimit = limit - recommendedSeries.Count;
 
-                var popularSeries = await _context.Series
-                    .Include(s => s.Creator)
-                    .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                    .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                    .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                var popularSeriesData = await _context.Series
                     .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                                 && !excludedIds.Contains(s.SeriesId))
                     .OrderByDescending(s => s.ReadingHistories.Count)
+                    .Select(s => new { s.SeriesId })
                     .Take(remainingLimit)
                     .ToListAsync();
 
-                recommendedSeries.AddRange(popularSeries);
+                var popularRecIds = popularSeriesData.Select(x => x.SeriesId).ToList();
+
+                if (popularRecIds.Any())
+                {
+                    var popularRecItems = await _context.Series
+                        .Include(s => s.Creator)
+                        .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                        .Where(s => popularRecIds.Contains(s.SeriesId))
+                        .ToListAsync();
+
+                    var orderedPopularRecs = popularRecIds.Select(id => popularRecItems.First(i => i.SeriesId == id)).ToList();
+                    recommendedSeries.AddRange(orderedPopularRecs);
+                }
             }
 
             return recommendedSeries.Select(MapToDto).ToList();

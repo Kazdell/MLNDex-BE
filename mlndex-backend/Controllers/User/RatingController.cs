@@ -51,8 +51,7 @@ namespace mlndex_backend.Controllers.User
             if (userId == 0) return UnauthorizedResponse("Invalid user context");
 
             var result = await _ratingService.GetUserRatingAsync(userId, seriesId, ct);
-            if (result == null) return NotFoundResponse("No rating found.");
-
+            // Return Ok even if null to prevent console 404 errors for unrated series
             return OkResponse(result);
         }
 

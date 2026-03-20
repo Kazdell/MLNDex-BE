@@ -56,8 +56,7 @@ namespace mlndex_backend.Controllers.User
             if (userId == 0) return UnauthorizedResponse("Invalid user context");
 
             var result = await _bookmarkService.GetBookmarkForSeriesAsync(userId, seriesId, ct);
-            if (result == null) return NotFoundResponse("No bookmark found.");
-
+            // Return Ok even if null to prevent console 404 errors for unbookmarked series
             return OkResponse(result);
         }
 

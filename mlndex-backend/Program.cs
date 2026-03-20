@@ -19,6 +19,8 @@ using Application.Services.Moderation;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
+using Application.Interfaces.Services;
+using Infrastructure.Services;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
@@ -130,6 +132,7 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IFollowService, FollowService>();
 			builder.Services.AddScoped<IRatingService, RatingService>();
 			builder.Services.AddScoped<IBookmarkService, BookmarkService>();
+			builder.Services.AddScoped<IUserListService, UserListService>();
 
 			// Notification Services
 			builder.Services.AddScoped<INotificationPusher, NotificationPusher>();

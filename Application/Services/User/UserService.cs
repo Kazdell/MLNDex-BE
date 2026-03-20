@@ -26,6 +26,7 @@ namespace Application.Services.User
                 .Include(u => u.Wallet)
                 .Include(u => u.ReadingHistories)
                 .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
+                .Include(u => u.CreatorProfile).ThenInclude(cp => cp.Series)
                 .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
             if (user == null) return null;
@@ -35,6 +36,12 @@ namespace Application.Services.User
                 .Where(vs => vs.Status == SubscriptionStatus.ACTIVE && vs.EndDate > DateTime.UtcNow)
                 .OrderByDescending(vs => vs.EndDate)
                 .FirstOrDefault();
+
+            var followersCount = user.CreatorProfile != null 
+                ? await _context.Follows.CountAsync(f => f.TargetId == user.CreatorProfile.CreatorId && f.TargetType == FollowTargetType.CREATOR, cancellationToken)
+                : 0;
+            
+            var followingCount = await _context.Follows.CountAsync(f => f.UserId == userId, cancellationToken);
 
             return new UserProfileDto
             {
@@ -48,6 +55,9 @@ namespace Application.Services.User
                 Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
                 TotalReadSeries = user.ReadingHistories.Select(h => h.SeriesId).Distinct().Count(),
                 TotalReadChapters = user.ReadingHistories.Count(),
+                TotalCreatedSeries = user.CreatorProfile?.Series.Count ?? 0,
+                FollowersCount = followersCount,
+                FollowingCount = followingCount,
                 WalletBalance = user.Wallet?.CoinBalance ?? 0,
                 SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
                 BannerUrl = user.BannerUrl
@@ -133,6 +143,7 @@ namespace Application.Services.User
                 .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
                 .Include(u => u.ReadingHistories)
                 .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
+                .Include(u => u.CreatorProfile).ThenInclude(cp => cp.Series)
                 .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
 
             if (user == null) return null;
@@ -141,6 +152,12 @@ namespace Application.Services.User
                 .Where(vs => vs.Status == SubscriptionStatus.ACTIVE && vs.EndDate > DateTime.UtcNow)
                 .OrderByDescending(vs => vs.EndDate)
                 .FirstOrDefault();
+
+            var followersCount = user.CreatorProfile != null 
+                ? await _context.Follows.CountAsync(f => f.TargetId == user.CreatorProfile.CreatorId && f.TargetType == FollowTargetType.CREATOR, cancellationToken)
+                : 0;
+            
+            var followingCount = await _context.Follows.CountAsync(f => f.UserId == user.UserId, cancellationToken);
 
             return new UserProfileDto
             {
@@ -154,10 +171,38 @@ namespace Application.Services.User
                 Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
                 TotalReadSeries = user.ReadingHistories.Select(h => h.SeriesId).Distinct().Count(),
                 TotalReadChapters = user.ReadingHistories.Count(),
+                TotalCreatedSeries = user.CreatorProfile?.Series.Count ?? 0,
+                FollowersCount = followersCount,
+                FollowingCount = followingCount,
                 WalletBalance = 0, // Hide wallet balance
                 SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
                 BannerUrl = user.BannerUrl
             };
+        }
+        public async Task<UserSettingsDto?> GetUserSettingsAsync(int userId, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+            if (user == null) return null;
+
+            return new UserSettingsDto
+            {
+                NotificationSettings = user.NotificationSettings,
+                PrivacySettings = user.PrivacySettings,
+                AppearanceSettings = user.AppearanceSettings
+            };
+        }
+
+        public async Task<bool> UpdateUserSettingsAsync(int userId, UserSettingsDto dto, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+            if (user == null) return false;
+
+            user.NotificationSettings = dto.NotificationSettings;
+            user.PrivacySettings = dto.PrivacySettings;
+            user.AppearanceSettings = dto.AppearanceSettings;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
     }
 }

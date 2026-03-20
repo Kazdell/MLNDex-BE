@@ -112,6 +112,9 @@ namespace Application.DTOs.Creator
         public string SortBy { get; set; } = "newest"; // newest, popular
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
+        public int? YearFrom { get; set; }
+        public int? YearTo { get; set; }
+        public decimal? MinRating { get; set; }
     }
 
     public class PaginatedList<T>
