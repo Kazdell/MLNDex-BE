@@ -12,5 +12,7 @@ namespace Application.Interfaces.User
         Task<List<VipPlanDto>> GetVipPlansAsync(CancellationToken cancellationToken);
         Task<List<UserSearchDto>> SearchUsersAsync(string query, CancellationToken cancellationToken);
         Task<UserProfileDto?> GetPublicProfileAsync(string username, CancellationToken cancellationToken);
+        Task<UserSettingsDto?> GetUserSettingsAsync(int userId, CancellationToken cancellationToken);
+        Task<bool> UpdateUserSettingsAsync(int userId, UserSettingsDto dto, CancellationToken cancellationToken);
     }
 }

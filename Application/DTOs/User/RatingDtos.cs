@@ -6,7 +6,7 @@ namespace Application.DTOs.User
     public class RatingRequestDto
     {
         public int SeriesId { get; set; }
-        public int Score { get; set; } // 1-10
+        public int Score { get; set; } // 1 to 5 scale
         public string? Review { get; set; }
     }
 

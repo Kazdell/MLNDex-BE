@@ -21,8 +21,8 @@ namespace Application.Services.User
 
         public async Task<RatingResponseDto> UpsertRatingAsync(int userId, RatingRequestDto dto, CancellationToken ct = default)
         {
-            if (dto.Score < 1 || dto.Score > 10)
-                throw new ArgumentException("Score must be between 1 and 10.");
+            if (dto.Score < 1 || dto.Score > 5)
+                throw new ArgumentException("Score must be between 1 and 5.");
 
             // Check series exists
             var series = await _db.Series.FindAsync(new object[] { dto.SeriesId }, ct)
@@ -110,6 +110,8 @@ namespace Application.Services.User
                 ? await ratings.AverageAsync(r => (decimal)r.Score, ct)
                 : 0m;
 
+            if (averageRating > 5m) averageRating = 5m;
+
             int? userScore = null;
             if (userId.HasValue)
             {
@@ -133,10 +135,11 @@ namespace Application.Services.User
             var ratings = _db.Ratings.Where(r => r.SeriesId == seriesId);
             var count = await ratings.CountAsync(ct);
 
+            var avg = count > 0 ? await ratings.AverageAsync(r => (decimal)r.Score, ct) : 0m;
+            if (avg > 5m) avg = 5m;
+
             series.TotalRatings = count;
-            series.AverageRating = count > 0
-                ? Math.Round(await ratings.AverageAsync(r => (decimal)r.Score, ct), 2)
-                : 0m;
+            series.AverageRating = Math.Round(avg, 2);
 
             await _db.SaveChangesAsync(ct);
         }

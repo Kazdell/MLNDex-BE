@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Auth;
+using Application.DTOs.Auth;
 using Application.Interfaces.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -70,6 +70,19 @@ namespace mlndex_backend.Controllers.Auth
 			return result.Success
 				? OkResponse<object>(null, result.Message)
 				: BadRequestResponse(result.Message);
+		}
+
+		// POST /api/auth/refresh
+		[HttpPost("refresh")]
+		public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
+		{
+			if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+			var result = await _authService.RefreshAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
+
+			return OkResponse(result, "Token đã được cấp mới.");
 		}
 	}
 }

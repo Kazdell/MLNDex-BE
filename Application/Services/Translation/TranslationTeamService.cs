@@ -559,36 +559,42 @@ namespace Application.Services.Translation
 
         public async Task<IEnumerable<TranslationTeamDto>> GetUserTeamsAsync(int userId, int limit = 5)
         {
-            var userTeams = await _context.TeamMembers
+            var userMembers = await _context.TeamMembers
                 .Include(tm => tm.TranslationTeam)
                 .ThenInclude(t => t.TeamMembers)
                 .Where(tm => tm.UserId == userId && tm.IsActive)
                 .OrderByDescending(tm => tm.JoinedAt)
                 .Take(limit)
-                .Select(tm => new TranslationTeamDto
-                {
-                    TeamId = tm.TranslationTeam.TeamId,
-                    LeaderId = tm.TranslationTeam.LeaderId,
-                    TeamName = tm.TranslationTeam.TeamName,
-                    Description = tm.TranslationTeam.Description,
-                    ReputationScore = tm.TranslationTeam.ReputationScore,
-                    LockStatus = tm.TranslationTeam.LockStatus.ToString(),
-                    IsMonetizationEnabled = tm.TranslationTeam.IsMonetizationEnabled,
-                    ModerationStatus = tm.TranslationTeam.ModerationStatus.ToString(),
-                    MemberCount = tm.TranslationTeam.TeamMembers.Count,
-                    Role = tm.Role.ToString(),
-                    AvatarUrl = tm.TranslationTeam.AvatarUrl,
-                    BannerUrl = tm.TranslationTeam.BannerUrl
-                })
                 .ToListAsync();
 
-            if (!userTeams.Any())
+            var userTeams = userMembers.Select(tm => new TranslationTeamDto
             {
-                userTeams = await _context.TranslationTeams
-                    .Include(t => t.TeamMembers)
-                    .Where(t => t.LeaderId == userId)
-                    .Take(limit)
-                    .Select(t => new TranslationTeamDto
+                TeamId = tm.TranslationTeam.TeamId,
+                LeaderId = tm.TranslationTeam.LeaderId,
+                TeamName = tm.TranslationTeam.TeamName,
+                Description = tm.TranslationTeam.Description,
+                ReputationScore = tm.TranslationTeam.ReputationScore,
+                LockStatus = tm.TranslationTeam.LockStatus.ToString(),
+                IsMonetizationEnabled = tm.TranslationTeam.IsMonetizationEnabled,
+                ModerationStatus = tm.TranslationTeam.ModerationStatus.ToString(),
+                MemberCount = tm.TranslationTeam.TeamMembers?.Count ?? 0,
+                Role = tm.Role.ToString(),
+                AvatarUrl = tm.TranslationTeam.AvatarUrl,
+                BannerUrl = tm.TranslationTeam.BannerUrl
+            }).ToList();
+
+            // Also fetch teams where user is leader but might not be in TeamMembers (e.g. from seed data)
+            var ledTeams = await _context.TranslationTeams
+                .Include(t => t.TeamMembers)
+                .Where(t => t.LeaderId == userId)
+                .Take(limit)
+                .ToListAsync();
+
+            foreach (var t in ledTeams)
+            {
+                if (!userTeams.Any(ut => ut.TeamId == t.TeamId))
+                {
+                    userTeams.Add(new TranslationTeamDto
                     {
                         TeamId = t.TeamId,
                         LeaderId = t.LeaderId,
@@ -598,15 +604,15 @@ namespace Application.Services.Translation
                         LockStatus = t.LockStatus.ToString(),
                         IsMonetizationEnabled = t.IsMonetizationEnabled,
                         ModerationStatus = t.ModerationStatus.ToString(),
-                        MemberCount = t.TeamMembers.Count,
+                        MemberCount = t.TeamMembers?.Count ?? 0,
                         Role = "LEADER",
                         AvatarUrl = t.AvatarUrl,
                         BannerUrl = t.BannerUrl
-                    })
-                    .ToListAsync();
+                    });
+                }
             }
 
-            return userTeams;
+            return userTeams.OrderByDescending(t => t.TeamId).Take(limit);
         }
 
         private TranslationTeamDto MapToDto(TranslationTeam team)

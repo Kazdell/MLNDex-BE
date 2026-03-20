@@ -21,7 +21,11 @@ namespace Domain.Entities
 		public bool IsActive { get; set; }
 		public DateTime CreatedAt { get; set; }
 		public string? BannerUrl { get; set; }
-
+		public string? NotificationSettings { get; set; }
+		public string? PrivacySettings { get; set; }
+		public string? AppearanceSettings { get; set; }
+		public string? RefreshToken { get; set; }
+		public DateTime? RefreshTokenExpiryTime { get; set; }
 
 		// Navigation
 		public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

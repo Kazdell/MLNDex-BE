@@ -176,12 +176,18 @@ namespace Application.Services.Auth
 			}
 
 			var token = _tokenService.GenerateJwtToken(user);
+			var refreshToken = _tokenService.GenerateRefreshToken();
+
+			user.RefreshToken = refreshToken;
+			user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:RefreshTokenExpiryDays"] ?? "7"));
+			await _context.SaveChangesAsync();
 
 			return new AuthResponseDto
 			{
 				AccessToken = token,
+				RefreshToken = refreshToken,
 				UserId = user.UserId,
-				ExpiresAt = DateTime.UtcNow.AddDays(1),
+				ExpiresAt = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:AccessTokenExpiryMinutes"] ?? "15")),
 				Username = user.Username,
 				DisplayName = user.DisplayName ?? user.Username,
 				Email = user.Email,
@@ -197,6 +203,40 @@ namespace Application.Services.Auth
 			_tokenService.BlacklistToken(token, jwt.ValidTo);
 
 			return Task.FromResult(ServiceResult.Ok("Đăng xuất thành công."));
+		}
+
+		// ── REFRESH TOKEN ───────────────────────────────────
+		public async Task<AuthResponseDto?> RefreshAsync(TokenApiDto dto)
+		{
+			if (string.IsNullOrEmpty(dto.RefreshToken))
+				return null;
+
+			var user = await _context.Users
+				.Include(u => u.UserRoles)
+					.ThenInclude(ur => ur.Role)
+				.FirstOrDefaultAsync(u => u.RefreshToken == dto.RefreshToken);
+
+			if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+				return null;
+
+			var newAccessToken = _tokenService.GenerateJwtToken(user);
+			var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+			user.RefreshToken = newRefreshToken;
+			user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:RefreshTokenExpiryDays"] ?? "7"));
+			await _context.SaveChangesAsync();
+
+			return new AuthResponseDto
+			{
+				AccessToken = newAccessToken,
+				RefreshToken = newRefreshToken,
+				UserId = user.UserId,
+				ExpiresAt = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:AccessTokenExpiryMinutes"] ?? "15")),
+				Username = user.Username,
+				DisplayName = user.DisplayName ?? user.Username,
+				Email = user.Email,
+				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+			};
 		}
 	}
 }

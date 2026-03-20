@@ -19,6 +19,9 @@ namespace Application.DTOs.User
         // Stats
         public int TotalReadSeries { get; set; }
         public int TotalReadChapters { get; set; }
+        public int TotalCreatedSeries { get; set; }
+        public int FollowersCount { get; set; }
+        public int FollowingCount { get; set; }
         public decimal WalletBalance { get; set; }
         public string SubscriptionType { get; set; } = "Cơ bản";
     }

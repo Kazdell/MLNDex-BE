@@ -9,7 +9,7 @@ IF @AdminUserId IS NOT NULL
 BEGIN
     -- Thêm dữ liệu Rating cho Series 8
     INSERT INTO Rating (UserId, SeriesId, Score, Review, CreatedAt, UpdatedAt)
-    VALUES (@AdminUserId, 8, 9, N'Truyện rất hay, đáng xem!', GETUTCDATE(), GETUTCDATE());
+    VALUES (@AdminUserId, 8, 5, N'Truyện rất hay, đáng xem!', GETUTCDATE(), GETUTCDATE());
 
     -- Thêm dữ liệu Rating cho Series 25 (không thêm để test hiển thị "Chưa có đánh giá")
     -- INSERT INTO Rating (UserId, SeriesId, Score, Review, CreatedAt, UpdatedAt)
