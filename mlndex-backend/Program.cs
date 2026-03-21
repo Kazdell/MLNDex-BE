@@ -104,6 +104,10 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
 			builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
 
+            // Isolated Report & TrustScore Services
+            builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
+            builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
+
             // AI & Chapter Processing
             builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
             builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
@@ -189,16 +193,25 @@ namespace mlndex_backend
                 };
             });
 
+			// Build allowed origins list: always include localhost + any production origins from env
+			var allowedOrigins = new List<string>
+			{
+				"http://localhost:5173", "http://127.0.0.1:5173",
+				"http://localhost:5174", "http://127.0.0.1:5174",
+				"http://localhost:5175", "http://127.0.0.1:5175"
+			};
+			var extraOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+			if (!string.IsNullOrEmpty(extraOrigins))
+			{
+				allowedOrigins.AddRange(extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+			}
+
 			builder.Services.AddCors(options =>
       {
         options.AddPolicy("AllowSpecificOrigin", policy =>
               {
             policy
-                  .WithOrigins(
-                      "http://localhost:5173", "http://127.0.0.1:5173",
-                      "http://localhost:5174", "http://127.0.0.1:5174",
-                      "http://localhost:5175", "http://127.0.0.1:5175"
-                  )
+                  .WithOrigins(allowedOrigins.ToArray())
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -207,11 +220,12 @@ namespace mlndex_backend
 
             var app = builder.Build();
 
+            // Swagger enabled for all environments (Production + Development)
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
             if (app.Environment.IsDevelopment())
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-                // app.UseHttpsRedirection(); // Tắt để đồng bộ với local HTTP dev
             }
 
             app.UseGlobalExceptionHandling();

@@ -12,10 +12,12 @@ namespace mlndex_backend.Controllers.Translation
     public class TranslationPermissionsController : BaseController
     {
         private readonly ITranslationPermissionService _service;
+        private readonly Application.Interfaces.Data.IMlndexDbContext _db;
 
-        public TranslationPermissionsController(ITranslationPermissionService service)
+        public TranslationPermissionsController(ITranslationPermissionService service, Application.Interfaces.Data.IMlndexDbContext db)
         {
             _service = service;
+            _db = db;
         }
 
         // Request permission from series creator to translate a series.
@@ -25,6 +27,10 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
+                var currentUser = await _db.Users.FindAsync(GetUserId());
+                if (currentUser?.CannotUpload == true)
+                    return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+
                 var permission = await _service.RequestPermissionAsync(dto);
                 return OkResponse(permission);
             }

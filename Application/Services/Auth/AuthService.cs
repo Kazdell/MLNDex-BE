@@ -191,7 +191,8 @@ namespace Application.Services.Auth
 				Username = user.Username,
 				DisplayName = user.DisplayName ?? user.Username,
 				Email = user.Email,
-				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+				CannotUpload = user.CannotUpload
 			};
 		}
 
@@ -235,7 +236,8 @@ namespace Application.Services.Auth
 				Username = user.Username,
 				DisplayName = user.DisplayName ?? user.Username,
 				Email = user.Email,
-				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+				Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+				CannotUpload = user.CannotUpload
 			};
 		}
 	}

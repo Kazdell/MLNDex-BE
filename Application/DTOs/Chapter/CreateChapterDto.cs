@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,5 +14,11 @@ namespace Application.DTOs.Chapter
         public int? LanguageId { get; set; }
         public int? TeamId { get; set; }
         public List<UploadPageDto>? Pages { get; set; }
+        
+        // --- Translation specific fields ---
+        public int? BaseChapterId { get; set; } // The ID of the original chapter being translated
+        public int? PermissionId { get; set; } // The permission ID under which this is uploaded
+        public string? CreditsJson { get; set; } // JSON string of translation credits (roles and users/names)
+        public string? JointTeamIdsJson { get; set; } // JSON string of joint team IDs
     }
 }

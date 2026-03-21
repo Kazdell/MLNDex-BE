@@ -16,5 +16,6 @@ namespace Application.DTOs.Auth
 		public string Email { get; set; } = null!;
 		public List<string> Roles { get; set; } = new();
 		public string RefreshToken { get; set; } = null!;
+		public bool CannotUpload { get; set; }
 	}
 }

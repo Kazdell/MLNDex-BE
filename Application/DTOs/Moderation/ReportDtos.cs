@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Domain.Entities;
+using Domain.Enums;
 
 namespace Application.DTOs.Moderation
 {
@@ -10,7 +11,7 @@ namespace Application.DTOs.Moderation
         public int ContentId { get; set; }
 
         [Required]
-        public ReportContentType ContentType { get; set; }
+        public ReportTargetType ContentType { get; set; }
 
         [Required]
         public ReportReason Reason { get; set; }
@@ -23,7 +24,7 @@ namespace Application.DTOs.Moderation
     {
         public int ReportId { get; set; }
         public int ContentId { get; set; }
-        public ReportContentType ContentType { get; set; }
+        public ReportTargetType ContentType { get; set; }
         public ReportReason Reason { get; set; }
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }

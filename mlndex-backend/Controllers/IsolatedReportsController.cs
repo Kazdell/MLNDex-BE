@@ -1,0 +1,193 @@
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Application.DTOs.ReportSystem;
+using Application.Interfaces.ReportSystem;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace mlndex_backend.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class IsolatedReportsController : ControllerBase
+    {
+        private readonly IPlagiarismReportService _reportService;
+        private readonly ITrustScoreService _trustScoreService;
+
+        public IsolatedReportsController(
+            IPlagiarismReportService reportService,
+            ITrustScoreService trustScoreService)
+        {
+            _reportService = reportService;
+            _trustScoreService = trustScoreService;
+        }
+
+        private int GetCurrentUserId()
+        {
+            var str = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return int.TryParse(str, out var id) ? id : 0;
+        }
+
+        // ══════════════════════════════════════════════════════
+        // REPORT ENDPOINTS (existing)
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>Tạo một báo cáo vi phạm mới (Người dùng).</summary>
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> CreateReport([FromBody] CreatePlagiarismReportRequest request)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _reportService.CreateReportAsync(userId, request);
+                return Ok(new { Message = "Đã gửi báo cáo thành công.", Data = result });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>Lấy danh sách các báo cáo đang chờ xử lý (Moderator).</summary>
+        [HttpGet("/api/isolated-moderator/reports")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> GetPendingReports([FromQuery] int page = 1, [FromQuery] int limit = 20)
+        {
+            var reports = await _reportService.GetPendingReportsAsync(page, limit);
+            return Ok(new { Data = reports });
+        }
+
+        /// <summary>Xử lý một báo cáo (Moderator).</summary>
+        [HttpPost("/api/isolated-moderator/reports/{id}/resolve")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> ResolveReport(int id, [FromBody] ResolvePlagiarismReportRequest request)
+        {
+            var modId = GetCurrentUserId();
+            if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _reportService.ResolveReportAsync(id, modId, request);
+                return Ok(new { Message = "Đã xử lý báo cáo thành công.", Data = result });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>So sánh side-by-side (Moderator).</summary>
+        [HttpGet("/api/isolated-moderator/reports/{id}/compare-data")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> GetCompareData(int id, [FromQuery] int referenceTranslationId)
+        {
+            try
+            {
+                var data = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
+                return Ok(new { Data = data });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // TRUST SCORE ENDPOINTS (Phase A)
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>Admin phục hồi điểm uy tín cho User/Team.</summary>
+        [HttpPost("/api/isolated-moderator/trust-score/restore")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> RestoreTrustScore([FromBody] RestoreTrustScoreRequest request)
+        {
+            var modId = GetCurrentUserId();
+            if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
+                return Ok(new { Message = "Đã phục hồi điểm uy tín thành công.", Data = result });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // APPEAL ENDPOINTS (Phase C)
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>User gửi đơn kháng cáo.</summary>
+        [HttpPost("/api/appeals")]
+        [Authorize]
+        public async Task<IActionResult> CreateAppeal([FromBody] CreateAppealRequest request)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _trustScoreService.CreateAppealAsync(userId, request);
+                return Ok(new { Message = "Đã gửi đơn kháng cáo thành công.", Data = result });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>Moderator xem danh sách kháng cáo chờ xử lý.</summary>
+        [HttpGet("/api/isolated-moderator/appeals")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> GetPendingAppeals([FromQuery] int page = 1, [FromQuery] int limit = 20)
+        {
+            var appeals = await _trustScoreService.GetPendingAppealsAsync(page, limit);
+            return Ok(new { Data = appeals });
+        }
+
+        /// <summary>Moderator duyệt/từ chối đơn kháng cáo.</summary>
+        [HttpPost("/api/isolated-moderator/appeals/{id}/review")]
+        [Authorize(Roles = "Moderator,Admin")]
+        public async Task<IActionResult> ReviewAppeal(int id, [FromBody] ReviewAppealRequest request)
+        {
+            var modId = GetCurrentUserId();
+            if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
+                return Ok(new { Message = "Đã xử lý đơn kháng cáo.", Data = result });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // TRANSLATION PORTFOLIO (Phase E)
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>Lấy lịch sử tham gia dịch thuật của user.</summary>
+        [HttpGet("/api/users/{userId}/translations")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserTranslationHistory(int userId)
+        {
+            try
+            {
+                var history = await _trustScoreService.GetUserTranslationHistoryAsync(userId);
+                return Ok(new { Data = history });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+    }
+}

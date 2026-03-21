@@ -1,5 +1,6 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
+using Application.Interfaces.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,12 +13,14 @@ namespace mlndex_backend.Controllers.Creator;
 public class ChapterController : BaseController
 {
     private readonly IChapterService _service;
+    private readonly IMlndexDbContext _db;
     private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-    public ChapterController(IChapterService service)
+    public ChapterController(IChapterService service, IMlndexDbContext db)
     {
         _service = service;
+        _db = db;
     }
 
     [HttpPost("creator/chapters/create")]
@@ -32,6 +35,10 @@ public class ChapterController : BaseController
     {
         int userId = GetUserId();
         if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+        var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (currentUser?.CannotUpload == true)
+            return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
         // 1. Validate files
         if (pages == null || pages.Count == 0)
@@ -193,6 +200,10 @@ public class ChapterController : BaseController
     {
         int userId = GetUserId();
         if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+        var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (currentUser?.CannotUpload == true)
+            return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
         // Validate new files if provided
         if (pages != null && pages.Count > 0)
