@@ -94,9 +94,10 @@ namespace mlndex_backend
 			builder.Services.AddScoped<ISeriesService, SeriesService>();
 			builder.Services.AddScoped<IChapterService, ChapterService>();
 			builder.Services.AddScoped<IGenreService, GenreService>();
+            builder.Services.AddScoped<ICreatorService, CreatorService>();
 
-			// Core Moderation Engine
-			var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+            // Core Moderation Engine
+            var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
 			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
 			builder.Services.AddScoped<IModerationService, ModerationService>();
 			builder.Services.AddScoped<IReportService, ReportService>();
@@ -111,9 +112,7 @@ namespace mlndex_backend
             builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
 
             builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-			
-			builder.Services.AddScoped<IChapterPageService, ChapterPageService>();
-
+		
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
