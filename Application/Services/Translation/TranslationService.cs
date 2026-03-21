@@ -1,9 +1,17 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.Translation
 {
@@ -11,11 +19,19 @@ namespace Application.Services.Translation
     {
         private readonly IMlndexDbContext _context;
         private readonly IUserContext _userContext;
+        private readonly Application.Interfaces.Creator.IStorageService _storage;
+        private readonly Microsoft.Extensions.Logging.ILogger<TranslationService> _logger;
 
-        public TranslationService(IMlndexDbContext context, IUserContext userContext)
+        public TranslationService(
+            IMlndexDbContext context, 
+            IUserContext userContext,
+            Application.Interfaces.Creator.IStorageService storage,
+            Microsoft.Extensions.Logging.ILogger<TranslationService> logger)
         {
             _context = context;
             _userContext = userContext;
+            _storage = storage;
+            _logger = logger;
         }
 
         public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
@@ -29,9 +45,14 @@ namespace Application.Services.Translation
                 .ThenInclude(t => t.TeamMembers)
                 .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
 
-            if (permission == null || permission.Status != TranslationPermissionStatus.GRANTED)
+            if (permission == null)
             {
-                throw new Exception("Translation permission not found or not granted.");
+                throw new Exception("Translation permission record not found.");
+            }
+
+            if (permission.LanguageId != dto.LanguageId)
+            {
+                throw new Exception("Language mismatch with the requested permission language.");
             }
 
             // Verify the chapter belongs to the series for which permission was granted
@@ -45,6 +66,9 @@ namespace Application.Services.Translation
                 throw new Exception("Uploader is not an active member of the translation team.");
             }
 
+            // Flag as official if permission is GRANTED
+            bool isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
+
             var translation = new Domain.Entities.Translation
             {
                 ChapterId = dto.ChapterId,
@@ -52,37 +76,109 @@ namespace Application.Services.Translation
                 LanguageId = dto.LanguageId,
                 ContentType = dto.ContentType,
                 QualityStatus = TranslationQualityStatus.DRAFT,
-                ModerationStatus = ModerationStatus.APPROVED // Assuming auto-approve for now
+                ModerationStatus = ModerationStatus.APPROVED, // Assuming auto-approve for now
+                IsOfficial = isOfficial
             };
 
-            _context.Translations.Add(translation);
-            await _context.SaveChangesAsync();
-
-            // Handle Content
-            if (dto.ContentType == ContentType.IMAGE && dto.ImageUrls != null)
+            if (dto.Credits != null && dto.Credits.Any())
             {
-                int pageNum = 1;
-                foreach (var url in dto.ImageUrls)
+                foreach (var credit in dto.Credits)
                 {
-                    _context.TranslationPages.Add(new TranslationPage
+                    translation.TranslationCredits.Add(new TranslationCredit
                     {
-                        TranslationId = translation.TranslationId,
-                        PageNumber = pageNum++,
-                        TranslationImageUrl = url
+                        UserId = credit.UserId,
+                        Role = credit.Role
                     });
                 }
             }
-            else if (dto.ContentType == ContentType.TEXT && !string.IsNullOrEmpty(dto.ContentUrl))
+
+            if (dto.JointTeamIds != null && dto.JointTeamIds.Any())
             {
-                _context.TranslationTexts.Add(new TranslationText
+                foreach (var teamId in dto.JointTeamIds)
                 {
-                    TranslationId = translation.TranslationId,
-                    ContentUrl = dto.ContentUrl,
-                    WordCount = dto.WordCount ?? 0
-                });
+                    translation.TeamJoins.Add(new TranslationTeamJoin
+                    {
+                        TeamId = teamId
+                    });
+                }
             }
 
-            await _context.SaveChangesAsync();
+            var uploadedUrls = new List<string>();
+            try
+            {
+                _context.Translations.Add(translation);
+                await _context.SaveChangesAsync();
+
+                // Handle Content
+                if (dto.ContentType == ContentType.IMAGE && dto.Pages != null && dto.Pages.Count > 0)
+                {
+                    var pageFolder = $"translations/{translation.TranslationId}/pages";
+                    var semaphore = new SemaphoreSlim(4);
+
+                    var uploadTasks = dto.Pages.Select(async (page, index) =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            var url = await _storage.UploadAsync(
+                                page.FileStream,
+                                page.FileName,
+                                pageFolder,
+                                CancellationToken.None);
+                            return (url, index);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
+
+                    var results = await Task.WhenAll(uploadTasks);
+
+                    foreach (var (url, index) in results.OrderBy(r => r.index))
+                    {
+                        uploadedUrls.Add(url);
+                        _context.TranslationPages.Add(new TranslationPage
+                        {
+                            TranslationId = translation.TranslationId,
+                            PageNumber = index + 1,
+                            TranslationImageUrl = url
+                        });
+                    }
+                }
+                else if (dto.ContentType == ContentType.TEXT && !string.IsNullOrEmpty(dto.ContentText))
+                {
+                    // Create a stream from the text content and upload it as a txt file
+                    var byteData = Encoding.UTF8.GetBytes(dto.ContentText);
+                    using var stream = new MemoryStream(byteData);
+                    var textFolder = $"translations/{translation.TranslationId}/text";
+                    var fileName = $"content_{Guid.NewGuid()}.txt";
+                    
+                    var url = await _storage.UploadAsync(stream, fileName, textFolder, CancellationToken.None);
+                    uploadedUrls.Add(url);
+
+                    var wordCount = dto.ContentText.Split(new char[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+                    _context.TranslationTexts.Add(new TranslationText
+                    {
+                        TranslationId = translation.TranslationId,
+                        ContentUrl = url,
+                        WordCount = wordCount
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                if (uploadedUrls.Count > 0)
+                {
+                    _logger.LogWarning(ex, "Lưu DB thất bại. Đang xóa {Count} tệp đã upload.", uploadedUrls.Count);
+                    foreach (var url in uploadedUrls)
+                        await _storage.DeleteAsync(url);
+                }
+                throw;
+            }
             return await GetTranslationByIdAsync(translation.TranslationId) ?? throw new Exception("Translation failed to retrieve.");
         }
 
@@ -175,6 +271,9 @@ namespace Application.Services.Translation
                 QualityStatus = t.QualityStatus.ToString(),
                 ModerationStatus = t.ModerationStatus.ToString(),
                 PublishedAt = t.PublishedAt,
+                IsOfficial = t.IsOfficial,
+                IsOutdated = t.IsOutdated,
+                IsOrphan = t.IsOrphan,
                 Pages = t.TranslationPages?.OrderBy(p => p.PageNumber).Select(p => p.TranslationImageUrl).ToList(),
                 TextContent = t.TranslationText?.ContentUrl
             };

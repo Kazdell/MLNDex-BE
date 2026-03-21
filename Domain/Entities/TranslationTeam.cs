@@ -13,6 +13,7 @@ namespace Domain.Entities
 		public int LanguageId { get; set; } = 1;
 		public bool RequireApproval { get; set; } = true;
 		public int ReputationScore { get; set; }
+		public int TrustScore { get; set; } = 100;
 		public TeamLockStatus LockStatus { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
 		public bool IsMonetizationEnabled { get; set; }
@@ -35,6 +36,8 @@ namespace Domain.Entities
 		public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
 		public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
 		public ICollection<TeamGenre> TeamGenres { get; set; } = new List<TeamGenre>();
+		public ICollection<TranslationTeamJoin> TeamJoins { get; set; } = new List<TranslationTeamJoin>();
+		public ICollection<TrustScoreHistory> TrustScoreHistories { get; set; } = new List<TrustScoreHistory>();
 	}
 
 	public enum TeamLockStatus

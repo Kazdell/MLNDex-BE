@@ -7,6 +7,7 @@ namespace Application.DTOs.Translation
     {
         public int SeriesId { get; set; }
         public int TeamId { get; set; }
+        public int LanguageId { get; set; }
         public string? Note { get; set; }
     }
 
@@ -22,6 +23,9 @@ namespace Application.DTOs.Translation
         public string? SeriesTitle { get; set; }
         public int TeamId { get; set; }
         public string? TeamName { get; set; }
+        public int LanguageId { get; set; }
+        public string? LanguageName { get; set; }
+        public string Origin { get; set; } = string.Empty;
         public int GrantedBy { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime RequestedAt { get; set; }

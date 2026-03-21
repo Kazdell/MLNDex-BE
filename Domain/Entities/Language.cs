@@ -13,5 +13,6 @@ namespace Domain.Entities
 		public ICollection<TranslationTeam> TranslationTeams { get; set; } = new List<TranslationTeam>();
 		public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
 		public ICollection<Translation> Translations { get; set; } = new List<Translation>();
+		public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
 	}
 }

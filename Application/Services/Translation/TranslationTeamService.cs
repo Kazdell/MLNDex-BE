@@ -514,45 +514,44 @@ namespace Application.Services.Translation
         {
             var permissions = await _context.TranslationPermissions
                 .Include(p => p.Series)
+                .Include(p => p.Language)
                 .Where(p => p.TeamId == teamId)
                 .ToListAsync();
 
             return permissions.Select(p => new TeamSeriesDto
             {
                 SeriesId = p.SeriesId,
+                PermissionId = p.PermissionId,
+                LanguageId = p.LanguageId,
+                LanguageName = p.Language?.Name ?? "Unknown",
                 Title = p.Series?.Title ?? "Unknown",
                 CoverImageUrl = p.Series?.CoverImageUrl,
                 Status = p.Status == TranslationPermissionStatus.GRANTED ? "active" :
                          p.Status == TranslationPermissionStatus.PENDING ? "pending" : "dropped",
-                TotalChapters = _context.Chapters.Count(c => c.SeriesId == p.SeriesId && c.TeamId == teamId),
-                LastUpdate = _context.Chapters
-                    .Where(c => c.SeriesId == p.SeriesId && c.TeamId == teamId)
-                    .Select(c => (DateTime?)c.PublishedAt)
+                TotalChapters = _context.Translations.Count(t => t.PermissionId == p.PermissionId),
+                LastUpdate = _context.Translations
+                    .Where(t => t.PermissionId == p.PermissionId)
+                    .Select(t => (DateTime?)t.PublishedAt)
                     .Max(),
-                Views = _context.Chapters
-                    .Where(c => c.SeriesId == p.SeriesId && c.TeamId == teamId)
-                    .Sum(c => c.Views),
+                Views = 0, // Translation views tracking not yet implemented
                 Rating = p.Series?.AverageRating ?? 0
             });
         }
 
         public async Task<TeamStatsDto> GetTeamStatsAsync(int teamId)
         {
-            var chapters = await _context.Chapters
-                .Where(c => c.TeamId == teamId)
-                .ToListAsync();
+            var translatedChaptersCount = await _context.Translations
+                .CountAsync(t => t.Permission.TeamId == teamId);
 
             var activeSeriesCount = await _context.TranslationPermissions
                 .CountAsync(p => p.TeamId == teamId && p.Status == TranslationPermissionStatus.GRANTED);
 
-            var totalViews = chapters.Sum(c => c.Views);
-
             return new TeamStatsDto
             {
-                TotalViews = totalViews,
+                TotalViews = 0, // Translation views tracking not yet implemented
                 TotalBookmarks = 0, 
                 ActiveSeriesCount = activeSeriesCount,
-                TotalChaptersTranslated = chapters.Count,
+                TotalChaptersTranslated = translatedChaptersCount,
                 AverageRating = 0 
             };
         }

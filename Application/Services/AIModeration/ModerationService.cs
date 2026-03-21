@@ -6,6 +6,7 @@ using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
 using Application.Interfaces.Queue;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -200,8 +201,8 @@ namespace Application.Services.AIModeration
                     var report = new Report
                     {
                         ContentId = chapterId,
-                        ContentType = ReportContentType.CHAPTER,
-                        Reason = ReportReason.INAPPROPRIATE,
+                        ContentType = ReportTargetType.ChapterTranslation,
+                        Reason = ReportReason.Inappropriate,
                         Description = "AI_" + aiReason,
                         ReporterId = 1,
                         Queue = queueItem,
@@ -357,8 +358,8 @@ namespace Application.Services.AIModeration
                 var report = new Report
                 {
                     ContentId = seriesId,
-                    ContentType = ReportContentType.SERIES,
-                    Reason = ReportReason.INAPPROPRIATE,
+                    ContentType = ReportTargetType.Series,
+                    Reason = ReportReason.Inappropriate,
                     Description = "AI_" + aiReason,
                     ReporterId = 1,
                     Queue = queueItem,
@@ -434,7 +435,7 @@ namespace Application.Services.AIModeration
         {
             return await _db.Reports
                 .Where(r => r.ContentId == chapterId
-                         && r.ContentType == ReportContentType.CHAPTER
+                         && r.ContentType == ReportTargetType.ChapterTranslation
                          && r.Description != null && r.Description.StartsWith("AI_"))
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => r.Description)
@@ -786,19 +787,22 @@ namespace Application.Services.AIModeration
             // Chapter PENDING/REJECTED — lấy flagged reason từ Report
             var aiReport = await _db.Reports
                 .Where(r => r.ContentId == chapterId
-                         && r.ContentType == ReportContentType.CHAPTER
+                         && r.ContentType == ReportTargetType.ChapterTranslation
                          && r.Description != null
                          && r.Description.StartsWith("AI_"))
                 .OrderByDescending(r => r.CreatedAt)
                 .FirstOrDefaultAsync(ct);
 
+            string? flaggedReason = null;
+            if (aiReport?.Description != null)
+            {
+                flaggedReason = aiReport.Description.Replace("AI_", "").Split(" (Score:")[0].Trim();
+            }
+
             return new AiModerationResultDto
             {
                 Flagged = true,
-                FlaggedReason = aiReport?.Description?
-                                    .Replace("AI_", "")
-                                    .Split(" (Score:")[0]
-                                    .Trim(),
+                FlaggedReason = flaggedReason,
                 CategoryScores = categoryScores,
                 PerPageResults = perPageResults
             };
@@ -821,7 +825,7 @@ namespace Application.Services.AIModeration
                 // Delete linked Reports first (FK constraint: Report.QueueId → ModerationQueue)
                 var queueIds = oldEntries.Select(q => q.QueueId).ToList();
                 var linkedReports = await _db.Reports
-                    .Where(r => queueIds.Contains(r.QueueId))
+                    .Where(r => r.QueueId.HasValue && queueIds.Contains(r.QueueId.Value))
                     .ToListAsync(ct);
                 if (linkedReports.Count > 0)
                     _db.Reports.RemoveRange(linkedReports);

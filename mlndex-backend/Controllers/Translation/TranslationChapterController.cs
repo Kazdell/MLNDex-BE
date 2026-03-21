@@ -37,11 +37,20 @@ public class TranslationChapterController : BaseController
         [FromForm] int? languageId,
         [FromForm] string? language,
         [FromForm] int teamId,
+        [FromForm] int? chapterId, // Base Chapter ID
+        [FromForm] int? permissionId,
+        [FromForm] string? creditsJson,
+        [FromForm] string? jointTeamIdsJson,
         [FromForm] IFormFileCollection pages,
         CancellationToken cancellationToken)
     {
         int userId = GetUserId();
         if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+        // Guard: Block upload if user trust score is depleted
+        var currentUser = await _db.Users.FindAsync(userId);
+        if (currentUser?.CannotUpload == true)
+            return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
         // Resolve languageId from language name/code if not provided directly
         int? resolvedLanguageId = languageId;
@@ -74,6 +83,10 @@ public class TranslationChapterController : BaseController
             Title = title,
             LanguageId = resolvedLanguageId,
             TeamId = teamId,
+            BaseChapterId = chapterId,
+            PermissionId = permissionId,
+            CreditsJson = creditsJson,
+            JointTeamIdsJson = jointTeamIdsJson,
             Pages = pages.Select((file, index) => new UploadPageDto
             {
                 FileStream = file.OpenReadStream(),

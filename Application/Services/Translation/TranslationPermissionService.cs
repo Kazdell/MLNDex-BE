@@ -44,10 +44,22 @@ namespace Application.Services.Translation
             if (creatorProfile == null)
                 throw new Exception("Creator profile not found for this series.");
 
+            var language = await _context.Languages.FindAsync(dto.LanguageId);
+            if (language == null)
+                throw new Exception("Language not found.");
+
+            var existingPermission = await _context.TranslationPermissions
+                .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
+            
+            if (existingPermission != null)
+                throw new Exception("A permission request for this series and language already exists.");
+
             var permission = new TranslationPermission
             {
                 SeriesId = dto.SeriesId,
                 TeamId = dto.TeamId,
+                LanguageId = dto.LanguageId,
+                Origin = PermissionOrigin.REQUESTED_BY_TEAM,
                 GrantedBy = creatorProfile.UserId,
                 Status = TranslationPermissionStatus.PENDING,
                 Note = dto.Note
@@ -65,7 +77,7 @@ namespace Application.Services.Translation
             await _notificationService.CreateNotificationAsync(
                 creatorUserId,
                 "Yêu cầu dịch truyện mới",
-                $"Nhóm dịch {teamName ?? "đối tác"} vừa gửi yêu cầu muốn dịch bộ truyện {series.Title} của bạn.",
+                $"Nhóm dịch {teamName ?? "đối tác"} vừa gửi yêu cầu muốn dịch bộ truyện {series.Title} sang ngôn ngữ {language.Name} của bạn.",
                 "/creator/translation-requests",
                 NotificationType.TRANSLATION_REQUEST
             );
@@ -113,10 +125,15 @@ namespace Application.Services.Translation
                 .Select(m => m.UserId)
                 .ToListAsync();
 
+            var languageName = await _context.Languages
+                .Where(l => l.LanguageId == permission.LanguageId)
+                .Select(l => l.Name)
+                .FirstOrDefaultAsync();
+
             var resultTitle = dto.IsApproved ? "Yêu cầu dịch truyện được chấp thuận" : "Yêu cầu dịch truyện bị từ chối";
             var resultMessage = dto.IsApproved
-                ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
-                : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch của nhóm bạn.";
+                ? $"Tác giả bộ truyện {permission.Series.Title} đã chấp thuận yêu cầu dịch sang ngôn ngữ {languageName} của nhóm bạn. Bạn đã có thể bắt đầu đăng chương mới."
+                : $"Tác giả bộ truyện {permission.Series.Title} đã từ chối yêu cầu dịch sang ngôn ngữ {languageName} của nhóm bạn.";
             var link = $"/translation/sent-requests/{permission.TeamId}";
 
             foreach (var memberId in teamMembers)
@@ -174,6 +191,7 @@ namespace Application.Services.Translation
         {
             var seriesTitle = await _context.Series.Where(s => s.SeriesId == p.SeriesId).Select(s => s.Title).FirstOrDefaultAsync();
             var team = await _context.TranslationTeams.Where(t => t.TeamId == p.TeamId).FirstOrDefaultAsync();
+            var language = await _context.Languages.Where(l => l.LanguageId == p.LanguageId).FirstOrDefaultAsync();
 
             return new TranslationPermissionDto
             {
@@ -182,6 +200,9 @@ namespace Application.Services.Translation
                 SeriesTitle = seriesTitle,
                 TeamId = p.TeamId,
                 TeamName = team?.TeamName,
+                LanguageId = p.LanguageId,
+                LanguageName = language?.Name,
+                Origin = p.Origin.ToString(),
                 GrantedBy = p.GrantedBy,
                 Status = p.Status.ToString(),
                 RequestedAt = p.CreatedAt,

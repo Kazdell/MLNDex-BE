@@ -24,6 +24,7 @@ namespace Application.DTOs.User
         public int FollowingCount { get; set; }
         public decimal WalletBalance { get; set; }
         public string SubscriptionType { get; set; } = "Cơ bản";
+        public bool CannotUpload { get; set; }
     }
 
     public class UpdateProfileDto

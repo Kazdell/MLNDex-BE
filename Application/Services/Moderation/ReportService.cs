@@ -2,6 +2,7 @@ using Application.DTOs.Moderation;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.Moderation
@@ -174,13 +175,14 @@ namespace Application.Services.Moderation
             };
         }
 
-        private static ModerationQueueContentType MapContentType(ReportContentType type)
+        private static ModerationQueueContentType MapContentType(ReportTargetType type)
         {
             return type switch
             {
-                ReportContentType.SERIES => ModerationQueueContentType.SERIES,
-                ReportContentType.CHAPTER => ModerationQueueContentType.CHAPTER,
-                ReportContentType.TRANSLATION => ModerationQueueContentType.TRANSLATION,
+                ReportTargetType.Series => ModerationQueueContentType.SERIES,
+                ReportTargetType.ChapterTranslation => ModerationQueueContentType.CHAPTER,
+                ReportTargetType.Team => ModerationQueueContentType.SERIES, // fallback
+                ReportTargetType.User => ModerationQueueContentType.SERIES, // fallback
                 _ => ModerationQueueContentType.SERIES,
             };
         }

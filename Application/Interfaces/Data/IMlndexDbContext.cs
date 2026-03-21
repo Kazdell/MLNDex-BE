@@ -44,6 +44,9 @@ namespace Application.Interfaces.Data
         DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
         DbSet<UserList> UserLists { get; set; }
         DbSet<UserListItem> UserListItems { get; set; }
+        DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+        DbSet<TranslationCredit> TranslationCredits { get; set; }
+        DbSet<Appeal> Appeals { get; set; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

@@ -5,6 +5,7 @@ using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
 using Application.Interfaces.Notification;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -44,36 +45,11 @@ namespace Application.Services.Creator
         CancellationToken cancellationToken = default)
         {
             // ── 1. Kiểm tra quyền tải lên (Tác giả hoặc Nhóm dịch) ───────────
-            Series? series = null;
-            if (dto.TeamId == null)
-            {
-                series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
-                if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
-            }
-            else
-            {
-                series = await _db.Series
-                    .Include(s => s.Creator)
-                    .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId, cancellationToken);
-                if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại.");
+            if (dto.TeamId != null)
+                throw new InvalidOperationException("Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
 
-                var isAuthorizedMember = await _db.TeamMembers.AnyAsync(m =>
-                    m.TeamId == dto.TeamId &&
-                    m.UserId == userId &&
-                    m.IsActive &&
-                    (m.Role == TeamMemberRole.LEADER || m.Role == TeamMemberRole.EDITOR || m.Role == TeamMemberRole.TRANSLATOR),
-                    cancellationToken);
-
-                if (!isAuthorizedMember) throw new UnauthorizedAccessException("Bạn không có quyền tải chương lên danh nghĩa nhóm dịch này.");
-
-                var hasPermission = await _db.TranslationPermissions.AnyAsync(p =>
-                    p.TeamId == dto.TeamId &&
-                    p.SeriesId == dto.SeriesId &&
-                    p.Status == TranslationPermissionStatus.GRANTED,
-                    cancellationToken);
-
-                if (!hasPermission) throw new InvalidOperationException("Nhóm dịch của bạn chưa được cấp phép hoặc đã bị thu hồi quyền dịch bộ truyện này.");
-            }
+            var series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
+            if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
 
             // ── 2. Rate Limit: Max 10 chapters/ngày ─────────────────────────
             var todayUtc = DateTime.UtcNow.Date;
@@ -85,22 +61,22 @@ namespace Application.Services.Creator
                     "Bạn đã đạt giới hạn 10 chapter/ngày. Vui lòng quay lại ngày mai.");
 
             // ── 2b. Cooldown: 15 phút giữa mỗi lần đăng ───────────────────
-            var cutoff = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var lastChapter = await _db.Chapters
-                .Where(c => c.Series.Creator.UserId == userId && c.CreatedAt > cutoff)
-                .OrderByDescending(c => c.CreatedAt)
-                .Select(c => c.CreatedAt)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (lastChapter > cutoff)
-            {
-                var elapsed = DateTime.UtcNow - lastChapter;
-                if (elapsed.TotalMinutes < 15)
-                {
-                    var remaining = TimeSpan.FromMinutes(15) - elapsed;
-                    throw new InvalidOperationException(
-                        $"Vui lòng đợi {remaining.Minutes} phút {remaining.Seconds} giây nữa trước khi đăng chapter mới.");
-                }
-            }
+            // var cutoff = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            // var lastChapter = await _db.Chapters
+            //     .Where(c => c.Series.Creator.UserId == userId && c.CreatedAt > cutoff)
+            //     .OrderByDescending(c => c.CreatedAt)
+            //     .Select(c => c.CreatedAt)
+            //     .FirstOrDefaultAsync(cancellationToken);
+            // if (lastChapter > cutoff)
+            // {
+            //     var elapsed = DateTime.UtcNow - lastChapter;
+            //     if (elapsed.TotalMinutes < 15)
+            //     {
+            //         var remaining = TimeSpan.FromMinutes(15) - elapsed;
+            //         throw new InvalidOperationException(
+            //             $"Vui lòng đợi {remaining.Minutes} phút {remaining.Seconds} giây nữa trước khi đăng chapter mới.");
+            //     }
+            // }
 
             // ── 3. Queue Flood Protection: Max 10 pending jobs ─────────────────
             var pendingJobs = await _db.ModerationQueues
@@ -113,16 +89,15 @@ namespace Application.Services.Creator
                 throw new InvalidOperationException(
                     "Bạn đang có 10 chapter chờ kiểm duyệt. Hãy đợi kết quả trước khi tải thêm.");
 
-            // ── 4. Kiểm tra trùng số chương (chỉ trong cùng 1 team/original) ──
+            // ── 4. Kiểm tra trùng số chương (chương gốc) ──
             bool duplicate = await _db.Chapters.AnyAsync(
                 c => c.SeriesId == dto.SeriesId
                      && c.ChapterNumber == dto.ChapterNumber
-                     && c.TeamId == dto.TeamId, // Same team (or both null = original)
+                     && c.TeamId == null,
                 cancellationToken);
 
             if (duplicate)
-                throw new InvalidOperationException(
-                    $"Chương {dto.ChapterNumber} đã tồn tại{(dto.TeamId != null ? " cho nhóm dịch này" : "")}.");
+                throw new InvalidOperationException($"Chương {dto.ChapterNumber} đã tồn tại.");
 
             // ── 3. Upload ảnh trang lên Cloudinary ────────────────────────
             var uploadedUrls = new List<string>();
@@ -189,21 +164,7 @@ namespace Application.Services.Creator
 
                     await _db.SaveChangesAsync(cancellationToken);
 
-                    // Send notification to author if uploaded by team
-                    if (dto.TeamId != null && series?.Creator != null)
-                    {
-                        var team = await _db.TranslationTeams.FindAsync(dto.TeamId);
-                        if (team != null)
-                        {
-                            await _notificationService.CreateNotificationAsync(
-                                series.Creator.UserId,
-                                team.TeamName,
-                                $"Đã đăng chương {chapter.ChapterNumber} cho bộ {series.Title}",
-                                $"/series/{series.SeriesId}/chapters/{chapter.ChapterId}",
-                                NotificationType.NEW_CHAPTER
-                            );
-                        }
-                    }
+                    // Original chapter: No notification sent to author since author uploaded it.
 
                     // ── Gọi AI Moderation chạy ngầm ───────────────────────────
                     await _moderationService.EnqueueChapterForModerationAsync(
@@ -252,29 +213,36 @@ namespace Application.Services.Creator
             if (chapter == null) return null;
 
             var chapters = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId)
+                .Include(c => c.Team)
+                .Include(c => c.Language)
+                .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
                 .OrderByDescending(c => c.ChapterNumber)
                 .Select(c => new ChapterSummaryDto
                 {
                     ChapterId = c.ChapterId,
                     ChapterNumber = c.ChapterNumber,
-                    Title = c.Title
+                    Title = c.Title,
+                    TeamId = c.TeamId,
+                    TeamName = c.Team != null ? c.Team.TeamName : null,
+                    LanguageCode = c.Language != null ? c.Language.Code : null,
+                    LanguageName = c.Language != null ? c.Language.Name : null,
+                    IsOriginal = c.TeamId == null
                 })
                 .ToListAsync(cancellationToken);
 
             var prevChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber)
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
                 .OrderByDescending(c => c.ChapterNumber)
                 .Select(c => (int?)c.ChapterId)
                 .FirstOrDefaultAsync(cancellationToken);
 
             var nextChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber)
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
                 .OrderBy(c => c.ChapterNumber)
                 .Select(c => (int?)c.ChapterId)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            return new ChapterDetailDto
+            var dto = new ChapterDetailDto
             {
                 ChapterId = chapter.ChapterId,
                 SeriesId = chapter.SeriesId,
@@ -294,6 +262,46 @@ namespace Application.Services.Creator
                     ImageUrl = p.ImageUrl
                 }).ToList()
             };
+
+            // Translation Ecosystem logic:
+            if (chapter.TeamId != null) 
+            {
+                var translation = await _db.Translations
+                    .Include(t => t.TranslationCredits)
+                        .ThenInclude(tc => tc.User)
+                    .Include(t => t.TeamJoins)
+                        .ThenInclude(tj => tj.Team)
+                    .FirstOrDefaultAsync(t => t.ChapterId == chapter.ChapterId, cancellationToken);
+
+                if (translation != null)
+                {
+                    dto.IsTranslation = true;
+                    dto.IsOfficial = translation.IsOfficial;
+                    dto.IsOutdated = translation.IsOutdated;
+                    dto.IsOrphan = translation.IsOrphan;
+                    
+                    if (translation.TranslationCredits != null)
+                    {
+                        dto.TranslationCredits = translation.TranslationCredits.Select(tc => new TranslationCreditDetailDto 
+                        {
+                            UserId = tc.UserId,
+                            Username = tc.User.Username,
+                            Role = tc.Role.ToString()
+                        }).ToList();
+                    }
+
+                    if (translation.TeamJoins != null)
+                    {
+                        dto.JointTeams = translation.TeamJoins.Select(tj => new JointTeamDetailDto
+                        {
+                            TeamId = tj.TeamId,
+                            TeamName = tj.Team.TeamName
+                        }).ToList();
+                    }
+                }
+            }
+
+            return dto;
         }
 
         public async Task<ChapterModerationStatusDto> GetModerationStatusAsync(
@@ -478,17 +486,17 @@ namespace Application.Services.Creator
             {
                 var aiReport = await _db.Reports
                     .Where(r => r.ContentId == chapterId
-                             && r.ContentType == ReportContentType.CHAPTER
+                             && r.ContentType == ReportTargetType.ChapterTranslation
                              && r.Description != null
                              && r.Description.StartsWith("AI_"))
                     .OrderByDescending(r => r.CreatedAt)
                     .Select(r => r.Description)
                     .FirstOrDefaultAsync(ct);
 
-                moderationReason = aiReport?
-                    .Replace("AI_", "")
-                    .Split(" (Score:")[0]
-                    .Trim();
+                if (aiReport != null)
+                {
+                    moderationReason = aiReport.Replace("AI_", "").Split(" (Score:")[0].Trim();
+                }
             }
 
             return new ChapterDetailDto
@@ -522,6 +530,7 @@ namespace Application.Services.Creator
                 .Include(c => c.Series)
                     .ThenInclude(s => s.Creator)
                 .Include(c => c.Pages)
+                .Include(c => c.Translations)
                 .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
                 ?? throw new KeyNotFoundException($"Không tìm thấy chương {chapterId}.");
 
@@ -628,6 +637,15 @@ namespace Application.Services.Creator
                     // Reset moderation status + re-queue for AI moderation
                     chapter.ModerationStatus = ModerationStatus.PENDING;
                     chapter.Status = ChapterStatus.DRAFT;
+                }
+
+                // ── Đánh dấu Outdated cho các bản dịch ─────────────────────────
+                if (chapter.Translations != null && chapter.Translations.Any())
+                {
+                    foreach (var translation in chapter.Translations)
+                    {
+                        translation.IsOutdated = true;
+                    }
                 }
 
                 await _db.SaveChangesAsync(ct);

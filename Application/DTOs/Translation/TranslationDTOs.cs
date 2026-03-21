@@ -10,9 +10,18 @@ namespace Application.DTOs.Translation
         public int PermissionId { get; set; }
         public int LanguageId { get; set; }
         public ContentType ContentType { get; set; } // IMAGE or TEXT
-        public List<string>? ImageUrls { get; set; } // If Manga
-        public string? ContentUrl { get; set; } // If Light Novel
+        public List<Application.DTOs.Chapter.UploadPageDto>? Pages { get; set; } // If Manga
+        public string? ContentText { get; set; } // If Light Novel
         public int? WordCount { get; set; } // For Light Novel
+        
+        public List<TranslationCreditDto>? Credits { get; set; }
+        public List<int>? JointTeamIds { get; set; }
+    }
+
+    public class TranslationCreditDto
+    {
+        public int UserId { get; set; }
+        public TranslationRole Role { get; set; }
     }
 
     public class EditTranslationDto
@@ -33,6 +42,9 @@ namespace Application.DTOs.Translation
         public string QualityStatus { get; set; } = string.Empty;
         public string ModerationStatus { get; set; } = string.Empty;
         public DateTime? PublishedAt { get; set; }
+        public bool IsOfficial { get; set; }
+        public bool IsOutdated { get; set; }
+        public bool IsOrphan { get; set; }
         public List<string>? Pages { get; set; }
         public string? TextContent { get; set; }
     }

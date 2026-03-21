@@ -1,5 +1,6 @@
 using Application.Interfaces.Data;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Data
@@ -41,6 +42,8 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<TranslationPage> TranslationPages { get; set; }
 		public DbSet<TranslationText> TranslationTexts { get; set; }
 		public DbSet<Language> Languages { get; set; }
+		public DbSet<TranslationCredit> TranslationCredits { get; set; }
+		public DbSet<TranslationTeamJoin> TranslationTeamJoins { get; set; }
 
 		// ==================== FINANCIAL ====================
 		public DbSet<Wallet> Wallets { get; set; }
@@ -64,6 +67,8 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<Report> Reports { get; set; }
 		public DbSet<ModerationQueue> ModerationQueues { get; set; }
 		public DbSet<ModerationAction> ModerationActions { get; set; }
+        public DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+        public DbSet<Appeal> Appeals { get; set; }
 
 		// ==================== LISTS ====================
 		public DbSet<UserList> UserLists { get; set; }
@@ -178,9 +183,18 @@ namespace Infrastructure.Persistence.Data
 					.HasConversion<string>()
 					.HasMaxLength(20)
 					.IsRequired();
+                e.Property(x => x.Origin)
+                    .HasConversion<string>()
+                    .HasMaxLength(30)
+                    .IsRequired()
+                    .HasDefaultValue(PermissionOrigin.REQUESTED_BY_TEAM);
+                e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
                 e.Property(x => x.GrantedAt);
                 e.Property(x => x.RevokedAt);
                 e.Property(x => x.Note).HasMaxLength(255);
+
+				// Unique constraint per team + series + language
+                e.HasIndex(x => new { x.TeamId, x.SeriesId, x.LanguageId }).IsUnique();
 
 				e.HasOne(x => x.Series)
 					.WithMany(s => s.TranslationPermissions)
@@ -196,6 +210,11 @@ namespace Infrastructure.Persistence.Data
 					.WithMany(u => u.GrantedPermissions)
 					.HasForeignKey(x => x.GrantedBy)
 					.OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Language)
+                    .WithMany(l => l.TranslationPermissions)
+                    .HasForeignKey(x => x.LanguageId)
+                    .OnDelete(DeleteBehavior.Restrict);
 			});
 
 			// ====================================================
@@ -526,6 +545,44 @@ namespace Infrastructure.Persistence.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+			// ====================================================
+			// TRANSLATION_CREDIT
+			// ====================================================
+			modelBuilder.Entity<TranslationCredit>(e =>
+			{
+				e.ToTable("TranslationCredit");
+				e.HasKey(x => new { x.TranslationId, x.UserId, x.Role });
+				
+				e.HasOne(x => x.Translation)
+					.WithMany(t => t.TranslationCredits)
+					.HasForeignKey(x => x.TranslationId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasOne(x => x.User)
+					.WithMany(u => u.TranslationCredits)
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ====================================================
+			// TRANSLATION_TEAM_JOIN
+			// ====================================================
+			modelBuilder.Entity<TranslationTeamJoin>(e =>
+			{
+				e.ToTable("TranslationTeamJoin");
+				e.HasKey(x => new { x.TranslationId, x.TeamId });
+
+				e.HasOne(x => x.Translation)
+					.WithMany(t => t.TeamJoins)
+					.HasForeignKey(x => x.TranslationId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasOne(x => x.Team)
+					.WithMany(t => t.TeamJoins)
+					.HasForeignKey(x => x.TeamId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
             // ====================================================
             // WALLET
             // ====================================================
@@ -833,6 +890,8 @@ namespace Infrastructure.Persistence.Data
                 e.Property(x => x.ContentType).HasConversion<string>().IsRequired();
                 e.Property(x => x.Reason).HasConversion<string>().IsRequired();
                 e.Property(x => x.Description).HasMaxLength(255);
+                e.Property(x => x.EvidenceUrlsJson).HasColumnType("nvarchar(MAX)");
+                e.Property(x => x.Status).HasConversion<string>().IsRequired().HasDefaultValue(ReportStatus.Pending);
                 e.Property(x => x.CreatedAt).IsRequired();
 
                 e.HasOne(x => x.Reporter)
@@ -845,6 +904,7 @@ namespace Infrastructure.Persistence.Data
                     .HasForeignKey(x => x.QueueId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
 
             // ====================================================
             // MODERATION_QUEUE
@@ -971,6 +1031,61 @@ namespace Infrastructure.Persistence.Data
 					.WithMany()
 					.HasForeignKey(x => x.SeriesId)
 					.OnDelete(DeleteBehavior.Restrict);
+			});
+
+			// ====================================================
+			// TRUST_SCORE_HISTORY
+			// ====================================================
+			modelBuilder.Entity<TrustScoreHistory>(e =>
+			{
+				e.ToTable("TrustScoreHistories");
+				e.HasKey(x => x.Id);
+				e.Property(x => x.Id).UseIdentityColumn();
+
+				e.Property(x => x.Reason).HasMaxLength(500);
+				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+
+				e.HasOne(x => x.User)
+					.WithMany(u => u.TrustScoreHistories)
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasOne(x => x.TranslationTeam)
+					.WithMany(t => t.TrustScoreHistories)
+					.HasForeignKey(x => x.TranslationTeamId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasOne(x => x.RelatedReport)
+					.WithMany()
+					.HasForeignKey(x => x.RelatedReportId)
+					.OnDelete(DeleteBehavior.SetNull);
+			});
+
+			modelBuilder.Entity<Appeal>(e =>
+			{
+				e.ToTable("Appeals");
+				e.HasKey(x => x.AppealId);
+				e.Property(x => x.AppealId).UseIdentityColumn();
+
+				e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+				e.Property(x => x.EvidenceUrl).HasMaxLength(500);
+				e.Property(x => x.ReviewNotes).HasMaxLength(2000);
+				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+
+				e.HasOne(x => x.User)
+					.WithMany()
+					.HasForeignKey(x => x.UserId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.Reviewer)
+					.WithMany()
+					.HasForeignKey(x => x.ReviewedBy)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.RelatedReport)
+					.WithMany()
+					.HasForeignKey(x => x.RelatedReportId)
+					.OnDelete(DeleteBehavior.SetNull);
 			});
         }
     }

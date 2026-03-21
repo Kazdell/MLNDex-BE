@@ -101,6 +101,7 @@ namespace Application.DTOs.Creator
         public string? LanguageName { get; set; }    // "Tiếng Việt", "日本語"...
         public string? UploaderName { get; set; }    // Uploader display name
         public int CommentCount { get; set; }
+        public bool IsOfficialTranslation { get; set; } // If it's a translation and has official permission
     }
 
     public class SeriesSearchRequest
@@ -115,6 +116,8 @@ namespace Application.DTOs.Creator
         public int? YearFrom { get; set; }
         public int? YearTo { get; set; }
         public decimal? MinRating { get; set; }
+        public int? CreatorId { get; set; }
+        public int? ExcludeSeriesId { get; set; }
     }
 
     public class PaginatedList<T>

@@ -60,7 +60,8 @@ namespace Application.Services.User
                 FollowingCount = followingCount,
                 WalletBalance = user.Wallet?.CoinBalance ?? 0,
                 SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
-                BannerUrl = user.BannerUrl
+                BannerUrl = user.BannerUrl,
+                CannotUpload = user.CannotUpload
             };
 
         }
@@ -176,7 +177,8 @@ namespace Application.Services.User
                 FollowingCount = followingCount,
                 WalletBalance = 0, // Hide wallet balance
                 SubscriptionType = activeSubscription?.VipPlan?.Name ?? "Cơ bản",
-                BannerUrl = user.BannerUrl
+                BannerUrl = user.BannerUrl,
+                CannotUpload = user.CannotUpload
             };
         }
         public async Task<UserSettingsDto?> GetUserSettingsAsync(int userId, CancellationToken cancellationToken)

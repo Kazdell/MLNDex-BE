@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Application.DTOs.Translation;
+using Application.Interfaces.Data;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -13,18 +14,50 @@ namespace mlndex_backend.Controllers.Translation
     public class TranslationsController : BaseController
     {
         private readonly ITranslationService _service;
+        private readonly IMlndexDbContext _db;
 
-        public TranslationsController(ITranslationService service)
+        public TranslationsController(ITranslationService service, IMlndexDbContext db)
         {
             _service = service;
+            _db = db;
         }
 
-        // Upload a new translation (Image or Text).
         [HttpPost]
-        public async Task<IActionResult> UploadTranslation([FromBody] UploadTranslationDto dto)
+        [RequestSizeLimit(300 * 1024 * 1024)]
+        public async Task<IActionResult> UploadTranslation(
+            [FromForm] int chapterId,
+            [FromForm] int permissionId,
+            [FromForm] int languageId,
+            [FromForm] Domain.Entities.ContentType contentType,
+            [FromForm] string? creditsJson, // JSON string of List<TranslationCreditDto>
+            [FromForm] string? jointTeamIdsJson, // JSON string of List<int>
+            [FromForm] Microsoft.AspNetCore.Http.IFormFileCollection? pages,
+            [FromForm] string? contentText)
         {
             try
             {
+                // Guard: Block upload if user trust score is depleted
+                var currentUser = await _db.Users.FindAsync(GetUserId());
+                if (currentUser?.CannotUpload == true)
+                    return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+
+                var dto = new UploadTranslationDto
+                {
+                    ChapterId = chapterId,
+                    PermissionId = permissionId,
+                    LanguageId = languageId,
+                    ContentType = contentType,
+                    ContentText = contentText,
+                    Pages = pages?.Select((file, index) => new Application.DTOs.Chapter.UploadPageDto
+                    {
+                        FileStream = file.OpenReadStream(),
+                        FileName = file.FileName,
+                        PageNumber = index + 1
+                    }).ToList(),
+                    Credits = !string.IsNullOrEmpty(creditsJson) ? System.Text.Json.JsonSerializer.Deserialize<List<TranslationCreditDto>>(creditsJson) : null,
+                    JointTeamIds = !string.IsNullOrEmpty(jointTeamIdsJson) ? System.Text.Json.JsonSerializer.Deserialize<List<int>>(jointTeamIdsJson) : null
+                };
+
                 var translation = await _service.UploadTranslationAsync(dto);
                 return CreatedAtAction(nameof(GetTranslationById), new { id = translation.TranslationId }, translation);
             }
@@ -59,6 +92,10 @@ namespace mlndex_backend.Controllers.Translation
         {
             try
             {
+                var currentUser = await _db.Users.FindAsync(GetUserId());
+                if (currentUser?.CannotUpload == true)
+                    return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+
                 var translation = await _service.EditTranslationAsync(id, dto);
                 return OkResponse(translation);
             }

@@ -17,6 +17,9 @@ namespace Domain.Entities
 		public TranslationQualityStatus QualityStatus { get; set; }
 		public ModerationStatus ModerationStatus { get; set; }
 		public DateTime? PublishedAt { get; set; }
+		public bool IsOfficial { get; set; } = false;
+		public bool IsOutdated { get; set; } = false;
+		public bool IsOrphan { get; set; } = false;
 
 		// Navigation
 		public Language Language { get; set; } = null!;
@@ -24,6 +27,8 @@ namespace Domain.Entities
 		public TranslationPermission Permission { get; set; } = null!;
 		public ICollection<TranslationPage> TranslationPages { get; set; } = new List<TranslationPage>();
 		public TranslationText? TranslationText { get; set; }
+		public ICollection<TranslationCredit> TranslationCredits { get; set; } = new List<TranslationCredit>();
+		public ICollection<TranslationTeamJoin> TeamJoins { get; set; } = new List<TranslationTeamJoin>();
 	}
 
 	public enum TranslationQualityStatus

@@ -338,6 +338,7 @@ namespace Application.Services.Creator
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
                 .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
                 .Where(s => ids.Contains(s.SeriesId))
                 .ToListAsync();
 
@@ -371,6 +372,12 @@ namespace Application.Services.Creator
             if (request.Format.HasValue)
                 query = query.Where(s => s.SeriesFormat == request.Format.Value);
 
+            if (request.CreatorId.HasValue)
+                query = query.Where(s => s.CreatorId == request.CreatorId.Value);
+
+            if (request.ExcludeSeriesId.HasValue)
+                query = query.Where(s => s.SeriesId != request.ExcludeSeriesId.Value);
+
             if (request.YearFrom.HasValue)
                 query = query.Where(s => s.CreatedAt.Year >= request.YearFrom.Value);
 
@@ -403,6 +410,7 @@ namespace Application.Services.Creator
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
                 .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
                 .Where(s => ids.Contains(s.SeriesId))
                 .ToListAsync();
 
@@ -424,6 +432,7 @@ namespace Application.Services.Creator
                 .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
                 .Include(s => s.Chapters).ThenInclude(c => c.Team)
                 .Include(s => s.Chapters).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters).ThenInclude(c => c.Translations)
                 .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
             if (series == null) return null;
@@ -465,6 +474,7 @@ namespace Application.Services.Creator
                         GroupName = c.Team?.TeamName,
                         TeamId = c.TeamId,
                         IsOriginal = c.TeamId == null,
+                        IsOfficialTranslation = c.Translations.Any(t => t.IsOfficial),
                         LanguageCode = c.Language?.Code,
                         LanguageName = c.Language?.Name,
                         CommentCount = 0
@@ -499,87 +509,173 @@ namespace Application.Services.Creator
             };
         }
 
-        public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10)
+        public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10, int? currentSeriesId = null)
         {
-            var recommendedSeries = new List<Series>();
-            var excludedIds = new List<int>();
+            var recommendedSeriesIds = new HashSet<int>();
+            var excludedIds = new HashSet<int>();
+
+            if (currentSeriesId.HasValue)
+                excludedIds.Add(currentSeriesId.Value);
+
+            // Fetch user reading history and preferences if logged in
+            var readSeriesIds = new List<int>();
+            var userPreferredGenreIds = new List<int>();
 
             if (userId > 0)
             {
-                var readSeriesIds = await _context.ReadingHistories
+                readSeriesIds = await _context.ReadingHistories
                     .Where(rh => rh.UserId == userId)
                     .Select(rh => rh.SeriesId)
                     .Distinct()
                     .ToListAsync();
 
-                excludedIds.AddRange(readSeriesIds);
+                excludedIds.UnionWith(readSeriesIds);
 
-                var userGenres = await _context.ReadingHistories
+                userPreferredGenreIds = await _context.ReadingHistories
                     .Where(rh => rh.UserId == userId)
                     .SelectMany(rh => rh.Series.SeriesGenres.Select(sg => sg.GenreId))
-                    .Distinct()
+                    .GroupBy(g => g)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .Take(5) // Top 5 preferred genres
+                    .ToListAsync();
+            }
+
+            // TIER 2: Warm Start / Context-Aware (If currently reading a series) //
+            if (currentSeriesId.HasValue)
+            {
+                // Item-Based CF pseudo: Users who read this also read...
+                var coReaders = await _context.ReadingHistories
+                    .Where(rh => rh.SeriesId == currentSeriesId.Value)
+                    .Select(rh => rh.UserId)
+                    .Take(100)
                     .ToListAsync();
 
-                if (userGenres.Any())
+                if (coReaders.Any())
                 {
-                    var genreRecommendationData = await _context.Series
-                        .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
-                                    && !excludedIds.Contains(s.SeriesId)
-                                    && s.SeriesGenres.Any(sg => userGenres.Contains(sg.GenreId)))
-                        .OrderByDescending(s => s.ReadingHistories.Count)
-                        .Select(s => new { s.SeriesId })
-                        .Take(limit)
+                    var coReadSeriesIds = await _context.ReadingHistories
+                        .Where(rh => coReaders.Contains(rh.UserId) && rh.SeriesId != currentSeriesId.Value)
+                        .GroupBy(rh => rh.SeriesId)
+                        .OrderByDescending(g => g.Count())
+                        .Select(g => g.Key)
+                        .Take(limit / 2)
                         .ToListAsync();
 
-                    var genreRecIds = genreRecommendationData.Select(x => x.SeriesId).ToList();
+                    recommendedSeriesIds.UnionWith(coReadSeriesIds.Where(id => !excludedIds.Contains(id)));
+                }
 
-                    if (genreRecIds.Any())
-                    {
-                        var genreRecItems = await _context.Series
-                            .Include(s => s.Creator)
-                            .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                            .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                            .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
-                            .Where(s => genreRecIds.Contains(s.SeriesId))
-                            .ToListAsync();
-
-                        var orderedGenreRecs = genreRecIds.Select(id => genreRecItems.First(i => i.SeriesId == id)).ToList();
-                        recommendedSeries.AddRange(orderedGenreRecs);
-                        excludedIds.AddRange(genreRecIds);
-                    }
+                // If not enough from co-reads, try same creator or genre
+                if (recommendedSeriesIds.Count < limit / 2)
+                {
+                   var currentSeries = await _context.Series
+                       .Include(s => s.SeriesGenres)
+                       .FirstOrDefaultAsync(s => s.SeriesId == currentSeriesId.Value);
+                   
+                   if (currentSeries != null)
+                   {
+                       var currentGenres = currentSeries.SeriesGenres.Select(sg => sg.GenreId).ToList();
+                       
+                       var contextSeriesList = await _context.Series
+                           .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+                                       && !excludedIds.Contains(s.SeriesId) 
+                                       && !recommendedSeriesIds.Contains(s.SeriesId)
+                                       && (s.CreatorId == currentSeries.CreatorId || s.SeriesGenres.Any(sg => currentGenres.Contains(sg.GenreId))))
+                           .OrderByDescending(s => s.ReadingHistories.Count)
+                           .Select(s => s.SeriesId)
+                           .Take(limit / 2)
+                           .ToListAsync();
+                           
+                       recommendedSeriesIds.UnionWith(contextSeriesList);
+                   }
                 }
             }
 
-            if (recommendedSeries.Count < limit)
+            // TIER 3: Deep Personalization (If user has enough history) //
+            if (userId > 0 && readSeriesIds.Count >= 5 && recommendedSeriesIds.Count < limit)
             {
-                var remainingLimit = limit - recommendedSeries.Count;
+                int remainingLimit = limit - recommendedSeriesIds.Count;
+                int cfLimit = (int)(remainingLimit * 0.7); // 70% from CF
+                
+                // 1. Collaborative Filtering (User-Based)
+                // Find top 50 users who also read the same series
+                var similarUsers = await _context.ReadingHistories
+                    .Where(rh => readSeriesIds.Contains(rh.SeriesId) && rh.UserId != userId)
+                    .GroupBy(rh => rh.UserId)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .Take(50)
+                    .ToListAsync();
+                    
+                if (similarUsers.Any())
+                {
+                    // Find top series read by these similar users, excluding already read & recommended
+                    var cfRecommendedIds = await _context.ReadingHistories
+                        .Where(rh => similarUsers.Contains(rh.UserId) 
+                                  && !excludedIds.Contains(rh.SeriesId)
+                                  && !recommendedSeriesIds.Contains(rh.SeriesId))
+                        .GroupBy(rh => rh.SeriesId)
+                        .OrderByDescending(g => g.Count())
+                        .Select(g => g.Key)
+                        .Take(cfLimit)
+                        .ToListAsync();
 
-                var popularSeriesData = await _context.Series
+                    recommendedSeriesIds.UnionWith(cfRecommendedIds);
+                }
+                
+                // 2. Content-Based Filtering (Top Genres)
+                if (recommendedSeriesIds.Count < limit && userPreferredGenreIds.Any())
+                {
+                    remainingLimit = limit - recommendedSeriesIds.Count;
+                    var personalizedIds = await _context.Series
+                        .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+                                    && !excludedIds.Contains(s.SeriesId)
+                                    && !recommendedSeriesIds.Contains(s.SeriesId)
+                                    && s.SeriesGenres.Any(sg => userPreferredGenreIds.Contains(sg.GenreId)))
+                        .OrderByDescending(s => s.TotalRatings) 
+                        .Select(s => s.SeriesId)
+                        .Take(remainingLimit)
+                        .ToListAsync();
+
+                    recommendedSeriesIds.UnionWith(personalizedIds);
+                }
+            }
+
+            // TIER 1: Cold Start / Fallback & Diversity Injection //
+            if (recommendedSeriesIds.Count < limit)
+            {
+                var remainingLimit = limit - recommendedSeriesIds.Count;
+                
+                // Trending / High rating series
+                var popularIds = await _context.Series
                     .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
-                                && !excludedIds.Contains(s.SeriesId))
-                    .OrderByDescending(s => s.ReadingHistories.Count)
-                    .Select(s => new { s.SeriesId })
+                                && !excludedIds.Contains(s.SeriesId)
+                                && !recommendedSeriesIds.Contains(s.SeriesId))
+                    .OrderByDescending(s => s.TotalRatings) // Changed back to TotalRatings since TotalViews doesn't exist on Series directly
+                    .ThenByDescending(s => s.AverageRating)
+                    .Select(s => s.SeriesId)
                     .Take(remainingLimit)
                     .ToListAsync();
 
-                var popularRecIds = popularSeriesData.Select(x => x.SeriesId).ToList();
-
-                if (popularRecIds.Any())
-                {
-                    var popularRecItems = await _context.Series
-                        .Include(s => s.Creator)
-                        .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-                        .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
-                        .Where(s => popularRecIds.Contains(s.SeriesId))
-                        .ToListAsync();
-
-                    var orderedPopularRecs = popularRecIds.Select(id => popularRecItems.First(i => i.SeriesId == id)).ToList();
-                    recommendedSeries.AddRange(orderedPopularRecs);
-                }
+                recommendedSeriesIds.UnionWith(popularIds);
             }
 
-            return recommendedSeries.Select(MapToDto).ToList();
+            // Fetch actual full series data for the selected IDs
+            var finalRecIds = recommendedSeriesIds.Take(limit).ToList();
+            if (!finalRecIds.Any()) return new List<SeriesDto>();
+
+            var recItems = await _context.Series
+                .Include(s => s.Creator)
+                .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+                .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
+                .Where(s => finalRecIds.Contains(s.SeriesId))
+                .ToListAsync();
+
+            // Maintain order returned by algorithm
+            var orderedRecs = finalRecIds.Select(id => recItems.First(i => i.SeriesId == id)).ToList();
+
+            return orderedRecs.Select(MapToDto).ToList();
         }
 
         // ── Status-only update (no moderation, no cooldown) ──────────────────
@@ -645,7 +741,7 @@ namespace Application.Services.Creator
                 {
                     var queueIds = allModerationEntries.Select(q => q.QueueId).ToList();
                     var reports = await _context.Reports
-                        .Where(r => queueIds.Contains(r.QueueId))
+                        .Where(r => r.QueueId.HasValue && queueIds.Contains(r.QueueId.Value))
                         .ToListAsync(cancellationToken);
                     _context.Reports.RemoveRange(reports);
                 }
@@ -727,6 +823,7 @@ namespace Application.Services.Creator
                         GroupName = c.Team?.TeamName,
                         TeamId = c.TeamId,
                         IsOriginal = c.TeamId == null,
+                        IsOfficialTranslation = c.Translations != null && c.Translations.Any(t => t.IsOfficial),
                         LanguageCode = c.Language?.Code,
                         LanguageName = c.Language?.Name,
                         CommentCount = 0

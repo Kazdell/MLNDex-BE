@@ -44,6 +44,11 @@ namespace mlndex_backend.Controllers.Creator
         {
             var userId = CurrentUserId;
             if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+            var currentUser = await _context.Users.FindAsync(userId);
+            if (currentUser?.CannotUpload == true)
+                return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+
             var result = await _service.CreateAsync(userId, dto, cancellationToken);
             return Ok(result);
         }
@@ -67,6 +72,11 @@ namespace mlndex_backend.Controllers.Creator
         {
             var userId = CurrentUserId;
             if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+            var currentUser = await _context.Users.FindAsync(userId);
+            if (currentUser?.CannotUpload == true)
+                return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+
             var result = await _service.UpdateAsync(id, userId, dto, cancellationToken);
             return Ok(result);
         }
@@ -142,20 +152,20 @@ namespace mlndex_backend.Controllers.Creator
 
         [HttpGet("recommendations")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10)
+        public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 10, [FromQuery] int? currentSeriesId = null)
         {
             var userId = CurrentUserId;
             
             // If user is not logged in, cache the generalized recommendations
             if (userId == 0)
             {
-                var cacheKey = $"GetRecommendations_Anon_{limit}";
+                var cacheKey = $"GetRecommendations_Anon_{limit}_{currentSeriesId}";
                 if (_cache.TryGetValue(cacheKey, out var cachedResult))
                 {
                     return OkResponse(cachedResult);
                 }
 
-                var result = await _service.GetRecommendationsAsync(0, limit);
+                var result = await _service.GetRecommendationsAsync(0, limit, currentSeriesId);
                 
                 var cacheEntryOptions = new MemoryCacheEntryOptions()
                     .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
@@ -165,7 +175,7 @@ namespace mlndex_backend.Controllers.Creator
             }
             else 
             {
-                var result = await _service.GetRecommendationsAsync(userId, limit);
+                var result = await _service.GetRecommendationsAsync(userId, limit, currentSeriesId);
                 return OkResponse(result);
             }
         }
