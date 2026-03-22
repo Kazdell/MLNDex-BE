@@ -7,6 +7,7 @@ using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.Payment;
 using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
@@ -16,23 +17,23 @@ using Application.Services.Community;
 using Application.Services.Creator;
 using Application.Services.Financial;
 using Application.Services.Moderation;
+using Application.Services.Payment;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
-using Infrastructure.Common;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Common;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
-using mlndex_backend.Hubs;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using mlndex_backend.Extension;
+using mlndex_backend.Hubs;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -128,6 +129,8 @@ namespace mlndex_backend
 			// Financial Services
 			builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
+			builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
+			builder.Services.AddScoped<ICoinRateService, CoinRateService>();
 
 			// System Services — SystemConfigService cần filePath nên dùng factory
 			var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");

@@ -47,6 +47,7 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<CoinPackage> CoinPackages { get; set; }
 		public DbSet<ChapterUnlock> ChapterUnlocks { get; set; }
 		public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+        public DbSet<CoinRateSetting> CoinRateSettings { get; set; }
 
 		// ==================== INTERACTION ====================
 		public DbSet<ReadingHistory> ReadingHistories { get; set; }
@@ -895,6 +896,28 @@ namespace Infrastructure.Persistence.Data
                     .HasForeignKey(x => x.GenreId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
-        }
+
+			// ====================================================
+			// Coin_Rate_Setting
+			// ====================================================
+			modelBuilder.Entity<CoinRateSetting>(e =>
+			{
+				e.ToTable("CoinRateSetting");
+				e.HasKey(x => x.Id);
+				e.Property(x => x.Id).UseIdentityColumn();
+				e.Property(x => x.CoinsPerVnd).HasColumnType("decimal(10,4)").IsRequired();
+				e.Property(x => x.MinTopUpVnd).IsRequired();
+				e.Property(x => x.MaxTopUpVnd).IsRequired();
+				e.Property(x => x.IsActive).IsRequired();
+				e.Property(x => x.UpdatedByUserId).IsRequired();
+				e.Property(x => x.UpdatedAt).IsRequired();
+				e.Property(x => x.Note).HasMaxLength(200);
+
+				e.HasOne(x => x.UpdatedBy)
+					.WithMany()
+					.HasForeignKey(x => x.UpdatedByUserId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+		}
     }
 }
