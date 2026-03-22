@@ -45,5 +45,29 @@ namespace mlndex_backend.Controllers.Admin
                 return NotFoundResponse(ex.Message);
             }
         }
+
+        [HttpPut("{userId:int}/roles")]
+        public async Task<IActionResult> UpdateRoles(
+            int userId,
+            [FromBody] UpdateUserRolesRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            if (!ModelState.IsValid)
+                return BadRequestResponse("Invalid payload");
+
+            try
+            {
+                var result = await _service.UpdateRolesAsync(userId, request, cancellationToken);
+                if (!result)
+                    return NotFoundResponse("User không tồn tại.");
+
+                return OkResponse<object?>(null, "Đã cập nhật vai trò người dùng.");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex.Message);
+            }
+        }
     }
 }
