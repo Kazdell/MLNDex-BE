@@ -119,7 +119,10 @@ namespace Application.Services.User
 
         public async Task<List<UserSearchDto>> SearchUsersAsync(string query, CancellationToken cancellationToken)
         {
-            var usersQuery = _context.Users.AsQueryable();
+            var usersQuery = _context.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query))
             {
@@ -133,7 +136,9 @@ namespace Application.Services.User
                     UserId = u.UserId,
                     Username = u.Username,
                     DisplayName = u.DisplayName,
-                    Avatar = u.DisplayAvatar
+                    Avatar = u.DisplayAvatar,
+                    Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                    IsActive = u.IsActive
                 })
                 .ToListAsync(cancellationToken);
         }
