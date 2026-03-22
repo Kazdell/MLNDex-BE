@@ -145,9 +145,8 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 
-			// System Services — SystemConfigService cần filePath nên dùng factory
-			var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");
-			builder.Services.AddScoped<ISystemConfigService>(_ => new SystemConfigService(systemConfigFilePath));
+			// System Services — SystemConfigService now uses DbContext
+			builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
             // Increase timeout
             builder.Services.Configure<KestrelServerOptions>(options =>

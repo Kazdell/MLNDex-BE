@@ -74,6 +74,9 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<UserList> UserLists { get; set; }
 		public DbSet<UserListItem> UserListItems { get; set; }
 
+		// ==================== SYSTEM ====================
+		public DbSet<SystemSetting> SystemSettings { get; set; }
+
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
@@ -1086,6 +1089,20 @@ namespace Infrastructure.Persistence.Data
 					.WithMany()
 					.HasForeignKey(x => x.RelatedReportId)
 					.OnDelete(DeleteBehavior.SetNull);
+			});
+
+			// ====================================================
+			// SYSTEM_SETTING
+			// ====================================================
+			modelBuilder.Entity<SystemSetting>(e =>
+			{
+				e.ToTable("SystemSetting");
+				e.HasKey(x => x.SettingId);
+				e.Property(x => x.SettingId).UseIdentityColumn();
+				e.HasIndex(x => x.Key).IsUnique();
+				e.Property(x => x.Key).HasMaxLength(100).IsRequired();
+				e.Property(x => x.Value).IsRequired();
+				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 			});
         }
     }
