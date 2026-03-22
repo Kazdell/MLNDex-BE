@@ -97,5 +97,42 @@ namespace Application.Services.Moderation
             );
             await Task.CompletedTask;
         }
+
+        public async Task<bool> UpdateRolesAsync(
+            int userId,
+            UpdateUserRolesRequest request,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+
+            if (user == null) return false;
+
+            // Remove existing roles
+            _context.UserRoles.RemoveRange(user.UserRoles);
+
+            // Add new roles
+            foreach (var roleStr in request.Roles)
+            {
+                if (Enum.TryParse<RoleName>(roleStr.ToUpper(), out var roleNameEnum))
+                {
+                    var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == roleNameEnum, cancellationToken);
+                    if (role != null)
+                    {
+                        user.UserRoles.Add(new UserRole
+                        {
+                            UserId = userId,
+                            RoleId = role.RoleId,
+                            AssignedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
     }
 }

@@ -318,18 +318,16 @@ namespace Application.Services.Creator
             if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
             else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
-                query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+                query = query.OrderByDescending(s => s.CreatedAt); // Fallback to CreatedAt if chapter-based sorting is problematic
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
 
             var totalCount = await query.CountAsync();
-            var seriesData = await query
-                .Select(s => new { s.SeriesId })
+            var ids = await query
+                .Select(s => s.SeriesId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-
-            var ids = seriesData.Select(x => x.SeriesId).ToList();
 
             if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = page, PageSize = pageSize, Items = new List<SeriesDto>() };
 
@@ -342,7 +340,7 @@ namespace Application.Services.Creator
                 .Where(s => ids.Contains(s.SeriesId))
                 .ToListAsync();
 
-            var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+            var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
             return new PaginatedList<SeriesDto>
             {
@@ -390,18 +388,16 @@ namespace Application.Services.Creator
             if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
                 query = query.OrderByDescending(s => s.TotalRatings);
             else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
-                query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+                query = query.OrderByDescending(s => s.CreatedAt);
             else
                 query = query.OrderByDescending(s => s.CreatedAt);
 
             var totalCount = await query.CountAsync();
-            var seriesData = await query
-                .Select(s => new { s.SeriesId })
+            var ids = await query
+                .Select(s => s.SeriesId)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .ToListAsync();
-
-            var ids = seriesData.Select(x => x.SeriesId).ToList();
 
             if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = request.Page, PageSize = request.PageSize, Items = new List<SeriesDto>() };
 
@@ -414,7 +410,7 @@ namespace Application.Services.Creator
                 .Where(s => ids.Contains(s.SeriesId))
                 .ToListAsync();
 
-            var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+            var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
             return new PaginatedList<SeriesDto>
             {
@@ -805,10 +801,10 @@ namespace Application.Services.Creator
                 TotalRatings = s.TotalRatings,
                 CreatedAt = s.CreatedAt,
                 CreatorId = s.CreatorId,
-                CreatorUserId = s.Creator.UserId,
-                CreatorName = s.Creator.PenName,
-                Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
-                LatestChapters = s.Chapters
+                CreatorUserId = s.Creator?.UserId ?? 0,
+                CreatorName = s.Creator?.PenName ?? "Unknown",
+                Genres = s.SeriesGenres?.Select(sg => sg.Genre?.Name).Where(n => n != null).ToList() ?? new List<string>(),
+                LatestChapters = s.Chapters?
                     .Where(c => c.Status == ChapterStatus.PUBLISHED)
                     .OrderByDescending(c => c.ChapterNumber)
                     .Take(2)
@@ -827,7 +823,7 @@ namespace Application.Services.Creator
                         LanguageCode = c.Language?.Code,
                         LanguageName = c.Language?.Name,
                         CommentCount = 0
-                    }).ToList()
+                    }).ToList() ?? new List<SeriesChapterDto>()
             };
         }
 

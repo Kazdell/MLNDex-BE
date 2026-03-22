@@ -6,5 +6,7 @@ namespace Application.DTOs.User
         public string Username { get; set; } = string.Empty;
         public string? DisplayName { get; set; }
         public string? Avatar { get; set; }
+        public List<string> Roles { get; set; } = new();
+        public bool IsActive { get; set; }
     }
 }

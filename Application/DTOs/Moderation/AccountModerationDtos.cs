@@ -24,4 +24,10 @@ namespace Application.DTOs.Moderation
         public bool IsActive { get; set; }
         public string Message { get; set; } = string.Empty;
     }
+
+    public class UpdateUserRolesRequest
+    {
+        [Required]
+        public List<string> Roles { get; set; } = new();
+    }
 }
