@@ -42,6 +42,10 @@ namespace Application.Interfaces.Data
         DbSet<ModerationAction> ModerationActions { get; set; }
         DbSet<TeamInvitation> TeamInvitations { get; set; }
         DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
+        DbSet<CoinRateSetting> CoinRateSettings { get; set; }
+
+		Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+    }
         DbSet<UserList> UserLists { get; set; }
         DbSet<UserListItem> UserListItems { get; set; }
         DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
