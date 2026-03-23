@@ -1,403 +1,1162 @@
-﻿using Application.DTOs.Moderation;
+using Application.DTOs.AIModeration;
+using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
-using Application.Interfaces.Moderation;
 using Application.Interfaces.Data;
+using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
+using Application.Interfaces.Queue;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Application.Services.AIModeration
 {
-	public class ModerationService : IModerationService
-	{
-		private readonly IMlndexDbContext _db;
-		private readonly IAiModerationClient _aiClient;
-		private readonly ILogger<ModerationService> _logger;
-		private readonly IBlacklistProvider _blacklist;
-		private readonly IOCRService _ocr;
+  public class ModerationService : IModerationService
+  {
+    private readonly IMlndexDbContext _db;
+    private readonly IAiModerationClient _aiClient;
+    private readonly ILogger<ModerationService> _logger;
+    private readonly IBlacklistProvider _blacklist;
+    private readonly IOCRService _ocr;
+    private readonly IModerationQueue _queue;
+    private readonly INotificationService _notificationService;
+    private readonly Application.Interfaces.Creator.IStorageService _storage;
 
-		private static readonly Dictionary<char, char> TeencodeMap = new()
-		{
-			{ '@', 'a' }, { '1', 'i' }, { '0', 'o' }, { '3', 'e' },
-			{ '!', 'i' }, { '$', 's' }, { '4', 'a' }
-		};
+    private static readonly Dictionary<char, char> TeencodeMap = new()
+        {
+            { '@', 'a' }, { '1', 'i' }, { '0', 'o' }, { '3', 'e' },
+            { '!', 'i' }, { '$', 's' }, { '4', 'a' }
+        };
 
-		public ModerationService(
-			IMlndexDbContext db,
-			IAiModerationClient aiClient,
-			ILogger<ModerationService> logger,
-			IBlacklistProvider blacklist,
-            IOCRService ocr)
-		{
-			_db = db;
-			_aiClient = aiClient;
-			_logger = logger;
-			_blacklist = blacklist;
-			_ocr = ocr;
-		}
+    public ModerationService(
+        IMlndexDbContext db,
+        IAiModerationClient aiClient,
+        ILogger<ModerationService> logger,
+        IBlacklistProvider blacklist,
+        IOCRService ocr,
+        IModerationQueue queue,
+        INotificationService notificationService,
+        Application.Interfaces.Creator.IStorageService storage)
+    {
+      _db = db;
+      _aiClient = aiClient;
+      _logger = logger;
+      _blacklist = blacklist;
+      _ocr = ocr;
+      _queue = queue;
+      _notificationService = notificationService;
+      _storage = storage;
+    }
 
-		// ─────────────────────────────────────────────────────────────
-		// Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
-		// ─────────────────────────────────────────────────────────────
-		public async Task RunAiModerationAsync(int chapterId)
-		{
-			var chapter = await _db.Chapters
-				.Include(c => c.Pages)
-				.FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-				?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+    private static string TruncateMessage(string msg, int maxLen = 250)
+        => msg.Length > maxLen ? msg[..(maxLen - 3)] + "..." : msg;
 
-			_logger.LogInformation("Chạy AI kiểm duyệt chapter {ChapterId}", chapterId);
+    // ─────────────────────────────────────────────────────────────
+    // Bước 1: AI tự động kiểm duyệt khi chapter vừa upload
+    // ─────────────────────────────────────────────────────────────
+    public async Task<AiModerationResultDto> RunAiModerationAsync(int chapterId)
+    {
+      var chapter = await _db.Chapters
+          .Include(c => c.Pages)
+          .Include(c => c.Series) // Lấy Series để biết AgeRating
+              .ThenInclude(s => s.Creator) // Lấy Creator để biết ReputationScore
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
 
-			// Lấy toàn bộ URL ảnh trong chapter
-			var imageUrls = chapter.Pages
-				.OrderBy(p => p.PageNumber)
-				.Select(p => p.ImageUrl)
-				.ToList();
+      _logger.LogInformation("Chạy AI kiểm duyệt chapter {ChapterId} (Rating: {Rating})", chapterId, chapter.Series.AgeRating);
 
-			if (imageUrls.Count == 0)
-			{
-				_logger.LogWarning("Chapter {ChapterId} không có ảnh nào", chapterId);
-				return;
-			}
+      // 0. Check Chapter Title Blacklist
+      if (!string.IsNullOrEmpty(chapter.Title))
+      {
+        var titleCheck = PreCheckText(new TextCheckRequest { Text = chapter.Title, UserReputation = 100 });
+        if (titleCheck.Action == ModerationActionType.AutoReject.ToString() || titleCheck.Action == ModerationActionType.InstantBan.ToString())
+        {
+          chapter.ModerationStatus = ModerationStatus.REJECTED;
+          await _db.SaveChangesAsync();
+          _logger.LogWarning("Chapter {ChapterId} bị reject do tiêu đề vi phạm.", chapterId);
 
-			// Gọi AI
-			var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
+          await _notificationService.CreateNotificationAsync(
+              chapter.Series.Creator.UserId,
+              "Chapter bị từ chối tự động",
+              TruncateMessage($"Chương {chapter.ChapterNumber} của truyện '{chapter.Series.Title}' đã bị từ chối do tiêu đề chứa nội dung cấm."),
+              $"/creator/chapters/{chapterId}/edit",
+              Domain.Entities.NotificationType.SYSTEM
+          );
 
-			// Cập nhật ModerationStatus trên Chapter và đẩy vào Hàng đợi nếu vi phạm
-			if (aiResult.Flagged)
-			{
-				chapter.ModerationStatus = ModerationStatus.PENDING; // Đưa vào trạng thái chờ duyệt thay vì REJECT luôn
+          return new AiModerationResultDto
+          {
+            Flagged = true,
+            FlaggedReason = "title_violation",
+            CategoryScores = new Dictionary<string, double>()
+          };
+        }
+      }
 
-				var queueItem = new ModerationQueue
-				{
-					ContentId = chapterId,
-					ContentType = ModerationQueueContentType.CHAPTER,
-					Priority = QueuePriority.HIGH,
-					Status = QueueStatus.PENDING,
-					Source = QueueSource.AI_FLAGGED,
-					AiFlagged = true,
-					AiFlaggedReason = aiResult.FlaggedReason,
-					AiProcessedAt = DateTime.UtcNow,
-					FlaggedAt = DateTime.UtcNow,
-					ReportCount = 0,
-					AppealCount = 0
-				};
+      // 1. AI Image Analysis
+      var imageUrls = chapter.Pages
+          .OrderBy(p => p.PageNumber)
+          .Select(p => p.ImageUrl)
+          .ToList();
 
-				_db.ModerationQueues.Add(queueItem);
+      if (imageUrls.Count == 0)
+      {
+        _logger.LogWarning("Chapter {ChapterId} không có ảnh nào", chapterId);
+        return new AiModerationResultDto
+        {
+          Flagged = false,
+          FlaggedReason = null,
+          CategoryScores = new Dictionary<string, double>()
+        };
+      }
 
-				_logger.LogWarning("Chapter {ChapterId} bị flag: {Reason}. Đã đưa vào ModerationQueue.", chapterId, aiResult.FlaggedReason);
-				// TODO: Gửi notification cho Mod
-			}
-			else
-			{
-				chapter.ModerationStatus = ModerationStatus.APPROVED;
-				_logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt", chapterId);
-			}
+      var aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
-			await _db.SaveChangesAsync();
-		}
+      // 2. OCR & Text Check (Dùng cho image content)
+      var extractedTextBuilder = new StringBuilder();
+      using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
+      foreach (var url in imageUrls)
+      {
+        try
+        {
+          var imageBytes = await httpClient.GetByteArrayAsync(url);
+          var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
+          if (!string.IsNullOrWhiteSpace(text))
+          {
+            extractedTextBuilder.AppendLine(text);
+          }
+        }
+        catch (Exception ex)
+        {
+          _logger.LogWarning(ex, "OCR lỗi ở ảnh {Url}", url);
+        }
+      }
 
-		// ─────────────────────────────────────────────────────────────
-		// Bước 2: Tác giả appeal → tạo queue cho moderator xử lý
-		// ─────────────────────────────────────────────────────────────
-		public async Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason)
-		{
-			var chapter = await _db.Chapters
-				.FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-				?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+      var fullText = extractedTextBuilder.ToString();
+      if (!string.IsNullOrWhiteSpace(fullText))
+      {
+        var textResult = PreCheckText(new TextCheckRequest
+        {
+          Text = fullText,
+          UserReputation = chapter.Series.Creator.ReputationScore,
+          IsComment = false
+        });
 
-			// Chỉ cho appeal khi đang bị Flagged
-			if (chapter.ModerationStatus != ModerationStatus.REJECTED)
-				throw new InvalidOperationException("Chỉ có thể appeal khi chapter đang bị reject.");
+        // Only auto-flag on severe violations (AutoReject/InstantBan)
+        // FlagForReview (mild profanity) is recorded but doesn't force rejection
+        // — the scoring engine will decide based on image scores + age rating
+        if (textResult.Action == ModerationActionType.AutoReject.ToString()
+            || textResult.Action == ModerationActionType.InstantBan.ToString())
+        {
+          aiResult.Flagged = true;
+        }
 
-			// Đếm số lần đã appeal trước đó
-			var appealCount = await _db.ModerationQueues
-				.CountAsync(q => q.ContentId == chapterId
-							  && q.ContentType == ModerationQueueContentType.CHAPTER
-							  && q.Source == QueueSource.AI_FLAGGED);
+        // Always record the OCR reasons for transparency (even if not flagged)
+        if (textResult.Action != ModerationActionType.AutoPass.ToString())
+        {
+          var textReason = string.Join(", ", textResult.Reasons);
+          var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
+          // Truncate to avoid excessively long strings from OCR
+          aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
+        }
+      }
+      // 3. Scoring Engine
+      var scoreRequest = new OpenAiScoreRequest
+      {
+        Scores = aiResult.CategoryScores,
+        TargetAgeRating = chapter.Series.AgeRating.ToString()
+      };
 
-			// Tạo queue item mới cho moderator
-			var queue = new ModerationQueue
-			{
-				ContentId = chapterId,
-				ContentType = ModerationQueueContentType.CHAPTER,
-				Source = QueueSource.AI_FLAGGED,
-				Priority = QueuePriority.MEDIUM,
-				Status = QueueStatus.PENDING,
-				ReportCount = 0,
-				FlaggedAt = DateTime.UtcNow,
-				AppealReason = appealReason,
-				AppealCount = appealCount + 1,
+      var analysis = AnalyzeOpenAiScores(scoreRequest);
 
-				// Ghi lại lý do AI đã flag trước đó để mod có context
-				AiFlagged = true,
-				AiFlaggedReason = await GetLastAiFlaggedReasonAsync(chapterId),
-				AiProcessedAt = DateTime.UtcNow,
-			};
+      // 4. Quyết định hành động
+      if (analysis.Action == ModerationActionType.AutoReject.ToString()
+                          || analysis.Action == ModerationActionType.FlagForReview.ToString()
+                          || aiResult.Flagged)
+      {
+        chapter.ModerationStatus = ModerationStatus.REJECTED;
+        chapter.Status = ChapterStatus.DRAFT; // Rejected = not visible publicly
 
-			_db.ModerationQueues.Add(queue);
-			await _db.SaveChangesAsync();
+        var queueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == chapterId
+                && q.ContentType == ModerationQueueContentType.CHAPTER);
 
-			_logger.LogInformation(
-				"Tác giả {UserId} appeal chapter {ChapterId} lần {Count}",
-				requestedByUserId, chapterId, appealCount + 1);
-		}
+        var aiReason = aiResult.Flagged
+            ? aiResult.FlaggedReason
+            : $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
 
-		// ─────────────────────────────────────────────────────────────
-		// Private helpers
-		// ─────────────────────────────────────────────────────────────
+        if (queueItem != null)
+        {
+          // Update Priority dựa vào mức độ vi phạm
+          queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
+                                ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+          queueItem.Status = QueueStatus.RESOLVED; // Mark as done
+          queueItem.FlaggedAt = DateTime.UtcNow;
+          queueItem.ReportCount += 1;
 
-		private async Task<string?> GetLastAiFlaggedReasonAsync(int chapterId)
-		{
-			return await _db.ModerationQueues
-				.Where(q => q.ContentId == chapterId
-						 && q.ContentType == ModerationQueueContentType.CHAPTER
-						 && q.Source == QueueSource.AI_FLAGGED)
-				.OrderByDescending(q => q.FlaggedAt)
-				.Select(q => q.AiFlaggedReason)
-				.FirstOrDefaultAsync();
-		}
+          var report = new Report
+          {
+            ContentId = chapterId,
+            ContentType = ReportTargetType.ChapterTranslation,
+            Reason = ReportReason.Inappropriate,
+            Description = "AI_" + aiReason,
+            ReporterId = 1,
+            Queue = queueItem,
+            CreatedAt = DateTime.UtcNow
+          };
+          _db.Reports.Add(report);
+        }
 
-		// Pre-check text against blacklist with teencode normalization.
-		public TextCheckResponse PreCheckText(TextCheckRequest request)
-		{
-			var cleanedText = CleanText(request.Text);
-			int penaltyScore = 0;
-			var flagReasons = new List<string>();
+        _logger.LogWarning("Chapter {ChapterId} bị {Action}: {Reason}",
+            chapterId, analysis.Action, aiReason);
+      }
+      else
+      {
+        chapter.ModerationStatus = ModerationStatus.APPROVED;
+        chapter.Status = ChapterStatus.PUBLISHED;
+        chapter.PublishedAt = DateTime.UtcNow;
 
-			// Illegal content -> Instant ban
-			foreach (var entry in _blacklist.IllegalContentList)
-			{
-				if (ContainsWord(cleanedText, entry))
-				{
-					return new TextCheckResponse
-					{
-						Action = ModerationActionType.InstantBan.ToString(),
-						Reasons = new List<string> { $"Illegal content: {entry.Word}" },
-						PenaltyPoints = 100,
-						TemplateId = "REJ_005",
-						IsPermaBan = true
-					};
-				}
-			}
+        // Mark queue as resolved for approved chapters too
+        var approvedQueueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == chapterId
+                && q.ContentType == ModerationQueueContentType.CHAPTER);
+        if (approvedQueueItem != null)
+          approvedQueueItem.Status = QueueStatus.RESOLVED;
 
-			// Hate speech -> Auto reject if extreme
-			foreach (var entry in _blacklist.HateSpeechList)
-			{
-				if (ContainsWord(cleanedText, entry))
-				{
-					int points = SeverityToPoints(entry.Severity);
-					if (entry.Severity == "extreme")
-					{
-						return new TextCheckResponse
-						{
-							Action = ModerationActionType.AutoReject.ToString(),
-							Reasons = new List<string> { $"Hate speech: {entry.Word}" },
-							PenaltyPoints = points,
-							TemplateId = "REJ_008",
-							IsPermaBan = false
-						};
-					}
-					penaltyScore += points;
-					flagReasons.Add($"Hate speech: {entry.Word}");
-				}
-			}
+        _logger.LogInformation("Chapter {ChapterId} đã được AI tự động duyệt → PUBLISHED", chapterId);
+      }
 
-			// Profanity -> Accumulate penalty
-			foreach (var entry in _blacklist.ProfanityList)
-			{
-				if (ContainsWord(cleanedText, entry))
-				{
-					penaltyScore += SeverityToPoints(entry.Severity);
-					flagReasons.Add($"Profanity: {entry.Word}");
-				}
-			}
+      // Save both aggregate scores and per-page results as structured JSON
+      var scoresData = new Dictionary<string, object>
+      {
+        ["categoryScores"] = aiResult.CategoryScores,
+        ["scanMode"] = aiResult.ScanMode ?? "unknown",
+      };
+      if (aiResult.PerPageResults?.Count > 0)
+        scoresData["perPageResults"] = aiResult.PerPageResults;
+      chapter.AiScoresJson = JsonSerializer.Serialize(scoresData);
 
-			// Low-rep users get harsher penalties
-			if (request.UserReputation < 50 && !request.IsComment)
-				penaltyScore = (int)(penaltyScore * 1.5);
+      await _db.SaveChangesAsync();
+      return aiResult;
+    }
 
-			int threshold = request.IsComment ? 30 : 15;
+    public async Task<AiModerationResultDto> RunSeriesModerationAsync(int seriesId)
+    {
+      var series = await _db.Series
+          .Include(s => s.Creator)
+          .FirstOrDefaultAsync(s => s.SeriesId == seriesId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy series {seriesId}");
 
-			if (penaltyScore >= threshold)
-			{
-				return new TextCheckResponse
-				{
-					Action = ModerationActionType.FlagForReview.ToString(),
-					Reasons = flagReasons,
-					PenaltyPoints = penaltyScore,
-					TemplateId = "REJ_010"
-				};
-			}
+      _logger.LogInformation("Chạy AI kiểm duyệt Series {SeriesId} (Rating: {Rating})", seriesId, series.AgeRating);
 
-			return new TextCheckResponse
-			{
-				Action = ModerationActionType.AutoPass.ToString(),
-				Reasons = new List<string>(),
-				PenaltyPoints = penaltyScore
-			};
-		}
+      // 0. Check Series Title Blacklist
+      if (!string.IsNullOrEmpty(series.Title))
+      {
+        var titleCheck = PreCheckText(new TextCheckRequest { Text = series.Title, UserReputation = 100 });
+        if (titleCheck.Action == ModerationActionType.AutoReject.ToString() ||
+            titleCheck.Action == ModerationActionType.InstantBan.ToString())
+        {
+          series.ModerationStatus = ModerationStatus.REJECTED;
+          await _db.SaveChangesAsync();
+          _logger.LogWarning("Series {SeriesId} bị reject do tiêu đề vi phạm.", seriesId);
+          return new AiModerationResultDto
+          {
+            Flagged = true,
+            FlaggedReason = "title_violation",
+            CategoryScores = new Dictionary<string, double>()
+          };
+        }
+      }
 
-		// Analyze OpenAI scores against thresholds. Zero-tolerance for CSAM.
-		public OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request)
-		{
-			if (request.Scores.TryGetValue("sexual/minors", out double csamScore) && csamScore >= 0.3)
-			{
-				return new OpenAiScoreResponse
-				{
-					Action = ModerationActionType.InstantBan.ToString(),
-					WorstCategory = "sexual/minors",
-					WorstScore = csamScore,
-					TemplateId = "REJ_005",
-					IsPermaBan = true,
-					ReputationDeduction = 100
-				};
-			}
+      // 1. Check Description Blacklist
+      if (!string.IsNullOrEmpty(series.Description))
+      {
+        var descCheck = PreCheckText(new TextCheckRequest { Text = series.Description, UserReputation = 100 });
+        if (descCheck.Action == ModerationActionType.AutoReject.ToString() ||
+            descCheck.Action == ModerationActionType.InstantBan.ToString())
+        {
+          series.ModerationStatus = ModerationStatus.REJECTED;
+          await _db.SaveChangesAsync();
+          _logger.LogWarning("Series {SeriesId} bị reject do mô tả vi phạm.", seriesId);
+          return new AiModerationResultDto
+          {
+            Flagged = true,
+            FlaggedReason = "description_violation",
+            CategoryScores = new Dictionary<string, double>()
+          };
+        }
+      }
 
-			string? worstCategory = null;
-			double worstScore = 0;
-			ModerationActionType worstAction = ModerationActionType.AutoPass;
+      // 2. AI Cover Image Analysis
+      if (string.IsNullOrEmpty(series.CoverImageUrl))
+      {
+        _logger.LogWarning("Series {SeriesId} không có ảnh bìa", seriesId);
+        series.ModerationStatus = ModerationStatus.APPROVED;
+        await _db.SaveChangesAsync();
+        return new AiModerationResultDto
+        {
+          Flagged = false,
+          FlaggedReason = null,
+          CategoryScores = new Dictionary<string, double>()
+        };
+      }
 
-			foreach (var kvp in request.Scores)
-			{
-				if (!_blacklist.Thresholds.TryGetValue(kvp.Key, out var rule)) continue;
+      var aiResult = await _aiClient.ModerateImagesAsync(new[] { series.CoverImageUrl });
 
-				ModerationActionType currentAction;
-				if (kvp.Value >= rule.AUTO_REJECT)
-					currentAction = ModerationActionType.AutoReject;
-				else if (kvp.Value >= rule.FLAG_FOR_REVIEW)
-					currentAction = ModerationActionType.FlagForReview;
-				else
-					currentAction = ModerationActionType.AutoPass;
+      // 3. Scoring Engine
+      var scoreRequest = new OpenAiScoreRequest
+      {
+        Scores = aiResult.CategoryScores,
+        TargetAgeRating = series.AgeRating.ToString()
+      };
 
-				if (currentAction > worstAction || (currentAction == worstAction && kvp.Value > worstScore))
-				{
-					worstAction = currentAction;
-					worstCategory = kvp.Key;
-					worstScore = kvp.Value;
-				}
-			}
+      var analysis = AnalyzeOpenAiScores(scoreRequest);
 
-			var response = new OpenAiScoreResponse
-			{
-				Action = worstAction.ToString(),
-				WorstCategory = worstCategory,
-				WorstScore = worstScore,
-				ReputationDeduction = worstAction == ModerationActionType.AutoReject ? 30 : 0
-			};
+      // 4. Quyết định hành động
+      if (analysis.Action == ModerationActionType.AutoReject.ToString() ||
+          analysis.Action == ModerationActionType.FlagForReview.ToString() ||
+          aiResult.Flagged)
+      {
+        series.ModerationStatus = ModerationStatus.PENDING;
 
-			if (worstAction == ModerationActionType.AutoReject && worstCategory != null)
-				response.TemplateId = GetTemplateForCategory(worstCategory);
+        var queueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == seriesId && q.ContentType == ModerationQueueContentType.SERIES);
 
-			if (worstAction == ModerationActionType.AutoPass || worstAction == ModerationActionType.FlagForReview)
-				response.SuggestedAgeRating = AssignAgeRating(request.Scores).ToString();
+        if (queueItem == null)
+        {
+          queueItem = new ModerationQueue
+          {
+            ContentId = seriesId,
+            ContentType = ModerationQueueContentType.SERIES,
+            Priority = (analysis.Action == ModerationActionType.AutoReject.ToString())
+                  ? QueuePriority.HIGH
+                  : QueuePriority.MEDIUM,
+            Status = QueueStatus.PENDING,
+            FlaggedAt = DateTime.UtcNow,
+            ReportCount = 0,
+            AppealCount = 0
+          };
+          _db.ModerationQueues.Add(queueItem);
+        }
+        else
+        {
+          queueItem.Priority = (analysis.Action == ModerationActionType.AutoReject.ToString())
+              ? QueuePriority.HIGH
+              : QueuePriority.MEDIUM;
+          queueItem.Status = QueueStatus.PENDING;
+          queueItem.FlaggedAt = DateTime.UtcNow;
+        }
 
-			return response;
-		}
+        var aiReason = aiResult.Flagged
+            ? aiResult.FlaggedReason
+            : $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
 
-		public List<RejectionTemplateDto> GetRejectionTemplates() => _blacklist.RejectionTemplates;
+        var report = new Report
+        {
+          ContentId = seriesId,
+          ContentType = ReportTargetType.Series,
+          Reason = ReportReason.Inappropriate,
+          Description = "AI_" + aiReason,
+          ReporterId = 1,
+          Queue = queueItem,
+          CreatedAt = DateTime.UtcNow
+        };
 
-		public List<BannedTagDto> GetBannedTags()
-		{
-			var all = new List<BannedTagDto>();
-			all.AddRange(_blacklist.BannedTags);
-			all.AddRange(_blacklist.RestrictedTags);
-			return all;
-		}
+        _db.Reports.Add(report);
+        queueItem.ReportCount += 1;
 
-		// --- Private Helpers ---
+        _logger.LogWarning("Series {SeriesId} bị {Action}: {Reason}", seriesId, analysis.Action, aiReason);
+      }
+      else
+      {
+        series.ModerationStatus = ModerationStatus.APPROVED;
+        _logger.LogInformation("Series {SeriesId} đã được AI tự động duyệt", seriesId);
+      }
 
-		// Normalize teencode and collapse obfuscation spacing.
-		private static string CleanText(string raw)
-		{
-			var normalized = raw.ToLower();
+      await _db.SaveChangesAsync();
+      return aiResult;
+    }
 
-			var chars = normalized.ToCharArray();
-			for (int i = 0; i < chars.Length; i++)
-			{
-				if (TeencodeMap.TryGetValue(chars[i], out char replacement))
-					chars[i] = replacement;
-			}
-			normalized = new string(chars);
+    public async Task<AiModerationResultDto> RunTranslationModerationAsync(int translationId)
+    {
+      var translation = await _db.Translations
+          .Include(t => t.TranslationPages)
+          .Include(t => t.TranslationText)
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+              .ThenInclude(t => t.TeamMembers)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy translation {translationId}");
 
-			var parts = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-			var result = new List<string>();
-			var singleCharBuffer = new List<string>();
+      _logger.LogInformation("Chạy AI kiểm duyệt translation {TranslationId} (Rating: {Rating})", translationId, translation.Chapter.Series.AgeRating);
 
-			foreach (var part in parts)
-			{
-				if (part.Length <= 2)
-				{
-					singleCharBuffer.Add(part);
-				}
-				else
-				{
-					if (singleCharBuffer.Count > 1)
-						result.Add(string.Join("", singleCharBuffer));
-					else if (singleCharBuffer.Count == 1)
-						result.Add(singleCharBuffer[0]);
-					singleCharBuffer.Clear();
-					result.Add(part);
-				}
-			}
+      var aiResult = new AiModerationResultDto
+      {
+          Flagged = false,
+          CategoryScores = new Dictionary<string, double>()
+      };
+      
+      if (translation.ContentType == ContentType.IMAGE)
+      {
+        var imageUrls = translation.TranslationPages
+            .OrderBy(p => p.PageNumber)
+            .Select(p => p.TranslationImageUrl)
+            .ToList();
 
-			if (singleCharBuffer.Count > 1)
-				result.Add(string.Join("", singleCharBuffer));
-			else if (singleCharBuffer.Count == 1)
-				result.Add(singleCharBuffer[0]);
+        if (imageUrls.Count > 0)
+        {
+          aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
 
-			return string.Join(" ", result);
-		}
+          // 2. OCR & Text Check (Dùng cho image content)
+          var extractedTextBuilder = new StringBuilder();
+          using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
+          foreach (var url in imageUrls)
+          {
+            try
+            {
+              var imageBytes = await httpClient.GetByteArrayAsync(url);
+              var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
+              if (!string.IsNullOrWhiteSpace(text))
+              {
+                extractedTextBuilder.AppendLine(text);
+              }
+            }
+            catch (Exception ex)
+            {
+              _logger.LogWarning(ex, "OCR lỗi ở ảnh {Url}", url);
+            }
+          }
 
-		private static bool ContainsWord(string text, BlacklistEntry entry)
-		{
-			if (text.Contains(entry.Word, StringComparison.OrdinalIgnoreCase))
-				return true;
+          var fullText = extractedTextBuilder.ToString();
+          if (!string.IsNullOrWhiteSpace(fullText))
+          {
+            var textResult = PreCheckText(new TextCheckRequest
+            {
+              Text = fullText,
+              UserReputation = 100, 
+              IsComment = false
+            });
 
-			foreach (var variant in entry.Variants)
-			{
-				if (text.Contains(variant, StringComparison.OrdinalIgnoreCase))
-					return true;
-			}
-			return false;
-		}
+            if (textResult.Action == ModerationActionType.AutoReject.ToString()
+                || textResult.Action == ModerationActionType.InstantBan.ToString())
+            {
+              aiResult.Flagged = true;
+            }
 
-		private static int SeverityToPoints(string severity) => severity.ToLower() switch
-		{
-			"low" => 3,
-			"medium" => 8,
-			"high" => 15,
-			"extreme" => 50,
-			_ => 5
-		};
+            if (textResult.Action != ModerationActionType.AutoPass.ToString())
+            {
+              var textReason = string.Join(", ", textResult.Reasons);
+              var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
+              aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
+            }
+          }
+        }
+      }
+      else if (translation.ContentType == ContentType.TEXT)
+      {
+          if (translation.TranslationText != null && !string.IsNullOrWhiteSpace(translation.TranslationText.ContentUrl))
+          {
+            using var httpClient = new global::System.Net.Http.HttpClient();
+            var textContent = await httpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
 
-		private static string GetTemplateForCategory(string category) => category switch
-		{
-			"violence" => "REJ_001",
-			"sexual" => "REJ_004",
-			"sexual/minors" => "REJ_005",
-			"hate" or "hate/threatening" => "REJ_007",
-			"self-harm" => "REJ_002",
-			"harassment" => "REJ_009",
-			_ => "REJ_001"
-		};
+            var textResult = PreCheckText(new TextCheckRequest
+            {
+              Text = textContent,
+              UserReputation = 100,
+              IsComment = false
+            });
 
-		private static AgeRating AssignAgeRating(Dictionary<string, double> scores)
-		{
-			double maxViolence = scores.GetValueOrDefault("violence", 0);
-			double maxSexual = scores.GetValueOrDefault("sexual", 0);
-			double maxHate = scores.GetValueOrDefault("hate", 0);
-			double overallMax = Math.Max(maxViolence, Math.Max(maxSexual, maxHate));
+            if (textResult.Action == ModerationActionType.AutoReject.ToString()
+                || textResult.Action == ModerationActionType.InstantBan.ToString())
+            {
+              aiResult.Flagged = true;
+            }
 
-			if (overallMax >= 0.6) return AgeRating.ADULT;
-			if (overallMax >= 0.4) return AgeRating.MATURE;
-			if (overallMax >= 0.2) return AgeRating.TEEN;
-			return AgeRating.ALL;
-		}
-	}
+            if (textResult.Action != ModerationActionType.AutoPass.ToString())
+            {
+              aiResult.FlaggedReason = string.Join(", ", textResult.Reasons);
+            }
+          }
+      }
+
+      // 3. Scoring Engine (if category scores exist)
+      var analysis = new OpenAiScoreResponse { Action = ModerationActionType.AutoPass.ToString() };
+      var aiReason = aiResult.FlaggedReason;
+
+      if (aiResult.CategoryScores.Count > 0)
+      {
+        var scoreRequest = new OpenAiScoreRequest
+        {
+          Scores = aiResult.CategoryScores,
+          TargetAgeRating = translation.Chapter.Series.AgeRating.ToString()
+        };
+
+        analysis = AnalyzeOpenAiScores(scoreRequest);
+        if (!aiResult.Flagged && (analysis.Action == ModerationActionType.AutoReject.ToString() || analysis.Action == ModerationActionType.FlagForReview.ToString()))
+        {
+           aiReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+        }
+      }
+
+      // 4. Quyết định hành động
+      if (analysis.Action == ModerationActionType.AutoReject.ToString()
+                          || analysis.Action == ModerationActionType.FlagForReview.ToString()
+                          || aiResult.Flagged)
+      {
+        translation.ModerationStatus = ModerationStatus.REJECTED;
+        translation.QualityStatus = TranslationQualityStatus.DRAFT;
+
+        var queueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == translationId
+                && q.ContentType == ModerationQueueContentType.TRANSLATION);
+
+        if (queueItem != null)
+        {
+          queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
+                                ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+          queueItem.Status = QueueStatus.RESOLVED; // Mark as done
+          queueItem.FlaggedAt = DateTime.UtcNow;
+          queueItem.ReportCount += 1;
+
+          var report = new Report
+          {
+            ContentId = translationId,
+            ContentType = ReportTargetType.ChapterTranslation, 
+            Reason = ReportReason.Inappropriate,
+            Description = "AI_" + aiReason,
+            ReporterId = 1,
+            Queue = queueItem,
+            CreatedAt = DateTime.UtcNow
+          };
+          _db.Reports.Add(report);
+        }
+
+        _logger.LogWarning("Translation {TranslationId} bị {Action}: {Reason}",
+            translationId, analysis.Action, aiReason);
+      }
+      else
+      {
+        translation.ModerationStatus = ModerationStatus.APPROVED;
+        translation.QualityStatus = TranslationQualityStatus.PUBLISHED; 
+        translation.PublishedAt = DateTime.UtcNow;
+
+        var approvedQueueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == translationId
+                && q.ContentType == ModerationQueueContentType.TRANSLATION);
+        if (approvedQueueItem != null)
+            approvedQueueItem.Status = QueueStatus.RESOLVED;
+
+        _logger.LogInformation("Translation {TranslationId} đã được AI tự động duyệt → PUBLISHED", translationId);
+      }
+
+      var scoresData = new Dictionary<string, object>
+      {
+        ["categoryScores"] = aiResult.CategoryScores,
+        ["scanMode"] = aiResult.ScanMode ?? "unknown",
+      };
+      if (aiResult.PerPageResults?.Count > 0)
+        scoresData["perPageResults"] = aiResult.PerPageResults;
+      translation.AiScoresJson = JsonSerializer.Serialize(scoresData);
+
+      await _db.SaveChangesAsync();
+      
+      return aiResult;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Bước 2: Tác giả appeal → tạo queue cho moderator xử lý
+    // ─────────────────────────────────────────────────────────────
+    public async Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason)
+    {
+      var chapter = await _db.Chapters
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+
+      // Chỉ cho appeal khi đang bị Flagged
+      if (chapter.ModerationStatus != ModerationStatus.REJECTED)
+        throw new InvalidOperationException("Chỉ có thể appeal khi chapter đang bị reject.");
+
+      // Đếm số lần đã appeal trước đó
+      var appealCount = await _db.ModerationQueues
+          .CountAsync(q => q.ContentId == chapterId
+                        && q.ContentType == ModerationQueueContentType.CHAPTER);
+
+      // Tìm queue hiện tại hoặc tạo mới
+      var queue = await _db.ModerationQueues.FirstOrDefaultAsync(q => q.ContentId == chapterId && q.ContentType == ModerationQueueContentType.CHAPTER);
+      if (queue == null)
+      {
+        queue = new ModerationQueue
+        {
+          ContentId = chapterId,
+          ContentType = ModerationQueueContentType.CHAPTER,
+          Priority = QueuePriority.MEDIUM,
+          Status = QueueStatus.PENDING,
+          ReportCount = 0,
+          FlaggedAt = DateTime.UtcNow
+        };
+        _db.ModerationQueues.Add(queue);
+      }
+
+      queue.Status = QueueStatus.PENDING;
+      queue.AppealReason = appealReason;
+      queue.AppealCount = appealCount + 1;
+      queue.FlaggedAt = DateTime.UtcNow;
+
+      await _db.SaveChangesAsync();
+
+      _logger.LogInformation(
+          "Tác giả {UserId} appeal chapter {ChapterId} lần {Count}",
+          requestedByUserId, chapterId, appealCount + 1);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────
+
+    private async Task<string?> GetLastAiFlaggedReasonAsync(int chapterId)
+    {
+      return await _db.Reports
+          .Where(r => r.ContentId == chapterId
+                   && r.ContentType == ReportTargetType.ChapterTranslation
+                   && r.Description != null && r.Description.StartsWith("AI_"))
+          .OrderByDescending(r => r.CreatedAt)
+          .Select(r => r.Description)
+          .FirstOrDefaultAsync();
+    }
+
+    // Pre-check text against blacklist with teencode normalization.
+    public TextCheckResponse PreCheckText(TextCheckRequest request)
+    {
+      var cleanedText = CleanText(request.Text);
+      int penaltyScore = 0;
+      var flagReasons = new List<string>();
+
+      // Illegal content -> Instant ban
+      foreach (var entry in _blacklist.IllegalContentList)
+      {
+        if (ContainsWord(cleanedText, entry))
+        {
+          return new TextCheckResponse
+          {
+            Action = ModerationActionType.InstantBan.ToString(),
+            Reasons = new List<string> { $"Illegal content: {entry.Word}" },
+            PenaltyPoints = 100,
+            TemplateId = "REJ_005",
+            IsPermaBan = true
+          };
+        }
+      }
+
+      // Hate speech -> Auto reject if extreme
+      foreach (var entry in _blacklist.HateSpeechList)
+      {
+        if (ContainsWord(cleanedText, entry))
+        {
+          int points = SeverityToPoints(entry.Severity);
+          if (entry.Severity == "extreme")
+          {
+            return new TextCheckResponse
+            {
+              Action = ModerationActionType.AutoReject.ToString(),
+              Reasons = new List<string> { $"Hate speech: {entry.Word}" },
+              PenaltyPoints = points,
+              TemplateId = "REJ_008",
+              IsPermaBan = false
+            };
+          }
+          penaltyScore += points;
+          flagReasons.Add($"Hate speech: {entry.Word}");
+        }
+      }
+
+      // Profanity -> Accumulate penalty
+      foreach (var entry in _blacklist.ProfanityList)
+      {
+        if (ContainsWord(cleanedText, entry))
+        {
+          penaltyScore += SeverityToPoints(entry.Severity);
+          flagReasons.Add($"Profanity: {entry.Word}");
+        }
+      }
+
+      // Low-rep users get harsher penalties
+      if (request.UserReputation < 50 && !request.IsComment)
+        penaltyScore = (int)(penaltyScore * 1.5);
+
+      int threshold = request.IsComment ? 30 : 15;
+
+      if (penaltyScore >= threshold)
+      {
+        return new TextCheckResponse
+        {
+          Action = ModerationActionType.FlagForReview.ToString(),
+          Reasons = flagReasons,
+          PenaltyPoints = penaltyScore,
+          TemplateId = "REJ_010"
+        };
+      }
+
+      return new TextCheckResponse
+      {
+        Action = ModerationActionType.AutoPass.ToString(),
+        Reasons = new List<string>(),
+        PenaltyPoints = penaltyScore
+      };
+    }
+
+    // Analyze OpenAI scores against thresholds and target rating.
+    public OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request)
+    {
+      // 1. Kiểm soát CSAM (Zero Tolerance)
+      if (request.Scores.TryGetValue("sexual/minors", out double csamScore) && csamScore >= 0.2)
+      {
+        return new OpenAiScoreResponse
+        {
+          Action = ModerationActionType.InstantBan.ToString(),
+          WorstCategory = "sexual/minors",
+          WorstScore = csamScore,
+          TemplateId = "REJ_005",
+          IsPermaBan = true,
+          ReputationDeduction = 100
+        };
+      }
+
+      string? worstCategory = null;
+      double worstScore = 0;
+      ModerationActionType worstAction = ModerationActionType.AutoPass;
+
+      // 2. Chế độ Aging-based Scoring (Yêu cầu của Sếp)
+      // Lấy max_allowed_score từ config cho rating được chọn
+      double maxAllowed = 0.5; // Fallback
+      switch (request.TargetAgeRating.ToUpper())
+      {
+        case "ALL": maxAllowed = 0.1; break;
+        case "TEEN": maxAllowed = 0.35; break;
+        case "MATURE": maxAllowed = 0.6; break;
+        case "ADULT": maxAllowed = 0.89; break;
+      }
+
+      foreach (var kvp in request.Scores)
+      {
+        if (!_blacklist.Thresholds.TryGetValue(kvp.Key, out var rule)) continue;
+
+        ModerationActionType currentAction = ModerationActionType.AutoPass;
+
+        // Nếu score vượt quá ngưỡng của Rating đã chọn -> Flag hoặc Reject
+        if (kvp.Value >= rule.AUTO_REJECT)
+        {
+          currentAction = ModerationActionType.AutoReject;
+        }
+        else if (kvp.Value >= maxAllowed || kvp.Value >= rule.FLAG_FOR_REVIEW)
+        {
+          currentAction = ModerationActionType.FlagForReview;
+        }
+
+        if (currentAction > worstAction || (currentAction == worstAction && kvp.Value > worstScore))
+        {
+          worstAction = currentAction;
+          worstCategory = kvp.Key;
+          worstScore = kvp.Value;
+        }
+      }
+
+      var response = new OpenAiScoreResponse
+      {
+        Action = worstAction.ToString(),
+        WorstCategory = worstCategory,
+        WorstScore = worstScore,
+        ReputationDeduction = worstAction == ModerationActionType.AutoReject ? 30 : 0
+      };
+
+      if (worstAction == ModerationActionType.AutoReject && worstCategory != null)
+        response.TemplateId = GetTemplateForCategory(worstCategory);
+
+      if (worstAction == ModerationActionType.AutoPass || worstAction == ModerationActionType.FlagForReview)
+        response.SuggestedAgeRating = AssignAgeRating(request.Scores).ToString();
+
+      return response;
+    }
+
+    public List<RejectionTemplateDto> GetRejectionTemplates() => _blacklist.RejectionTemplates;
+
+    public List<BannedTagDto> GetBannedTags()
+    {
+      var all = new List<BannedTagDto>();
+      all.AddRange(_blacklist.BannedTags);
+      all.AddRange(_blacklist.RestrictedTags);
+      return all;
+    }
+
+    // --- Private Helpers ---
+
+    // Normalize teencode and collapse obfuscation spacing.
+    private static string CleanText(string raw)
+    {
+      var normalized = raw.ToLower();
+
+      var chars = normalized.ToCharArray();
+      for (int i = 0; i < chars.Length; i++)
+      {
+        if (TeencodeMap.TryGetValue(chars[i], out char replacement))
+          chars[i] = replacement;
+      }
+      normalized = new string(chars);
+
+      var parts = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+      var result = new List<string>();
+      var singleCharBuffer = new List<string>();
+
+      foreach (var part in parts)
+      {
+        if (part.Length <= 2)
+        {
+          singleCharBuffer.Add(part);
+        }
+        else
+        {
+          if (singleCharBuffer.Count > 1)
+            result.Add(string.Join("", singleCharBuffer));
+          else if (singleCharBuffer.Count == 1)
+            result.Add(singleCharBuffer[0]);
+          singleCharBuffer.Clear();
+          result.Add(part);
+        }
+      }
+
+      if (singleCharBuffer.Count > 1)
+        result.Add(string.Join("", singleCharBuffer));
+      else if (singleCharBuffer.Count == 1)
+        result.Add(singleCharBuffer[0]);
+
+      return string.Join(" ", result);
+    }
+
+    // Cache compiled regexes for short words to avoid repeated compilation
+    private static readonly global::System.Collections.Concurrent.ConcurrentDictionary<string, Regex> _wordBoundaryCache = new();
+
+    private static bool ContainsWord(string text, BlacklistEntry entry)
+    {
+      if (MatchesWord(text, entry.Word))
+        return true;
+
+      foreach (var variant in entry.Variants)
+      {
+        if (MatchesWord(text, variant))
+          return true;
+      }
+      return false;
+    }
+
+    /// <summary>
+    /// For short words (< 4 chars), use word-boundary regex to avoid false positives
+    /// from OCR text (e.g. "document" matching "cu", "admin" matching "dm").
+    /// For longer words, substring match is sufficient and faster.
+    /// </summary>
+    private static bool MatchesWord(string text, string word)
+    {
+      if (string.IsNullOrEmpty(word)) return false;
+
+      // Long words: substring match is safe enough (low false positive risk)
+      if (word.Length >= 4)
+        return text.Contains(word, StringComparison.OrdinalIgnoreCase);
+
+      // Short words: require word boundaries to prevent "document" matching "cu"
+      var regex = _wordBoundaryCache.GetOrAdd(word.ToLowerInvariant(), w =>
+          new Regex($@"\b{Regex.Escape(w)}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled));
+      return regex.IsMatch(text);
+    }
+
+    private static int SeverityToPoints(string severity) => severity.ToLower() switch
+    {
+      "low" => 3,
+      "medium" => 8,
+      "high" => 15,
+      "extreme" => 50,
+      _ => 5
+    };
+
+    private static string GetTemplateForCategory(string category) => category switch
+    {
+      "violence" => "REJ_001",
+      "sexual" => "REJ_004",
+      "sexual/minors" => "REJ_005",
+      "hate" or "hate/threatening" => "REJ_007",
+      "self-harm" => "REJ_002",
+      "harassment" => "REJ_009",
+      _ => "REJ_001"
+    };
+
+    private static AgeRating AssignAgeRating(Dictionary<string, double> scores)
+    {
+      double maxViolence = scores.GetValueOrDefault("violence", 0);
+      double maxSexual = scores.GetValueOrDefault("sexual", 0);
+      double maxHate = scores.GetValueOrDefault("hate", 0);
+      double overallMax = Math.Max(maxViolence, Math.Max(maxSexual, maxHate));
+
+      if (overallMax >= 0.6) return AgeRating.ADULT;
+      if (overallMax >= 0.4) return AgeRating.MATURE;
+      if (overallMax >= 0.2) return AgeRating.TEEN;
+      return AgeRating.ALL_AGES;
+    }
+
+    public async Task<AiModerationResultDto?> GetResultAsync(
+int chapterId, CancellationToken ct = default)
+    {
+      var chapter = await _db.Chapters
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+
+      if (chapter == null) return null;
+
+      // Deserialize scores — backward-compatible with old flat dict format
+      var categoryScores = new Dictionary<string, double>();
+      List<PageModerationDto>? perPageResults = null;
+
+      if (!string.IsNullOrEmpty(chapter.AiScoresJson))
+      {
+        try
+        {
+          using var doc = JsonDocument.Parse(chapter.AiScoresJson);
+
+          // Format 1 (new): { categoryScores: {...}, perPageResults: [...] }
+          if (doc.RootElement.TryGetProperty("categoryScores", out var scoresEl))
+          {
+            categoryScores = JsonSerializer.Deserialize<Dictionary<string, double>>(scoresEl.GetRawText())
+                             ?? new Dictionary<string, double>();
+
+            if (doc.RootElement.TryGetProperty("perPageResults", out var pagesEl))
+            {
+              perPageResults = JsonSerializer.Deserialize<List<PageModerationDto>>(pagesEl.GetRawText());
+            }
+          }
+          else
+          {
+            // Format 2 (old/hybrid): flat dict possibly mixed with perPageResults at root
+            // Iterate properties: numbers → categoryScores, array → perPageResults
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+              if (prop.Value.ValueKind == JsonValueKind.Number)
+              {
+                categoryScores[prop.Name] = prop.Value.GetDouble();
+              }
+              else if (prop.Name == "perPageResults" && prop.Value.ValueKind == JsonValueKind.Array)
+              {
+                perPageResults = JsonSerializer.Deserialize<List<PageModerationDto>>(prop.Value.GetRawText());
+              }
+            }
+          }
+        }
+        catch (Exception ex)
+        {
+          _logger.LogWarning(ex, "Failed to deserialize AiScoresJson for chapter {ChapterId}", chapterId);
+        }
+      }
+
+      // Filter out foreign_profanity_* sub-categories (false positives on image-only content)
+      categoryScores = categoryScores
+          .Where(kvp => !kvp.Key.StartsWith("foreign_profanity"))
+          .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+      // Chapter APPROVED — không vi phạm
+      if (chapter.ModerationStatus == ModerationStatus.APPROVED)
+        return new AiModerationResultDto
+        {
+          Flagged = false,
+          FlaggedReason = null,
+          CategoryScores = categoryScores,
+          PerPageResults = perPageResults
+        };
+
+      // Chapter PENDING/REJECTED — lấy flagged reason từ Report
+      var aiReport = await _db.Reports
+          .Where(r => r.ContentId == chapterId
+                   && r.ContentType == ReportTargetType.ChapterTranslation
+                   && r.Description != null
+                   && r.Description.StartsWith("AI_"))
+          .OrderByDescending(r => r.CreatedAt)
+          .FirstOrDefaultAsync(ct);
+
+      string? flaggedReason = null;
+      if (aiReport?.Description != null)
+      {
+        flaggedReason = aiReport.Description.Replace("AI_", "").Split(" (Score:")[0].Trim();
+      }
+
+      return new AiModerationResultDto
+      {
+        Flagged = true,
+        FlaggedReason = flaggedReason,
+        CategoryScores = categoryScores,
+        PerPageResults = perPageResults
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Enqueue: tạo DB ModerationQueue record + gửi signal Channel
+    // ─────────────────────────────────────────────────────────────
+
+    public async Task EnqueueChapterForModerationAsync(int chapterId, CancellationToken ct = default)
+    {
+      // Clean up ALL existing queue entries for this chapter
+      // to prevent duplicate processing and duplicate notifications
+      var oldEntries = await _db.ModerationQueues
+          .Where(q => q.ContentId == chapterId
+                   && q.ContentType == ModerationQueueContentType.CHAPTER)
+          .ToListAsync(ct);
+      if (oldEntries.Count > 0)
+      {
+        // Delete linked Reports first (FK constraint: Report.QueueId → ModerationQueue)
+        var queueIds = oldEntries.Select(q => q.QueueId).ToList();
+        var linkedReports = await _db.Reports
+            .Where(r => r.QueueId.HasValue && queueIds.Contains(r.QueueId.Value))
+            .ToListAsync(ct);
+        if (linkedReports.Count > 0)
+          _db.Reports.RemoveRange(linkedReports);
+
+        // Delete linked ModerationActions (FK constraint: ModerationAction.QueueId → ModerationQueue)
+        var linkedActions = await _db.ModerationActions
+            .Where(a => queueIds.Contains(a.QueueId))
+            .ToListAsync(ct);
+        if (linkedActions.Count > 0)
+          _db.ModerationActions.RemoveRange(linkedActions);
+
+        _db.ModerationQueues.RemoveRange(oldEntries);
+        await _db.SaveChangesAsync(ct);
+      }
+
+      _db.ModerationQueues.Add(new ModerationQueue
+      {
+        ContentId = chapterId,
+        ContentType = ModerationQueueContentType.CHAPTER,
+        Priority = QueuePriority.HIGH,
+        Status = QueueStatus.PENDING,
+        FlaggedAt = DateTime.UtcNow,
+        ReportCount = 0,
+        AppealCount = 0,
+      });
+      await _db.SaveChangesAsync(ct);
+      await _queue.EnqueueAsync(chapterId, ct);
+
+      // Send "queued" notification to creator
+      var chapter = await _db.Chapters
+          .Include(c => c.Series)
+              .ThenInclude(s => s.Creator)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+
+      if (chapter?.Series?.Creator != null)
+      {
+        var creatorId = chapter.Series.Creator.UserId;
+        await _notificationService.CreateNotificationAsync(
+            creatorId,
+            "Hàng chờ kiểm duyệt",
+            $"Chương {chapter.ChapterNumber} của \"{chapter.Series.Title}\" đã vào hàng chờ kiểm duyệt AI",
+            $"/creator/moderation-result?chapterId={chapterId}",
+            NotificationType.SYSTEM
+        );
+      }
+
+      _logger.LogInformation(
+          "[ModerationService] ChapterId={ChapterId} đã vào moderation queue.", chapterId);
+    }
+
+    public async Task EnqueueSeriesForModerationAsync(int seriesId, CancellationToken ct = default)
+    {
+      _db.ModerationQueues.Add(new ModerationQueue
+      {
+        ContentId = seriesId,
+        ContentType = ModerationQueueContentType.SERIES,
+        Priority = QueuePriority.HIGH,
+        Status = QueueStatus.PENDING,
+        FlaggedAt = DateTime.UtcNow,
+        ReportCount = 0,
+        AppealCount = 0,
+      });
+      await _db.SaveChangesAsync(ct);
+      await _queue.EnqueueAsync(seriesId, ct);
+
+      _logger.LogInformation(
+          "[ModerationService] SeriesId={SeriesId} đã vào moderation queue.", seriesId);
+    }
+
+    public async Task EnqueueTranslationForModerationAsync(int translationId, CancellationToken ct = default)
+    {
+      var oldEntries = await _db.ModerationQueues
+          .Where(q => q.ContentId == translationId
+                   && q.ContentType == ModerationQueueContentType.TRANSLATION)
+          .ToListAsync(ct);
+      if (oldEntries.Count > 0)
+      {
+        var queueIds = oldEntries.Select(q => q.QueueId).ToList();
+        var linkedReports = await _db.Reports
+            .Where(r => r.QueueId.HasValue && queueIds.Contains(r.QueueId.Value))
+            .ToListAsync(ct);
+        if (linkedReports.Count > 0)
+          _db.Reports.RemoveRange(linkedReports);
+
+        var linkedActions = await _db.ModerationActions
+            .Where(a => queueIds.Contains(a.QueueId))
+            .ToListAsync(ct);
+        if (linkedActions.Count > 0)
+          _db.ModerationActions.RemoveRange(linkedActions);
+
+        _db.ModerationQueues.RemoveRange(oldEntries);
+        await _db.SaveChangesAsync(ct);
+      }
+
+      _db.ModerationQueues.Add(new ModerationQueue
+      {
+        ContentId = translationId,
+        ContentType = ModerationQueueContentType.TRANSLATION,
+        Priority = QueuePriority.HIGH,
+        Status = QueueStatus.PENDING,
+        FlaggedAt = DateTime.UtcNow,
+        ReportCount = 0,
+        AppealCount = 0,
+      });
+      await _db.SaveChangesAsync(ct);
+      await _queue.EnqueueAsync(translationId, ct);
+
+      var translation = await _db.Translations
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+              .ThenInclude(t => t.TeamMembers)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
+
+      if (translation?.Permission?.Team?.TeamMembers != null)
+      {
+        var owners = translation.Permission.Team.TeamMembers
+            .Where(m => m.IsActive && (m.Role == TeamMemberRole.LEADER))
+            .ToList();
+
+        if (owners.Count == 0)
+        {
+            owners = translation.Permission.Team.TeamMembers.Where(m => m.IsActive).ToList();
+        }
+
+        foreach (var owner in owners)
+        {
+          await _notificationService.CreateNotificationAsync(
+              owner.UserId,
+              "Hàng chờ kiểm duyệt",
+              $"Bản dịch chương {translation.Chapter?.ChapterNumber} của \"{translation.Chapter?.Series?.Title}\" đã vào hàng chờ kiểm duyệt AI",
+              $"/creator/moderation-result?translationId={translationId}",
+              NotificationType.SYSTEM
+          );
+        }
+      }
+
+      _logger.LogInformation(
+          "[ModerationService] TranslationId={TranslationId} đã vào moderation queue.", translationId);
+    }
+  }
 }

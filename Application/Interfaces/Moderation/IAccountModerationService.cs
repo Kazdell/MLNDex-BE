@@ -10,5 +10,11 @@ namespace Application.Interfaces.Moderation
             AccountActionRequest request,
             CancellationToken cancellationToken = default
         );
+
+        Task<bool> UpdateRolesAsync(
+            int userId,
+            UpdateUserRolesRequest request,
+            CancellationToken cancellationToken = default
+        );
     }
 }

@@ -202,3 +202,25 @@ appsettings.*.json
 /mlndex-backend/obj
 migration_error.txt
 build_errors.txt
+Infrastructure/Migrations/20260309040502_AddBioToUser.cs
+Infrastructure/Migrations/20260309040502_AddBioToUser.Designer.cs
+
+# NuGet & Technical Folders
+.nuget/
+.nugetpackages/
+.genkit/
+.dotnet/
+global.json
+.gitnexus
+AGENTS.md
+CLAUDE.md
+.claude/
+
+# Generated API files
+swagger.json
+response.json
+
+# Build logs & obsolete folders
+build_output*.txt
+server_log.txt
+WebAPI/

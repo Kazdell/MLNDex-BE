@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Auth;
+using Application.DTOs.Auth;
 using Application.Interfaces.Common;
 using System;
 using System.Collections.Generic;
@@ -16,5 +16,8 @@ namespace Application.Interfaces.Auth
 		Task<ServiceResult> LogoutAsync(string token);
 		Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto);
 		Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto);
+		Task<ServiceResult> ForgotPasswordAsync(string email);
+		Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword);
+		Task<AuthResponseDto?> RefreshAsync(TokenApiDto tokenApiDto);
 	}
 }

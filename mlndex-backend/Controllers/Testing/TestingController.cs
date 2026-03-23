@@ -21,16 +21,29 @@ namespace mlndex_backend.Controllers.Testing
       try
       {
         // check if user exists
-        if (_db.Users.Any(u => u.Email == "testuser1@test.com"))
+        var testUser = _db.Users.FirstOrDefault(u => u.Email == "testuser1@test.com");
+        if (testUser != null)
         {
-          return Ok(new { message = "Database already seeded. If you need new data, please drop local DB to run again." });
+          // Ensure they have passwords to login with
+          var usersToFix = _db.Users.Where(u => u.PasswordHash == null || u.PasswordHash == "").ToList();
+          foreach (var u in usersToFix)
+          {
+            u.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+            u.IsEmailVerified = true;
+          }
+          testUser.TrustScore = 0;
+          testUser.CannotUpload = true;
+          await _db.SaveChangesAsync(default);
+          return Ok(new { message = "Database already seeded. Fixed missing passwords (set to 123456). Set testuser1 to CannotUpload=true. If you need new data, please drop local DB to run again." });
         }
 
+        var defaultPasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+
         // Users
-        var user1 = new Domain.Entities.User { Username = "testuser1", Email = "testuser1@test.com", DisplayName = "Test User 1", IsActive = true };
-        var user2 = new Domain.Entities.User { Username = "creator1", Email = "creator1@test.com", DisplayName = "Creator One", IsActive = true };
-        var transLeader = new Domain.Entities.User { Username = "trans_leader", Email = "translator1@test.com", DisplayName = "Trans Leader", IsActive = true };
-        var transMember = new Domain.Entities.User { Username = "trans_member", Email = "translator2@test.com", DisplayName = "Trans Member", IsActive = true };
+        var user1 = new Domain.Entities.User { Username = "testuser1", Email = "testuser1@test.com", DisplayName = "Test User 1", IsActive = true, IsEmailVerified = true, PasswordHash = defaultPasswordHash };
+        var user2 = new Domain.Entities.User { Username = "creator1", Email = "creator1@test.com", DisplayName = "Creator One", IsActive = true, IsEmailVerified = true, PasswordHash = defaultPasswordHash };
+        var transLeader = new Domain.Entities.User { Username = "trans_leader", Email = "translator1@test.com", DisplayName = "Trans Leader", IsActive = true, IsEmailVerified = true, PasswordHash = defaultPasswordHash };
+        var transMember = new Domain.Entities.User { Username = "trans_member", Email = "translator2@test.com", DisplayName = "Trans Member", IsActive = true, IsEmailVerified = true, PasswordHash = defaultPasswordHash };
         _db.Users.AddRange(user1, user2, transLeader, transMember);
         await _db.SaveChangesAsync(default);
 
@@ -49,6 +62,21 @@ namespace mlndex_backend.Controllers.Testing
         var member2 = new TeamMember { TeamId = team.TeamId, UserId = transMember.UserId, Role = TeamMemberRole.TRANSLATOR, JoinedAt = DateTime.UtcNow, IsActive = true };
         _db.TeamMembers.AddRange(member1, member2);
         await _db.SaveChangesAsync(default);
+
+        // Assign Roles to Test Users
+        var readerRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.READER);
+        var creatorRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.CREATOR);
+
+        if (readerRole != null && creatorRole != null)
+        {
+          _db.UserRoles.AddRange(
+            new UserRole { UserId = user1.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+            new UserRole { UserId = user2.UserId, RoleId = creatorRole.RoleId, AssignedAt = DateTime.UtcNow }, // creator1
+            new UserRole { UserId = transLeader.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+            new UserRole { UserId = transMember.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow }
+          );
+          await _db.SaveChangesAsync(default);
+        }
 
         // Genres (Comprehensive MangaDex-like List)
         var genreNames = new[] {
@@ -72,7 +100,7 @@ namespace mlndex_backend.Controllers.Testing
         var fantasyGenre = genres.First(g => g.Name == "Fantasy");
 
         var series1 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "The Epic Journey", Description = "A very epic novel about a hero who fights demons.", SeriesFormat = SeriesFormat.NOVEL, AgeRating = AgeRating.TEEN, Status = SeriesStatus.ONGOING, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.5m, TotalRatings = 10, CreatedAt = DateTime.UtcNow };
-        var series2 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "Manga Adventures", Description = "Action manga with lots of fights and character building.", SeriesFormat = SeriesFormat.MANGA, AgeRating = AgeRating.ALL, Status = SeriesStatus.COMPLETED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.8m, TotalRatings = 50, CreatedAt = DateTime.UtcNow.AddDays(-10) };
+        var series2 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "Manga Adventures", Description = "Action manga with lots of fights and character building.", SeriesFormat = SeriesFormat.MANGA, AgeRating = AgeRating.ALL_AGES, Status = SeriesStatus.COMPLETED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.8m, TotalRatings = 50, CreatedAt = DateTime.UtcNow.AddDays(-10) };
         _db.Series.AddRange(series1, series2);
         await _db.SaveChangesAsync(default);
 
