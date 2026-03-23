@@ -49,6 +49,6 @@ namespace Application.Interfaces.Data
         DbSet<Appeal> Appeals { get; set; }
         DbSet<SystemSetting> SystemSettings { get; set; }
 
-        Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-    }
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+  }
 }
