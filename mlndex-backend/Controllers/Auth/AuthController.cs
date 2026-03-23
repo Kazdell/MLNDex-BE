@@ -102,18 +102,18 @@ namespace mlndex_backend.Controllers.Auth
 
 
 
-    // POST /api/auth/refresh
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
-    {
-      if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
+		// POST /api/auth/refresh
+		[HttpPost("refresh")]
+		public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
+		{
+			if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
 
-      var result = await _authService.RefreshAsync(dto);
-      if (result == null)
-        return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
+			var result = await _authService.RefreshAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
 
-      return OkResponse(result, "Token đã được cấp mới.");
-    }
+            return OkResponse(result, "Token đã được cấp mới.");
+        }
 
     // POST /api/auth/forgot-password — send OTP to email
     [HttpPost("forgot-password")]
