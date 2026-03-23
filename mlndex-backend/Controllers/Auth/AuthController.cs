@@ -84,5 +84,29 @@ namespace mlndex_backend.Controllers.Auth
 
       return OkResponse(result, "Token đã được cấp mới.");
     }
+
+    // POST /api/auth/forgot-password — send OTP to email
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+      if (string.IsNullOrWhiteSpace(dto.Email))
+        return BadRequestResponse("Email không được để trống.");
+      var result = await _authService.ForgotPasswordAsync(dto.Email);
+      return OkResponse<object>(null, result.Message);
+    }
+
+    // POST /api/auth/reset-password — verify OTP and set new password
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+      if (!ModelState.IsValid)
+        return BadRequestResponse("Dữ liệu không hợp lệ.");
+      var result = await _authService.ResetPasswordAsync(dto.Email, dto.OtpCode, dto.NewPassword);
+      return result.Success
+          ? OkResponse<object>(null, result.Message)
+          : BadRequestResponse(result.Message);
+    }
   }
 }
