@@ -1128,6 +1128,9 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TranslationId"));
 
+                    b.Property<string>("AiScoresJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ChapterId")
                         .HasColumnType("int");
 

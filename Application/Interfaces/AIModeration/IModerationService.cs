@@ -16,8 +16,7 @@ namespace Application.Interfaces.AIModeration
     /// - Flagged → set ModerationStatus = Flagged, thông báo cho tác giả
     Task<AiModerationResultDto> RunAiModerationAsync(int chapterId);
     Task<AiModerationResultDto> RunSeriesModerationAsync(int seriesId);
-
-
+    Task<AiModerationResultDto> RunTranslationModerationAsync(int translationId);
     /// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
     /// Tạo 1 record mới trong ModerationQueue.
     Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason);
@@ -33,5 +32,6 @@ namespace Application.Interfaces.AIModeration
     /// </summary>
     Task EnqueueChapterForModerationAsync(int chapterId, CancellationToken ct = default);
     Task EnqueueSeriesForModerationAsync(int seriesId, CancellationToken ct = default);
+    Task EnqueueTranslationForModerationAsync(int translationId, CancellationToken ct = default);
   }
 }

@@ -13,6 +13,7 @@ using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
 using Application.Interfaces.Notification;
 using Domain.Entities;
+using Application.Interfaces.AIModeration;
 
 namespace Application.Services.Translation
 {
@@ -23,19 +24,22 @@ namespace Application.Services.Translation
     private readonly Application.Interfaces.Creator.IStorageService _storage;
     private readonly Microsoft.Extensions.Logging.ILogger<TranslationService> _logger;
     private readonly INotificationService _notificationService;
+    private readonly IModerationService _moderationService;
 
     public TranslationService(
         IMlndexDbContext context,
         IUserContext userContext,
         Application.Interfaces.Creator.IStorageService storage,
         Microsoft.Extensions.Logging.ILogger<TranslationService> logger,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IModerationService moderationService)
     {
       _context = context;
       _userContext = userContext;
       _storage = storage;
       _logger = logger;
       _notificationService = notificationService;
+      _moderationService = moderationService;
     }
 
     public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
@@ -80,7 +84,7 @@ namespace Application.Services.Translation
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,
-        ModerationStatus = ModerationStatus.APPROVED, // Assuming auto-approve for now
+        ModerationStatus = ModerationStatus.PENDING,
         IsOfficial = isOfficial
       };
 
@@ -191,6 +195,9 @@ namespace Application.Services.Translation
             ?? throw new Exception("Translation failed to retrieve.");
 
         var seriesTitle = chapter.Series?.Title ?? "series";
+
+        await _moderationService.EnqueueTranslationForModerationAsync(translation.TranslationId);
+
         await _notificationService.CreateNotificationAsync(
             userId: uploaderId.Value,
             title: "Đã đưa vào hàng đợi kiểm duyệt!",

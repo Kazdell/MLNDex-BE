@@ -215,3 +215,12 @@ global.json
 AGENTS.md
 CLAUDE.md
 .claude/
+
+# Generated API files
+swagger.json
+response.json
+
+# Build logs & obsolete folders
+build_output*.txt
+server_log.txt
+WebAPI/

@@ -28,6 +28,7 @@ namespace Application.Services.AIModeration
     private readonly IOCRService _ocr;
     private readonly IModerationQueue _queue;
     private readonly INotificationService _notificationService;
+    private readonly Application.Interfaces.Creator.IStorageService _storage;
 
     private static readonly Dictionary<char, char> TeencodeMap = new()
         {
@@ -42,7 +43,8 @@ namespace Application.Services.AIModeration
         IBlacklistProvider blacklist,
         IOCRService ocr,
         IModerationQueue queue,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        Application.Interfaces.Creator.IStorageService storage)
     {
       _db = db;
       _aiClient = aiClient;
@@ -51,6 +53,7 @@ namespace Application.Services.AIModeration
       _ocr = ocr;
       _queue = queue;
       _notificationService = notificationService;
+      _storage = storage;
     }
 
     private static string TruncateMessage(string msg, int maxLen = 250)
@@ -378,6 +381,194 @@ namespace Application.Services.AIModeration
       }
 
       await _db.SaveChangesAsync();
+      return aiResult;
+    }
+
+    public async Task<AiModerationResultDto> RunTranslationModerationAsync(int translationId)
+    {
+      var translation = await _db.Translations
+          .Include(t => t.TranslationPages)
+          .Include(t => t.TranslationText)
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+              .ThenInclude(t => t.TeamMembers)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId)
+          ?? throw new KeyNotFoundException($"Không tìm thấy translation {translationId}");
+
+      _logger.LogInformation("Chạy AI kiểm duyệt translation {TranslationId} (Rating: {Rating})", translationId, translation.Chapter.Series.AgeRating);
+
+      var aiResult = new AiModerationResultDto
+      {
+          Flagged = false,
+          CategoryScores = new Dictionary<string, double>()
+      };
+      
+      if (translation.ContentType == ContentType.IMAGE)
+      {
+        var imageUrls = translation.TranslationPages
+            .OrderBy(p => p.PageNumber)
+            .Select(p => p.TranslationImageUrl)
+            .ToList();
+
+        if (imageUrls.Count > 0)
+        {
+          aiResult = await _aiClient.ModerateImagesAsync(imageUrls);
+
+          // 2. OCR & Text Check (Dùng cho image content)
+          var extractedTextBuilder = new StringBuilder();
+          using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
+          foreach (var url in imageUrls)
+          {
+            try
+            {
+              var imageBytes = await httpClient.GetByteArrayAsync(url);
+              var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
+              if (!string.IsNullOrWhiteSpace(text))
+              {
+                extractedTextBuilder.AppendLine(text);
+              }
+            }
+            catch (Exception ex)
+            {
+              _logger.LogWarning(ex, "OCR lỗi ở ảnh {Url}", url);
+            }
+          }
+
+          var fullText = extractedTextBuilder.ToString();
+          if (!string.IsNullOrWhiteSpace(fullText))
+          {
+            var textResult = PreCheckText(new TextCheckRequest
+            {
+              Text = fullText,
+              UserReputation = 100, 
+              IsComment = false
+            });
+
+            if (textResult.Action == ModerationActionType.AutoReject.ToString()
+                || textResult.Action == ModerationActionType.InstantBan.ToString())
+            {
+              aiResult.Flagged = true;
+            }
+
+            if (textResult.Action != ModerationActionType.AutoPass.ToString())
+            {
+              var textReason = string.Join(", ", textResult.Reasons);
+              var combinedReason = string.IsNullOrEmpty(aiResult.FlaggedReason) ? textReason : $"{aiResult.FlaggedReason} | OCR: {textReason}";
+              aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
+            }
+          }
+        }
+      }
+      else if (translation.ContentType == ContentType.TEXT)
+      {
+          if (translation.TranslationText != null && !string.IsNullOrWhiteSpace(translation.TranslationText.ContentUrl))
+          {
+            using var httpClient = new global::System.Net.Http.HttpClient();
+            var textContent = await httpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
+
+            var textResult = PreCheckText(new TextCheckRequest
+            {
+              Text = textContent,
+              UserReputation = 100,
+              IsComment = false
+            });
+
+            if (textResult.Action == ModerationActionType.AutoReject.ToString()
+                || textResult.Action == ModerationActionType.InstantBan.ToString())
+            {
+              aiResult.Flagged = true;
+            }
+
+            if (textResult.Action != ModerationActionType.AutoPass.ToString())
+            {
+              aiResult.FlaggedReason = string.Join(", ", textResult.Reasons);
+            }
+          }
+      }
+
+      // 3. Scoring Engine (if category scores exist)
+      var analysis = new OpenAiScoreResponse { Action = ModerationActionType.AutoPass.ToString() };
+      var aiReason = aiResult.FlaggedReason;
+
+      if (aiResult.CategoryScores.Count > 0)
+      {
+        var scoreRequest = new OpenAiScoreRequest
+        {
+          Scores = aiResult.CategoryScores,
+          TargetAgeRating = translation.Chapter.Series.AgeRating.ToString()
+        };
+
+        analysis = AnalyzeOpenAiScores(scoreRequest);
+        if (!aiResult.Flagged && (analysis.Action == ModerationActionType.AutoReject.ToString() || analysis.Action == ModerationActionType.FlagForReview.ToString()))
+        {
+           aiReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+        }
+      }
+
+      // 4. Quyết định hành động
+      if (analysis.Action == ModerationActionType.AutoReject.ToString()
+                          || analysis.Action == ModerationActionType.FlagForReview.ToString()
+                          || aiResult.Flagged)
+      {
+        translation.ModerationStatus = ModerationStatus.REJECTED;
+        translation.QualityStatus = TranslationQualityStatus.DRAFT;
+
+        var queueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == translationId
+                && q.ContentType == ModerationQueueContentType.TRANSLATION);
+
+        if (queueItem != null)
+        {
+          queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
+                                ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+          queueItem.Status = QueueStatus.RESOLVED; // Mark as done
+          queueItem.FlaggedAt = DateTime.UtcNow;
+          queueItem.ReportCount += 1;
+
+          var report = new Report
+          {
+            ContentId = translationId,
+            ContentType = ReportTargetType.ChapterTranslation, 
+            Reason = ReportReason.Inappropriate,
+            Description = "AI_" + aiReason,
+            ReporterId = 1,
+            Queue = queueItem,
+            CreatedAt = DateTime.UtcNow
+          };
+          _db.Reports.Add(report);
+        }
+
+        _logger.LogWarning("Translation {TranslationId} bị {Action}: {Reason}",
+            translationId, analysis.Action, aiReason);
+      }
+      else
+      {
+        translation.ModerationStatus = ModerationStatus.APPROVED;
+        translation.QualityStatus = TranslationQualityStatus.PUBLISHED; 
+        translation.PublishedAt = DateTime.UtcNow;
+
+        var approvedQueueItem = await _db.ModerationQueues
+            .FirstOrDefaultAsync(q => q.ContentId == translationId
+                && q.ContentType == ModerationQueueContentType.TRANSLATION);
+        if (approvedQueueItem != null)
+            approvedQueueItem.Status = QueueStatus.RESOLVED;
+
+        _logger.LogInformation("Translation {TranslationId} đã được AI tự động duyệt → PUBLISHED", translationId);
+      }
+
+      var scoresData = new Dictionary<string, object>
+      {
+        ["categoryScores"] = aiResult.CategoryScores,
+        ["scanMode"] = aiResult.ScanMode ?? "unknown",
+      };
+      if (aiResult.PerPageResults?.Count > 0)
+        scoresData["perPageResults"] = aiResult.PerPageResults;
+      translation.AiScoresJson = JsonSerializer.Serialize(scoresData);
+
+      await _db.SaveChangesAsync();
+      
       return aiResult;
     }
 
@@ -893,6 +1084,79 @@ int chapterId, CancellationToken ct = default)
 
       _logger.LogInformation(
           "[ModerationService] SeriesId={SeriesId} đã vào moderation queue.", seriesId);
+    }
+
+    public async Task EnqueueTranslationForModerationAsync(int translationId, CancellationToken ct = default)
+    {
+      var oldEntries = await _db.ModerationQueues
+          .Where(q => q.ContentId == translationId
+                   && q.ContentType == ModerationQueueContentType.TRANSLATION)
+          .ToListAsync(ct);
+      if (oldEntries.Count > 0)
+      {
+        var queueIds = oldEntries.Select(q => q.QueueId).ToList();
+        var linkedReports = await _db.Reports
+            .Where(r => r.QueueId.HasValue && queueIds.Contains(r.QueueId.Value))
+            .ToListAsync(ct);
+        if (linkedReports.Count > 0)
+          _db.Reports.RemoveRange(linkedReports);
+
+        var linkedActions = await _db.ModerationActions
+            .Where(a => queueIds.Contains(a.QueueId))
+            .ToListAsync(ct);
+        if (linkedActions.Count > 0)
+          _db.ModerationActions.RemoveRange(linkedActions);
+
+        _db.ModerationQueues.RemoveRange(oldEntries);
+        await _db.SaveChangesAsync(ct);
+      }
+
+      _db.ModerationQueues.Add(new ModerationQueue
+      {
+        ContentId = translationId,
+        ContentType = ModerationQueueContentType.TRANSLATION,
+        Priority = QueuePriority.HIGH,
+        Status = QueueStatus.PENDING,
+        FlaggedAt = DateTime.UtcNow,
+        ReportCount = 0,
+        AppealCount = 0,
+      });
+      await _db.SaveChangesAsync(ct);
+      await _queue.EnqueueAsync(translationId, ct);
+
+      var translation = await _db.Translations
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+              .ThenInclude(t => t.TeamMembers)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
+
+      if (translation?.Permission?.Team?.TeamMembers != null)
+      {
+        var owners = translation.Permission.Team.TeamMembers
+            .Where(m => m.IsActive && (m.Role == TeamMemberRole.LEADER))
+            .ToList();
+
+        if (owners.Count == 0)
+        {
+            owners = translation.Permission.Team.TeamMembers.Where(m => m.IsActive).ToList();
+        }
+
+        foreach (var owner in owners)
+        {
+          await _notificationService.CreateNotificationAsync(
+              owner.UserId,
+              "Hàng chờ kiểm duyệt",
+              $"Bản dịch chương {translation.Chapter?.ChapterNumber} của \"{translation.Chapter?.Series?.Title}\" đã vào hàng chờ kiểm duyệt AI",
+              $"/creator/moderation-result?translationId={translationId}",
+              NotificationType.SYSTEM
+          );
+        }
+      }
+
+      _logger.LogInformation(
+          "[ModerationService] TranslationId={TranslationId} đã vào moderation queue.", translationId);
     }
   }
 }

@@ -210,7 +210,11 @@ namespace Application.Services.Creator
           .Include(c => c.Pages.OrderBy(p => p.PageNumber))
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
 
-      if (chapter == null) return null;
+      // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
+      if (chapter == null)
+      {
+        return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
+      }
 
       var chapters = await _db.Chapters
           .Include(c => c.Team)
@@ -299,6 +303,98 @@ namespace Application.Services.Creator
             }).ToList();
           }
         }
+      }
+
+      return dto;
+    }
+
+    /// <summary>
+    /// Fallback: Load a Translation by TranslationId and map to ChapterDetailDto
+    /// so the ChapterViewer can display translation pages seamlessly.
+    /// </summary>
+    private async Task<ChapterDetailDto?> GetTranslationAsChapterDetailAsync(
+        int translationId, CancellationToken ct)
+    {
+      var translation = await _db.Translations
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+                  .ThenInclude(s => s.Creator)
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+          .Include(t => t.TranslationPages.OrderBy(p => p.PageNumber))
+          .Include(t => t.TranslationCredits)
+              .ThenInclude(tc => tc.User)
+          .Include(t => t.TeamJoins)
+              .ThenInclude(tj => tj.Team)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
+
+      if (translation == null) return null;
+
+      var chapter = translation.Chapter;
+      if (chapter == null) return null;
+
+      // Build chapter list for the series (all published chapters + translations)
+      var chapters = await _db.Chapters
+          .Include(c => c.Team)
+          .Include(c => c.Language)
+          .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
+          .OrderByDescending(c => c.ChapterNumber)
+          .Select(c => new ChapterSummaryDto
+          {
+            ChapterId = c.ChapterId,
+            ChapterNumber = c.ChapterNumber,
+            Title = c.Title,
+            TeamId = c.TeamId,
+            TeamName = c.Team != null ? c.Team.TeamName : null,
+            LanguageCode = c.Language != null ? c.Language.Code : null,
+            LanguageName = c.Language != null ? c.Language.Name : null,
+            IsOriginal = c.TeamId == null
+          })
+          .ToListAsync(ct);
+
+      var dto = new ChapterDetailDto
+      {
+        ChapterId = translationId, // Use TranslationId so nav stays consistent
+        SeriesId = chapter.SeriesId,
+        SeriesTitle = chapter.Series?.Title,
+        UploaderName = chapter.Series?.Creator?.PenName,
+        TranslatorTeamName = translation.Permission?.Team?.TeamName,
+        ChapterNumber = chapter.ChapterNumber,
+        Title = chapter.Title,
+        Chapters = chapters,
+        IsTranslation = true,
+        IsOfficial = translation.IsOfficial,
+        IsOutdated = translation.IsOutdated,
+        IsOrphan = translation.IsOrphan,
+        Pages = translation.TranslationPages.Select(p => new ChapterPageResponseDto
+        {
+          PageId = p.TransPageId,
+          ChapterId = translationId,
+          PageNumber = p.PageNumber,
+          ImageUrl = p.TranslationImageUrl
+        }).ToList()
+      };
+
+      // Translation credits
+      if (translation.TranslationCredits != null && translation.TranslationCredits.Any())
+      {
+        dto.TranslationCredits = translation.TranslationCredits.Select(tc => new TranslationCreditDetailDto
+        {
+          UserId = tc.UserId,
+          Username = tc.User.Username,
+          Role = tc.Role.ToString()
+        }).ToList();
+      }
+
+      // Joint teams
+      if (translation.TeamJoins != null && translation.TeamJoins.Any())
+      {
+        dto.JointTeams = translation.TeamJoins.Select(tj => new JointTeamDetailDto
+        {
+          TeamId = tj.TeamId,
+          TeamName = tj.Team.TeamName
+        }).ToList();
       }
 
       return dto;
