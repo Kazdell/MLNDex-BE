@@ -211,3 +211,7 @@ Infrastructure/Migrations/20260309040502_AddBioToUser.Designer.cs
 .genkit/
 .dotnet/
 global.json
+.gitnexus
+AGENTS.md
+CLAUDE.md
+.claude/
