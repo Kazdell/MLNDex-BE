@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 
 namespace Application.DTOs.Auth
 {
-	public class LoginDto
-	{
-		[Required]
-		public string Username { get; set; } = null!;
+  public class LoginDto
+  {
+    [Required]
+    public string Username { get; set; } = null!;
 
-		[Required]
-		public string Password { get; set; } = null!;
-	}
+    [Required]
+    public string Password { get; set; } = null!;
+  }
 }

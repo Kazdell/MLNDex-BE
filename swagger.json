@@ -1,0 +1,2394 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "mlndex-backend",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/admin/accounts/{userId}/actions": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/AiModeration/chapters/{chapterId}/run": {
+      "post": {
+        "tags": [
+          "AiModeration"
+        ],
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/AiModeration/chapters/{chapterId}/appeal": {
+      "post": {
+        "tags": [
+          "AiModeration"
+        ],
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/verify-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/creator/chapters": {
+      "post": {
+        "tags": [
+          "Chapter"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": "@{schema=; encoding=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/chapters/{id}": {
+      "get": {
+        "tags": [
+          "Chapter"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/chapters/{chapterId}/pages": {
+      "post": {
+        "tags": [
+          "ChapterPages"
+        ],
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": "@{schema=; encoding=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ChapterPages"
+        ],
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/chapters/{chapterId}/pages/{pageId}": {
+      "delete": {
+        "tags": [
+          "ChapterPages"
+        ],
+        "parameters": [
+          {
+            "name": "pageId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "chapterId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=string}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/comments": {
+      "post": {
+        "tags": [
+          "Comments"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Comments"
+        ],
+        "parameters": [
+          {
+            "name": "targetId",
+            "in": "query",
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "targetType",
+            "in": "query",
+            "schema": "@{$ref=#/components/schemas/CommentTargetType}"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=1}"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=20}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/comments/{commentId}": {
+      "delete": {
+        "tags": [
+          "Comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/financial-reports/summary": {
+      "get": {
+        "tags": [
+          "FinancialReports"
+        ],
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": "@{type=string; format=date-time}"
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": "@{type=string; format=date-time}"
+          },
+          {
+            "name": "TopCreators",
+            "in": "query",
+            "schema": "@{maximum=100; minimum=1; type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Genre": {
+      "get": {
+        "tags": [
+          "Genre"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Genre/{id}": {
+      "get": {
+        "tags": [
+          "Genre"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/history": {
+      "post": {
+        "tags": [
+          "History"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/history/{seriesId}": {
+      "delete": {
+        "tags": [
+          "History"
+        ],
+        "parameters": [
+          {
+            "name": "seriesId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/history/all": {
+      "delete": {
+        "tags": [
+          "History"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/likes/toggle": {
+      "post": {
+        "tags": [
+          "Likes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Moderation/check-text": {
+      "post": {
+        "tags": [
+          "Moderation"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Moderation/analyze-scores": {
+      "post": {
+        "tags": [
+          "Moderation"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Moderation/templates": {
+      "get": {
+        "tags": [
+          "Moderation"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Moderation/banned-tags": {
+      "get": {
+        "tags": [
+          "Moderation"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Moderation/text-ocr": {
+      "post": {
+        "tags": [
+          "Moderation"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": "@{schema=; encoding=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderation-queues": {
+      "get": {
+        "tags": [
+          "ModerationQueues"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderation-queues/{queueId}/decision": {
+      "post": {
+        "tags": [
+          "ModerationQueues"
+        ],
+        "parameters": [
+          {
+            "name": "queueId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderation-queues/{queueId}/content-decision": {
+      "post": {
+        "tags": [
+          "ModerationQueues"
+        ],
+        "parameters": [
+          {
+            "name": "queueId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderation-queues/{queueId}/violation-feedback": {
+      "post": {
+        "tags": [
+          "ModerationQueues"
+        ],
+        "parameters": [
+          {
+            "name": "queueId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderators": {
+      "get": {
+        "tags": [
+          "Moderators"
+        ],
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": "@{maximum=2147483647; minimum=1; type=integer; format=int32}"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": "@{maximum=200; minimum=1; type=integer; format=int32}"
+          },
+          {
+            "name": "Keyword",
+            "in": "query",
+            "schema": "@{type=string}"
+          },
+          {
+            "name": "IsActive",
+            "in": "query",
+            "schema": "@{type=boolean}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Moderators"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/moderators/{userId}": {
+      "delete": {
+        "tags": [
+          "Moderators"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=1}"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=20}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "Notification"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "Notification"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/creator": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/create": {
+      "post": {
+        "tags": [
+          "Series"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": "@{schema=; encoding=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/{id}/edit": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/{id}": {
+      "delete": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": "@{schema=; encoding=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": "@{type=string; default=newest}"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=1}"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=20}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/search": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "Keyword",
+            "in": "query",
+            "schema": "@{type=string}"
+          },
+          {
+            "name": "GenreId",
+            "in": "query",
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": "@{$ref=#/components/schemas/SeriesStatus}"
+          },
+          {
+            "name": "Format",
+            "in": "query",
+            "schema": "@{$ref=#/components/schemas/SeriesFormat}"
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": "@{type=string}"
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/recommendations": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=10}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/system-config": {
+      "get": {
+        "tags": [
+          "SystemConfig"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SystemConfig"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Testing/seed": {
+      "post": {
+        "tags": [
+          "Testing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-permissions/request": {
+      "post": {
+        "tags": [
+          "TranslationPermissions"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-permissions/{id}/status": {
+      "put": {
+        "tags": [
+          "TranslationPermissions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translations": {
+      "post": {
+        "tags": [
+          "Translations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Translations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translations/{id}": {
+      "get": {
+        "tags": [
+          "Translations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Translations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Translations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": "@{text/plain=; application/json=; text/json=}"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/members": {
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": "@{text/plain=; application/json=; text/json=}"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/my-teams": {
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": "@{type=integer; format=int32; default=5}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}": {
+      "put": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/invitations": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/invitations/{invitationId}/accept": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/invitations/{invitationId}/reject": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/join-requests": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/join-requests/{requestId}/approve": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/join-requests/{requestId}/reject": {
+      "post": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/members/{userId}": {
+      "delete": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/members/{userId}/role": {
+      "put": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/series": {
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/translation-teams/{id}/stats": {
+      "get": {
+        "tags": [
+          "TranslationTeams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/profile": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/reading-history": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/membership/plans": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/withdrawals": {
+      "get": {
+        "tags": [
+          "Withdrawals"
+        ],
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": "@{maximum=2147483647; minimum=1; type=integer; format=int32}"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": "@{maximum=200; minimum=1; type=integer; format=int32}"
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": "@{$ref=#/components/schemas/WithdrawalStatus}"
+          },
+          {
+            "name": "CreatorId",
+            "in": "query",
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/withdrawals/{id}": {
+      "get": {
+        "tags": [
+          "Withdrawals"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/withdrawals/{id}/decide": {
+      "post": {
+        "tags": [
+          "Withdrawals"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": "@{type=integer; format=int32}"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": "@{schema=}",
+            "text/json": "@{schema=}",
+            "application/*+json": "@{schema=}"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccountActionRequest": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AccountActionType"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountActionType": {
+        "enum": [
+          "WARN",
+          "DEACTIVATE",
+          "ACTIVATE"
+        ],
+        "type": "string"
+      },
+      "AgeRating": {
+        "enum": [
+          "ALL",
+          "TEEN",
+          "MATURE",
+          "ADULT"
+        ],
+        "type": "string"
+      },
+      "AssignModeratorRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignTeamMemberRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/TeamMemberRole"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommentTargetType": {
+        "enum": [
+          "SERIES",
+          "CHAPTER"
+        ],
+        "type": "string"
+      },
+      "ContentDecisionAction": {
+        "enum": [
+          "APPROVE",
+          "REJECT",
+          "BAN"
+        ],
+        "type": "string"
+      },
+      "ContentModerationDecisionRequest": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ContentDecisionAction"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentType": {
+        "enum": [
+          "IMAGE",
+          "TEXT"
+        ],
+        "type": "string"
+      },
+      "CreateCommentRequest": {
+        "required": [
+          "content",
+          "targetId",
+          "targetType"
+        ],
+        "type": "object",
+        "properties": {
+          "targetId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetType": {
+            "$ref": "#/components/schemas/CommentTargetType"
+          },
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentCommentId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateReportRequest": {
+        "required": [
+          "contentId",
+          "contentType",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "contentType": {
+            "$ref": "#/components/schemas/ReportContentType"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "description": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTranslationTeamDto": {
+        "type": "object",
+        "properties": {
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EditTranslationDto": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageUrls": {
+            "type": "array",
+            "items": "@{type=string}",
+            "nullable": true
+          },
+          "contentUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "wordCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InviteTeamMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "role": {
+            "$ref": "#/components/schemas/TeamMemberRole"
+          }
+        },
+        "additionalProperties": false
+      },
+      "JoinTeamRequestDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LikeRequest": {
+        "required": [
+          "targetType"
+        ],
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "$ref": "#/components/schemas/LikeTargetType"
+          },
+          "targetId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LikeTargetType": {
+        "enum": [
+          "SERIES",
+          "CHAPTER",
+          "COMMENT"
+        ],
+        "type": "string"
+      },
+      "LoginDto": {
+        "required": [
+          "password",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModerationDecisionRequest": {
+        "required": [
+          "reason",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/QueueStatus"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAiScoreRequest": {
+        "type": "object",
+        "properties": {
+          "scores": {
+            "type": "object",
+            "additionalProperties": "@{type=number; format=double}",
+            "nullable": true
+          },
+          "targetAgeRating": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueueStatus": {
+        "enum": [
+          "PENDING",
+          "IN_REVIEW",
+          "RESOLVED",
+          "DISMISSED"
+        ],
+        "type": "string"
+      },
+      "ReadingHistoryUpdateDto": {
+        "type": "object",
+        "properties": {
+          "seriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chapterId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterDto": {
+        "required": [
+          "email",
+          "password",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_]{3,20}$",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportContentType": {
+        "enum": [
+          "SERIES",
+          "CHAPTER",
+          "COMMENT",
+          "TRANSLATION"
+        ],
+        "type": "string"
+      },
+      "ReportReason": {
+        "enum": [
+          "SPAM",
+          "INAPPROPRIATE",
+          "COPYRIGHT",
+          "WRONG_CATEGORY",
+          "OTHER"
+        ],
+        "type": "string"
+      },
+      "RequestPermissionDto": {
+        "type": "object",
+        "properties": {
+          "seriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewPermissionDto": {
+        "type": "object",
+        "properties": {
+          "isApproved": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeriesFormat": {
+        "enum": [
+          "MANGA",
+          "NOVEL"
+        ],
+        "type": "string"
+      },
+      "SeriesStatus": {
+        "enum": [
+          "ONGOING",
+          "COMPLETED",
+          "HALTED",
+          "DROPPED"
+        ],
+        "type": "string"
+      },
+      "SubmitAppealRequestDto": {
+        "type": "object",
+        "properties": {
+          "appealReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SystemConfigDto": {
+        "type": "object",
+        "properties": {
+          "exchangeRateCoinToVnd": {
+            "minimum": 0.01,
+            "type": "number",
+            "format": "double"
+          },
+          "withdrawalFeePercent": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "withdrawalMinCoins": {
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "withdrawalMaxCoins": {
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
+          },
+          "blacklistWords": {
+            "type": "array",
+            "items": "@{type=string}",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamMemberDetailDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamMemberRole": {
+        "enum": [
+          "LEADER",
+          "TRANSLATOR",
+          "EDITOR",
+          "PROOFREADER"
+        ],
+        "type": "string"
+      },
+      "TextCheckRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "isComment": {
+            "type": "boolean"
+          },
+          "userReputation": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TranslationTeamDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leaderId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "reputationScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lockStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMonetizationEnabled": {
+            "type": "boolean"
+          },
+          "moderationStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "memberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateTranslationTeamDto": {
+        "type": "object",
+        "properties": {
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UploadTranslationDto": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "permissionId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "imageUrls": {
+            "type": "array",
+            "items": "@{type=string}",
+            "nullable": true
+          },
+          "contentUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "wordCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyOtpDto": {
+        "required": [
+          "code",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "maxLength": 6,
+            "minLength": 6,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ViolationFeedbackRequest": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WithdrawalDecisionRequest": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/WithdrawalStatus"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WithdrawalStatus": {
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "COMPLETED",
+          "REJECTED"
+        ],
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Auth;
+using Application.Interfaces.Auth;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
@@ -11,27 +11,27 @@ using System.Threading.Tasks;
 
 namespace Infrastructure.Services.Auth
 {
-	public class EmailService : IEmailService
-	{
-		private readonly IConfiguration _config;
+  public class EmailService : IEmailService
+  {
+    private readonly IConfiguration _config;
 
-		public EmailService(IConfiguration config)
-		{
-			_config = config;
-		}
+    public EmailService(IConfiguration config)
+    {
+      _config = config;
+    }
 
-		public async Task SendOtpEmailAsync(string toEmail, string otpCode)
-		{
-			var message = new MimeMessage();
-			message.From.Add(new MailboxAddress(
-				_config["EmailSettings:SenderName"],
-				_config["EmailSettings:SenderEmail"]));
-			message.To.Add(MailboxAddress.Parse(toEmail));
-			message.Subject = "Mã xác thực tài khoản";
+    public async Task SendOtpEmailAsync(string toEmail, string otpCode)
+    {
+      var message = new MimeMessage();
+      message.From.Add(new MailboxAddress(
+          _config["EmailSettings:SenderName"],
+          _config["EmailSettings:SenderEmail"]));
+      message.To.Add(MailboxAddress.Parse(toEmail));
+      message.Subject = "Mã xác thực tài khoản";
 
-			message.Body = new TextPart("html")
-			{
-				Text = $"""
+      message.Body = new TextPart("html")
+      {
+        Text = $"""
                     <div style="font-family: Arial, sans-serif; max-width: 400px; margin: auto;">
                         <h2>Xác thực tài khoản</h2>
                         <p>Mã OTP của bạn là:</p>
@@ -40,20 +40,20 @@ namespace Infrastructure.Services.Auth
                         <p>Nếu bạn không yêu cầu mã này, hãy bỏ qua email này.</p>
                     </div>
                     """
-			};
+      };
 
-			using var smtp = new SmtpClient();
-			await smtp.ConnectAsync(
-				_config["EmailSettings:SmtpHost"],
-				int.Parse(_config["EmailSettings:SmtpPort"]!),
-				SecureSocketOptions.StartTls);
+      using var smtp = new SmtpClient();
+      await smtp.ConnectAsync(
+          _config["EmailSettings:SmtpHost"],
+          int.Parse(_config["EmailSettings:SmtpPort"]!),
+          SecureSocketOptions.StartTls);
 
-			await smtp.AuthenticateAsync(
-				_config["EmailSettings:SenderEmail"],
-				_config["EmailSettings:Password"]);
+      await smtp.AuthenticateAsync(
+          _config["EmailSettings:SenderEmail"],
+          _config["EmailSettings:Password"]);
 
-			await smtp.SendAsync(message);
-			await smtp.DisconnectAsync(true);
-		}
-	}
+      await smtp.SendAsync(message);
+      await smtp.DisconnectAsync(true);
+    }
+  }
 }
