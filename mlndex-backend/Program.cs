@@ -71,7 +71,7 @@ namespace mlndex_backend
             builder.Services.AddHttpClient();
             builder.Services.AddSignalR();
 
-            // ── Memory Cache (cho OTP + Token Blacklist) ────────────
+// ── Memory Cache (cho OTP + Token Blacklist) ────────────
             builder.Services.AddMemoryCache();
 
             // Database Configuration
@@ -79,7 +79,9 @@ namespace mlndex_backend
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
                 sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
                     .EnableRetryOnFailure()
-            ));
+                )
+                .EnableSensitiveDataLogging()); // Từ nhánh cuonghn-Auth
+            
             builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
             // ── Auth Services ───────────────────────────────────────
@@ -87,12 +89,14 @@ namespace mlndex_backend
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IOtpService, OtpService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
-            builder.Services.AddScoped<IUserContext, UserContext>();
+            builder.Services.AddScoped<IUserContext, UserContext>(); // Từ nhánh main
+            builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>(); // Từ nhánh cuonghn-Auth
+            builder.Services.AddScoped<IFacebookOAuthService, FacebookOAuthService>(); // Từ nhánh cuonghn-Auth
 
             // Storage & Content Services
             builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-            // Creator Services
+            // Creator Services (Từ nhánh main)
             builder.Services.AddScoped<ISeriesService, SeriesService>();
             builder.Services.AddScoped<IChapterService, ChapterService>();
             builder.Services.AddScoped<IGenreService, GenreService>();
@@ -102,18 +106,20 @@ namespace mlndex_backend
             var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
             builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
             builder.Services.AddScoped<IModerationService, ModerationService>();
-            builder.Services.AddScoped<IReportService, ReportService>();
-            builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
-            builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+            builder.Services.AddScoped<IReportService, ReportService>(); // Từ nhánh main
+            builder.Services.AddScoped<IAccountModerationService, AccountModerationService>(); // Từ nhánh main
+            builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>(); // Từ nhánh main
 
-            // Isolated Report & TrustScore Services
+            // Isolated Report & TrustScore Services (Từ nhánh main)
             builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
             builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
 
             // AI & Chapter Processing
-            builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
+            builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>(); // Từ nhánh main
             builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
-                sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
+                sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>()); // Từ nhánh main
+            
+            // Background Hosted Services (Từ nhánh main)
             builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
             builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
             builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
@@ -125,7 +131,6 @@ namespace mlndex_backend
             builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
             builder.Services.AddScoped<ITranslationService, TranslationService>();
             builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
-
             // OCR Services
             builder.Services.AddScoped<IOCRService, TesseractOCRService>();
 
