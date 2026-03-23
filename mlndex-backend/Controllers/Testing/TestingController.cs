@@ -26,9 +26,10 @@ namespace mlndex_backend.Controllers.Testing
         {
           // Ensure they have passwords to login with
           var usersToFix = _db.Users.Where(u => u.PasswordHash == null || u.PasswordHash == "").ToList();
-          foreach (var u in usersToFix) {
-              u.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
-              u.IsEmailVerified = true;
+          foreach (var u in usersToFix)
+          {
+            u.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+            u.IsEmailVerified = true;
           }
           testUser.TrustScore = 0;
           testUser.CannotUpload = true;
@@ -65,16 +66,16 @@ namespace mlndex_backend.Controllers.Testing
         // Assign Roles to Test Users
         var readerRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.READER);
         var creatorRole = _db.Roles.FirstOrDefault(r => r.RoleName == RoleName.CREATOR);
-        
+
         if (readerRole != null && creatorRole != null)
         {
-           _db.UserRoles.AddRange(
-             new UserRole { UserId = user1.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
-             new UserRole { UserId = user2.UserId, RoleId = creatorRole.RoleId, AssignedAt = DateTime.UtcNow }, // creator1
-             new UserRole { UserId = transLeader.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
-             new UserRole { UserId = transMember.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow }
-           );
-           await _db.SaveChangesAsync(default);
+          _db.UserRoles.AddRange(
+            new UserRole { UserId = user1.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+            new UserRole { UserId = user2.UserId, RoleId = creatorRole.RoleId, AssignedAt = DateTime.UtcNow }, // creator1
+            new UserRole { UserId = transLeader.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow },
+            new UserRole { UserId = transMember.UserId, RoleId = readerRole.RoleId, AssignedAt = DateTime.UtcNow }
+          );
+          await _db.SaveChangesAsync(default);
         }
 
         // Genres (Comprehensive MangaDex-like List)
@@ -99,7 +100,7 @@ namespace mlndex_backend.Controllers.Testing
         var fantasyGenre = genres.First(g => g.Name == "Fantasy");
 
         var series1 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "The Epic Journey", Description = "A very epic novel about a hero who fights demons.", SeriesFormat = SeriesFormat.NOVEL, AgeRating = AgeRating.TEEN, Status = SeriesStatus.ONGOING, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.5m, TotalRatings = 10, CreatedAt = DateTime.UtcNow };
-        var series2 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "Manga Adventures", Description = "Action manga with lots of fights and character building.", SeriesFormat = SeriesFormat.MANGA, AgeRating = AgeRating.ALL, Status = SeriesStatus.COMPLETED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.8m, TotalRatings = 50, CreatedAt = DateTime.UtcNow.AddDays(-10) };
+        var series2 = new Domain.Entities.Series { CreatorId = creator.CreatorId, Title = "Manga Adventures", Description = "Action manga with lots of fights and character building.", SeriesFormat = SeriesFormat.MANGA, AgeRating = AgeRating.ALL_AGES, Status = SeriesStatus.COMPLETED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, AverageRating = 4.8m, TotalRatings = 50, CreatedAt = DateTime.UtcNow.AddDays(-10) };
         _db.Series.AddRange(series1, series2);
         await _db.SaveChangesAsync(default);
 

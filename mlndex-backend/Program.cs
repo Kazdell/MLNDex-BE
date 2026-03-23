@@ -42,208 +42,209 @@ using System.Text.Json.Serialization;
 
 namespace mlndex_backend
 {
-    public class Program
+  public class Program
+  {
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
+      var builder = WebApplication.CreateBuilder(args);
 
-            var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
+      var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
 
-            if (builder.Environment.IsProduction())
-                builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-            else
-                builder.WebHost.UseUrls($"http://localhost:{PORT}");
+      if (builder.Environment.IsProduction())
+        builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
+      else
+        builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
-            // Standard API Services
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                    options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
-                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-                });
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddHttpClient();
-            builder.Services.AddSignalR();
+      // Standard API Services
+      builder.Services.AddControllers()
+          .AddJsonOptions(options =>
+          {
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+          });
+      builder.Services.AddEndpointsApiExplorer();
+      builder.Services.AddSwaggerGen();
+      builder.Services.AddHttpContextAccessor();
+      builder.Services.AddHttpClient();
+      builder.Services.AddSignalR();
 
-	  // ── Memory Cache (cho OTP + Token Blacklist) ────────────
-	  builder.Services.AddMemoryCache();
+      // ── Memory Cache (cho OTP + Token Blacklist) ────────────
+      builder.Services.AddMemoryCache();
 
-			// Database Configuration
-	  builder.Services.AddDbContext<MlndexDbContext>(options =>
+      // Database Configuration
+      builder.Services.AddDbContext<MlndexDbContext>(options =>
           options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
           sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
               .EnableRetryOnFailure()
       ));
       builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
-			// ── Auth Services ───────────────────────────────────────
-			builder.Services.AddScoped<IAuthService, AuthService>();
-			builder.Services.AddScoped<ITokenService, TokenService>();
-			builder.Services.AddScoped<IOtpService, OtpService>();
-			builder.Services.AddScoped<IEmailService, EmailService>();
-			builder.Services.AddScoped<IUserContext, UserContext>();
+      // ── Auth Services ───────────────────────────────────────
+      builder.Services.AddScoped<IAuthService, AuthService>();
+      builder.Services.AddScoped<ITokenService, TokenService>();
+      builder.Services.AddScoped<IOtpService, OtpService>();
+      builder.Services.AddScoped<IEmailService, EmailService>();
+      builder.Services.AddScoped<IUserContext, UserContext>();
 
-			// Storage & Content Services
-			builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+      // Storage & Content Services
+      builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-			// Creator Services
-			builder.Services.AddScoped<ISeriesService, SeriesService>();
-			builder.Services.AddScoped<IChapterService, ChapterService>();
-			builder.Services.AddScoped<IGenreService, GenreService>();
-            builder.Services.AddScoped<ICreatorService, CreatorService>();
+      // Creator Services
+      builder.Services.AddScoped<ISeriesService, SeriesService>();
+      builder.Services.AddScoped<IChapterService, ChapterService>();
+      builder.Services.AddScoped<IGenreService, GenreService>();
+      builder.Services.AddScoped<ICreatorService, CreatorService>();
 
-            // Core Moderation Engine
-            var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-			builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
-			builder.Services.AddScoped<IModerationService, ModerationService>();
-			builder.Services.AddScoped<IReportService, ReportService>();
-			builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
-			builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+      // Core Moderation Engine
+      var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+      builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+      builder.Services.AddScoped<IModerationService, ModerationService>();
+      builder.Services.AddScoped<IReportService, ReportService>();
+      builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
+      builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
 
-            // Isolated Report & TrustScore Services
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
+      // Isolated Report & TrustScore Services
+      builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
+      builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
 
-            // AI & Chapter Processing
-            builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
-            builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
-                sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
-            builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
-            builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
+      // AI & Chapter Processing
+      builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
+      builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
+          sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
+      builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
+      builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
+      builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
 
-            builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
-		
-			// Translation Team Services
-			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
-            
-            // OCR Services
-            builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+      builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
-			// Community Services
-			builder.Services.AddScoped<ICommentService, CommentService>();
-			builder.Services.AddScoped<ILikeService, LikeService>();
+      // Translation Team Services
+      builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+      builder.Services.AddScoped<ITranslationService, TranslationService>();
+      builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-			// User Services
-			builder.Services.AddScoped<IHistoryService, HistoryService>();
-			builder.Services.AddScoped<IUserService, UserService>();
-			builder.Services.AddScoped<IFollowService, FollowService>();
-			builder.Services.AddScoped<IRatingService, RatingService>();
-			builder.Services.AddScoped<IBookmarkService, BookmarkService>();
-			builder.Services.AddScoped<IUserListService, UserListService>();
+      // OCR Services
+      builder.Services.AddScoped<IOCRService, TesseractOCRService>();
 
-			// Notification Services
-			builder.Services.AddScoped<INotificationPusher, NotificationPusher>();
-			builder.Services.AddScoped<INotificationService, NotificationService>();
+      // Community Services
+      builder.Services.AddScoped<ICommentService, CommentService>();
+      builder.Services.AddScoped<ILikeService, LikeService>();
 
-			// Financial Services
-			builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
-			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
+      // User Services
+      builder.Services.AddScoped<IHistoryService, HistoryService>();
+      builder.Services.AddScoped<IUserService, UserService>();
+      builder.Services.AddScoped<IFollowService, FollowService>();
+      builder.Services.AddScoped<IRatingService, RatingService>();
+      builder.Services.AddScoped<IBookmarkService, BookmarkService>();
+      builder.Services.AddScoped<IUserListService, UserListService>();
 
-			// System Services — SystemConfigService cần filePath nên dùng factory
-			var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");
-			builder.Services.AddScoped<ISystemConfigService>(_ => new SystemConfigService(systemConfigFilePath));
+      // Notification Services
+      builder.Services.AddScoped<INotificationPusher, NotificationPusher>();
+      builder.Services.AddScoped<INotificationService, NotificationService>();
 
-            // Increase timeout
-            builder.Services.Configure<KestrelServerOptions>(options =>
-            {
-                options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(20);
-                options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(20);
-            });
+      // Financial Services
+      builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
+      builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 
+      // System Services — SystemConfigService cần filePath nên dùng factory
+      var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");
+      builder.Services.AddScoped<ISystemConfigService>(_ => new SystemConfigService(systemConfigFilePath));
 
-            //enable jwt token
-            var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey");
-			builder.Services.AddAuthentication(item =>
-			{
-				item.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-				item.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-			}).AddJwtBearer(item =>
-			{
-				item.RequireHttpsMetadata = false;
-				item.SaveToken = true;
-				item.TokenValidationParameters = new TokenValidationParameters()
-				{
-					ValidateIssuerSigningKey = true,
-					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_authkey)),
-					ValidateIssuer = false,
-					ValidateAudience = false,
-					ValidateLifetime = true,
-					ClockSkew = TimeSpan.FromMinutes(5)
-				};
-                // ← Thêm đoạn này để SignalR đọc được token từ query string
-                item.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        var accessToken = context.Request.Query["access_token"];
-                        var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrEmpty(accessToken) &&
-                            path.StartsWithSegments("/hubs"))
-                        {
-                            context.Token = accessToken;
-                        }
-                        return Task.CompletedTask;
-                    }
-                };
-            });
-
-			// Build allowed origins list: always include localhost + any production origins from env
-			var allowedOrigins = new List<string>
-			{
-				"http://localhost:5173", "http://127.0.0.1:5173",
-				"http://localhost:5174", "http://127.0.0.1:5174",
-				"http://localhost:5175", "http://127.0.0.1:5175"
-			};
-			var extraOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
-			if (!string.IsNullOrEmpty(extraOrigins))
-			{
-				allowedOrigins.AddRange(extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-			}
-
-			builder.Services.AddCors(options =>
+      // Increase timeout
+      builder.Services.Configure<KestrelServerOptions>(options =>
       {
-        options.AddPolicy("AllowSpecificOrigin", policy =>
-              {
-            policy
-                  .WithOrigins(allowedOrigins.ToArray())
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-          });
+        options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(20);
+        options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(20);
       });
 
-            var app = builder.Build();
 
-            // Swagger enabled for all environments (Production + Development)
-            app.UseSwagger();
-            app.UseSwaggerUI();
+      //enable jwt token
+      var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey");
+      builder.Services.AddAuthentication(item =>
+      {
+        item.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        item.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+      }).AddJwtBearer(item =>
+      {
+        item.RequireHttpsMetadata = false;
+        item.SaveToken = true;
+        item.TokenValidationParameters = new TokenValidationParameters()
+        {
+          ValidateIssuerSigningKey = true,
+          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_authkey)),
+          ValidateIssuer = false,
+          ValidateAudience = false,
+          ValidateLifetime = true,
+          ClockSkew = TimeSpan.FromMinutes(5)
+        };
+        // ← Thêm đoạn này để SignalR đọc được token từ query string
+        item.Events = new JwtBearerEvents
+        {
+          OnMessageReceived = context =>
+                {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                          path.StartsWithSegments("/hubs"))
+                {
+                  context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+              }
+        };
+      });
 
-            if (app.Environment.IsDevelopment())
+      // Build allowed origins list: always include localhost + any production origins from env
+      var allowedOrigins = new List<string>
             {
-            }
+                "http://localhost:5173", "http://127.0.0.1:5173",
+                "http://localhost:5174", "http://127.0.0.1:5174",
+                "http://localhost:5175", "http://127.0.0.1:5175"
+            };
+      var extraOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+      if (!string.IsNullOrEmpty(extraOrigins))
+      {
+        allowedOrigins.AddRange(extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+      }
 
-            app.UseGlobalExceptionHandling();
-            app.UseCors("AllowSpecificOrigin");
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseStaticFiles();
+      builder.Services.AddCors(options =>
+{
+  options.AddPolicy("AllowSpecificOrigin", policy =>
+        {
+          policy
+                      .WithOrigins(allowedOrigins.ToArray())
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+        });
+});
 
-            app.MapHub<NotificationHub>("/hubs/notification");
-            app.MapHub<ModerationHub>("/hubs/moderation");
+      var app = builder.Build();
 
-            app.MapControllers();
-            using (var scope = app.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
-                db.Database.Migrate();
-            }
-            app.Run();
-        }
+      // Swagger enabled for all environments (Production + Development)
+      app.UseSwagger();
+      app.UseSwaggerUI();
+
+      if (app.Environment.IsDevelopment())
+      {
+      }
+
+      app.UseGlobalExceptionHandling();
+      app.UseCors("AllowSpecificOrigin");
+      app.UseAuthentication();
+      app.UseAuthorization();
+      app.UseStaticFiles();
+
+      app.MapHub<NotificationHub>("/hubs/notification");
+      app.MapHub<ModerationHub>("/hubs/moderation");
+
+      app.MapControllers();
+      using (var scope = app.Services.CreateScope())
+      {
+        var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
+        db.Database.Migrate();
+      }
+      app.Run();
     }
+  }
 }

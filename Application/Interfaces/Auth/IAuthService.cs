@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace Application.Interfaces.Auth
 {
-	public interface IAuthService
-	{
-		Task<ServiceResult> RegisterAsync(RegisterDto dto);
-		Task<ServiceResult> VerifyEmailOtpAsync(VerifyOtpDto dto);
-		Task<AuthResponseDto?> LoginAsync(LoginDto dto);
-		Task<AuthResponseDto?> RefreshAsync(TokenApiDto tokenApiDto);
-		Task<ServiceResult> LogoutAsync(string token);
-	}
+  public interface IAuthService
+  {
+    Task<ServiceResult> RegisterAsync(RegisterDto dto);
+    Task<ServiceResult> VerifyEmailOtpAsync(VerifyOtpDto dto);
+    Task<AuthResponseDto?> LoginAsync(LoginDto dto);
+    Task<AuthResponseDto?> RefreshAsync(TokenApiDto tokenApiDto);
+    Task<ServiceResult> LogoutAsync(string token);
+  }
 }
