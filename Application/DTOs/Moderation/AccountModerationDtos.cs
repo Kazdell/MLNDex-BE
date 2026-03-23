@@ -18,10 +18,16 @@ namespace Application.DTOs.Moderation
     ACTIVATE,
   }
 
-  public class AccountActionResponse
-  {
-    public int UserId { get; set; }
-    public bool IsActive { get; set; }
-    public string Message { get; set; } = string.Empty;
-  }
+    public class AccountActionResponse
+    {
+        public int UserId { get; set; }
+        public bool IsActive { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class UpdateUserRolesRequest
+    {
+        [Required]
+        public List<string> Roles { get; set; } = new();
+    }
 }
