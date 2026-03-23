@@ -453,7 +453,12 @@ namespace Application.Services.Creator
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
           .Include(s => s.Chapters).ThenInclude(c => c.Team)
           .Include(s => s.Chapters).ThenInclude(c => c.Language)
+          .Include(s => s.Chapters).ThenInclude(c => c.Pages)
           .Include(s => s.Chapters).ThenInclude(c => c.Translations)
+              .ThenInclude(t => t.Language)
+          .Include(s => s.Chapters).ThenInclude(c => c.Translations)
+              .ThenInclude(t => t.Permission)
+                  .ThenInclude(p => p.Team)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
       if (series == null) return null;
@@ -470,6 +475,55 @@ namespace Application.Services.Creator
           .Where(c => c.TeamId == null && c.Language != null)
           .OrderBy(c => c.ChapterNumber)
           .FirstOrDefault();
+
+      // 1. Map original chapters (bản gốc) — PUBLISHED only
+      var chapterDtos = series.Chapters
+            .Where(c => c.Status == ChapterStatus.PUBLISHED)
+            .OrderByDescending(c => c.ChapterNumber)
+            .Select(c => new SeriesChapterDto
+            {
+              ChapterId = c.ChapterId,
+              Title = c.Title ?? "Untitled",
+              ChapterNumber = (int)c.ChapterNumber,
+              Price = c.UnlockPriceCoins ?? 0,
+              PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
+              ViewCount = c.ReadingHistories?.Count ?? 0,
+              GroupName = c.Team?.TeamName,
+              TeamId = c.TeamId,
+              IsOriginal = c.TeamId == null,
+              IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
+              LanguageCode = c.Language?.Code,
+              LanguageName = c.Language?.Name,
+              CommentCount = 0,
+              PageCount = c.PageCount ?? c.Pages?.Count ?? 0
+            }).ToList();
+
+      // 2. Map PUBLISHED translations as additional entries
+      //    Each Translation maps to the same ChapterNumber so FE can group them together
+      var translationDtos = series.Chapters
+            .SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
+                .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
+                .Select(t => new SeriesChapterDto
+                {
+                  ChapterId = t.TranslationId, // Use TranslationId as the identifier for reading
+                  Title = c.Title ?? "Untitled",
+                  ChapterNumber = (int)c.ChapterNumber,
+                  Price = 0,
+                  PublishedAt = t.PublishedAt ?? DateTime.UtcNow,
+                  ViewCount = 0,
+                  GroupName = t.Permission?.Team?.TeamName,
+                  TeamId = t.Permission?.TeamId,
+                  IsOriginal = false,
+                  IsOfficialTranslation = t.IsOfficial
+                      || (t.Permission?.TeamId != null && grantedTeamIds.Contains(t.Permission.TeamId)),
+                  LanguageCode = t.Language?.Code,
+                  LanguageName = t.Language?.Name,
+                  CommentCount = 0
+                }))
+            .ToList();
+
+      // Merge both lists
+      chapterDtos.AddRange(translationDtos);
 
       return new SeriesDetailDto
       {
@@ -488,25 +542,7 @@ namespace Application.Services.Creator
         CreatorName = series.Creator.PenName,
         Genres = series.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
         OriginalLanguage = firstOriginalChapter?.Language?.Code,
-        Chapters = series.Chapters
-              .Where(c => c.Status == ChapterStatus.PUBLISHED)
-              .OrderByDescending(c => c.ChapterNumber)
-              .Select(c => new SeriesChapterDto
-              {
-                ChapterId = c.ChapterId,
-                Title = c.Title ?? "Untitled",
-                ChapterNumber = (int)c.ChapterNumber,
-                Price = c.UnlockPriceCoins ?? 0,
-                PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-                ViewCount = c.ReadingHistories?.Count ?? 0,
-                GroupName = c.Team?.TeamName,
-                TeamId = c.TeamId,
-                IsOriginal = c.TeamId == null,
-                IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-                LanguageCode = c.Language?.Code,
-                LanguageName = c.Language?.Name,
-                CommentCount = 0
-              }).ToList()
+        Chapters = chapterDtos
       };
     }
 

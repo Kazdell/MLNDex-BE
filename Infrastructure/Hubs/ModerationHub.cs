@@ -38,11 +38,26 @@ public class ModerationHub : Hub
         userId, chapterId);
   }
 
-  // ── Khi frontend rời trang (cleanup) ─────────────────────────────────
+  // ── Khi frontend vào trang (cleanup) ─────────────────────────────────
   // Gọi: connection.invoke("UnwatchChapter", chapterId)
   public async Task UnwatchChapter(int chapterId)
   {
     await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"chapter_{chapterId}");
+  }
+
+  // ── Translations ──────────────────────────────────────────────────────
+  public async Task WatchTranslation(int translationId)
+  {
+    var userId = GetUserId();
+    await Groups.AddToGroupAsync(Context.ConnectionId, $"translation_{translationId}");
+    _logger.LogInformation(
+        "[ModerationHub] User {UserId} đang theo dõi TranslationId={TranslationId}.",
+        userId, translationId);
+  }
+
+  public async Task UnwatchTranslation(int translationId)
+  {
+    await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"translation_{translationId}");
   }
 
   public override async Task OnConnectedAsync()

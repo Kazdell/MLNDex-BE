@@ -240,5 +240,41 @@ namespace Application.Services.Auth
         CannotUpload = user.CannotUpload
       };
     }
+
+    // ── FORGOT PASSWORD ─────────────────────────────────
+    public async Task<ServiceResult> ForgotPasswordAsync(string email)
+    {
+      var user = await _context.Users
+          .FirstOrDefaultAsync(u => u.Email == email.ToLower());
+      // Always return success to prevent email enumeration
+      if (user == null || !user.IsEmailVerified || !user.IsActive)
+        return ServiceResult.Ok("Nếu email tồn tại, chúng tôi đã gửi mã xác minh.");
+
+      var otp = await _otpService.GenerateOtpAsync(email);
+      await _emailService.SendOtpEmailAsync(email, otp);
+
+      return ServiceResult.Ok("Mã xác minh đã được gửi đến email của bạn.");
+    }
+
+    // ── RESET PASSWORD ──────────────────────────────────
+    public async Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword)
+    {
+      var valid = _otpService.ValidateOtp(email, otpCode);
+      if (!valid)
+        return ServiceResult.Fail("Mã OTP không hợp lệ hoặc đã hết hạn.");
+
+      var user = await _context.Users
+          .FirstOrDefaultAsync(u => u.Email == email.ToLower());
+      if (user == null)
+        return ServiceResult.Fail("Tài khoản không tồn tại.");
+
+      user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+      // Invalidate existing refresh tokens
+      user.RefreshToken = null;
+      user.RefreshTokenExpiryTime = null;
+      await _context.SaveChangesAsync();
+
+      return ServiceResult.Ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập.");
+    }
   }
 }

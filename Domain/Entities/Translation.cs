@@ -20,6 +20,7 @@ namespace Domain.Entities
     public bool IsOfficial { get; set; } = false;
     public bool IsOutdated { get; set; } = false;
     public bool IsOrphan { get; set; } = false;
+    public string? AiScoresJson { get; set; }
 
     // Navigation
     public Language Language { get; set; } = null!;

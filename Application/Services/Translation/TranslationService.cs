@@ -11,7 +11,9 @@ using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation;
 using Application.Interfaces.Translation;
+using Application.Interfaces.Notification;
 using Domain.Entities;
+using Application.Interfaces.AIModeration;
 
 namespace Application.Services.Translation
 {
@@ -21,17 +23,23 @@ namespace Application.Services.Translation
     private readonly IUserContext _userContext;
     private readonly Application.Interfaces.Creator.IStorageService _storage;
     private readonly Microsoft.Extensions.Logging.ILogger<TranslationService> _logger;
+    private readonly INotificationService _notificationService;
+    private readonly IModerationService _moderationService;
 
     public TranslationService(
         IMlndexDbContext context,
         IUserContext userContext,
         Application.Interfaces.Creator.IStorageService storage,
-        Microsoft.Extensions.Logging.ILogger<TranslationService> logger)
+        Microsoft.Extensions.Logging.ILogger<TranslationService> logger,
+        INotificationService notificationService,
+        IModerationService moderationService)
     {
       _context = context;
       _userContext = userContext;
       _storage = storage;
       _logger = logger;
+      _notificationService = notificationService;
+      _moderationService = moderationService;
     }
 
     public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
@@ -76,7 +84,7 @@ namespace Application.Services.Translation
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,
-        ModerationStatus = ModerationStatus.APPROVED, // Assuming auto-approve for now
+        ModerationStatus = ModerationStatus.PENDING,
         IsOfficial = isOfficial
       };
 
@@ -179,8 +187,33 @@ namespace Application.Services.Translation
         }
         throw;
       }
-      return await GetTranslationByIdAsync(translation.TranslationId) ?? throw new Exception("Translation failed to retrieve.");
-    }
+
+      // Notify the uploader that their translation is now in the moderation queue
+      try
+      {
+        var translationResult = await GetTranslationByIdAsync(translation.TranslationId)
+            ?? throw new Exception("Translation failed to retrieve.");
+
+        var seriesTitle = chapter.Series?.Title ?? "series";
+
+        await _moderationService.EnqueueTranslationForModerationAsync(translation.TranslationId);
+
+        await _notificationService.CreateNotificationAsync(
+            userId: uploaderId.Value,
+            title: "Đã đưa vào hàng đợi kiểm duyệt!",
+            message: $"Bản dịch chương {chapter.ChapterNumber} của {seriesTitle} đã tải lên thành công và đang chờ AI kiểm duyệt.",
+            actionUrl: $"/creator/moderation-result",
+            type: Domain.Entities.NotificationType.SYSTEM);
+
+        return translationResult;
+      }
+      catch (Exception notifEx)
+      {
+        // Notification failure should NOT roll back the successful translation upload
+        _logger.LogWarning(notifEx, "[TranslationService] Gửi thông báo thất bại sau upload (TranslationId={TranslationId}).", translation.TranslationId);
+        return await GetTranslationByIdAsync(translation.TranslationId) ?? throw new Exception("Translation failed to retrieve.");
+      }
+    } // end UploadTranslationAsync
 
     public async Task<TranslationDto?> GetTranslationByIdAsync(int translationId)
     {

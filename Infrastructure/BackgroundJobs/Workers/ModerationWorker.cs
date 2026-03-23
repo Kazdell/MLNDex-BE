@@ -123,14 +123,40 @@ public class ModerationWorker : BackgroundService
         resumeCount++;
       }
 
+      // ④ Re-enqueue orphan translations
+      var orphanTranslationIds = await db.Translations
+          .Where(t => t.ModerationStatus == ModerationStatus.PENDING)
+          .Where(t => !db.ModerationQueues.Any(q =>
+              q.ContentId == t.TranslationId
+              && q.ContentType == ModerationQueueContentType.TRANSLATION
+              && (q.Status == QueueStatus.PENDING
+                  || q.Status == QueueStatus.IN_REVIEW
+                  || q.Status == QueueStatus.RESOLVED)))
+          .Select(t => t.TranslationId)
+          .ToListAsync(cancellationToken);
+
+      foreach (var tId in orphanTranslationIds)
+      {
+        db.ModerationQueues.Add(new Domain.Entities.ModerationQueue
+        {
+          ContentId = tId,
+          ContentType = ModerationQueueContentType.TRANSLATION,
+          Status = QueueStatus.PENDING,
+          FlaggedAt = DateTime.UtcNow,
+          Priority = QueuePriority.MEDIUM
+        });
+        await _queue.EnqueueAsync(tId, cancellationToken);
+        resumeCount++;
+      }
+
       if (resumeCount > 0)
       {
         await db.SaveChangesAsync(cancellationToken);
         _logger.LogWarning(
             "[ModerationWorker] Crash recovery: resume {Count} jobs " +
-            "({Stuck} stuck, {OrphanCh} orphan chapters, {OrphanSr} orphan series)",
+            "({Stuck} stuck, {OrphanCh} orphan chapters, {OrphanSr} orphan series, {OrphanTr} orphan translations)",
             resumeCount, stuckJobs.Count,
-            orphanChapterIds.Count, orphanSeriesIds.Count);
+            orphanChapterIds.Count, orphanSeriesIds.Count, orphanTranslationIds.Count);
       }
     }
     catch (Exception ex)
@@ -144,57 +170,75 @@ public class ModerationWorker : BackgroundService
   // ── Main loop: listen for signals from Channel ─────────────────────────
   protected override async Task ExecuteAsync(CancellationToken stoppingToken)
   {
-    _logger.LogInformation("[ModerationWorker] Bắt đầu lắng nghe queue.");
+      _logger.LogInformation("[ModerationWorker] Bắt đầu lắng nghe queue.");
+      
+      // Process any jobs already PENDING in the database on startup
+      _ = ProcessAllPendingAsync(stoppingToken);
 
-    await foreach (var signal in _queue.Reader.ReadAllAsync(stoppingToken))
-    {
-      // Fire-and-forget with semaphore — don't block the loop
-      _ = ProcessNextPendingAsync(stoppingToken);
-    }
+      await foreach (var signal in _queue.Reader.ReadAllAsync(stoppingToken))
+      {
+          // Process all pending jobs whenever a new signal arrives
+          _ = ProcessAllPendingAsync(stoppingToken);
+      }
   }
 
-  // ── Pick next PENDING job from DB (priority-ordered) ───────────────────
-  private async Task ProcessNextPendingAsync(CancellationToken ct)
+  // ── Safe concurrent dispatcher ─────────────────────────────────────────
+  private async Task ProcessAllPendingAsync(CancellationToken stoppingToken)
   {
-    await _semaphore.WaitAsync(ct);
-    try
-    {
-      using var scope = _scopeFactory.CreateScope();
-      var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
+      // Sequentially lock jobs to avoid race conditions, but run AI async
+      while (true)
+      {
+          if (stoppingToken.IsCancellationRequested) break;
+          
+          using var scope = _scopeFactory.CreateScope();
+          var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
 
-      // Priority: HIGH first, then FIFO by FlaggedAt
-      var job = await db.ModerationQueues
-          .Where(q => q.Status == QueueStatus.PENDING)
-          .OrderBy(q => q.Priority == QueuePriority.HIGH ? 0
-                      : q.Priority == QueuePriority.URGENT ? 0 : 1)
-              .ThenBy(q => q.FlaggedAt)
-          .FirstOrDefaultAsync(ct);
+          var job = await db.ModerationQueues
+              .Where(q => q.Status == QueueStatus.PENDING)
+              .OrderBy(q => q.Priority == QueuePriority.HIGH ? 0
+                          : q.Priority == QueuePriority.URGENT ? 0 : 1)
+                  .ThenBy(q => q.FlaggedAt)
+              .FirstOrDefaultAsync(stoppingToken);
 
-      if (job == null) return;
+          if (job == null) break;
 
-      // Lock the job
-      job.Status = QueueStatus.IN_REVIEW;
-      job.AssignedAt = DateTime.UtcNow;
-      await db.SaveChangesAsync(ct);
+          // Lock the job synchronously relative to other loops
+          job.Status = QueueStatus.IN_REVIEW;
+          job.AssignedAt = DateTime.UtcNow;
+          await db.SaveChangesAsync(stoppingToken);
 
-      _logger.LogInformation(
-          "[ModerationWorker] Processing {ContentType} ContentId={ContentId} (retry {Retry})",
-          job.ContentType, job.ContentId, job.RetryCount);
+          // Wait until there's room to process this job
+          await _semaphore.WaitAsync(stoppingToken);
 
-      // Route to correct handler
-      if (job.ContentType == ModerationQueueContentType.SERIES)
-        await RunSeriesModerationAsync(job.ContentId, scope, ct);
-      else
-        await RunChapterModerationAsync(job.ContentId, scope, ct);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "[ModerationWorker] Error picking next job");
-    }
-    finally
-    {
-      _semaphore.Release();
-    }
+          // Spawn a background task for the actual AI API call and DB updates
+          _ = Task.Run(async () =>
+          {
+              try
+              {
+                  // Provide a new scope for the background task
+                  using var innerScope = _scopeFactory.CreateScope();
+                  
+                  _logger.LogInformation(
+                      "[ModerationWorker] Processing {ContentType} ContentId={ContentId} (retry {Retry})",
+                      job.ContentType, job.ContentId, job.RetryCount);
+
+                  if (job.ContentType == ModerationQueueContentType.SERIES)
+                      await RunSeriesModerationAsync(job.ContentId, innerScope, stoppingToken);
+                  else if (job.ContentType == ModerationQueueContentType.TRANSLATION)
+                      await RunTranslationModerationAsync(job.ContentId, innerScope, stoppingToken);
+                  else
+                      await RunChapterModerationAsync(job.ContentId, innerScope, stoppingToken);
+              }
+              catch (Exception ex)
+              {
+                  _logger.LogError(ex, "[ModerationWorker] Error during background AI task");
+              }
+              finally
+              {
+                  _semaphore.Release();
+              }
+          }, stoppingToken);
+      }
   }
 
   // ── Chapter Moderation (Main flow + Backup retry) ──────────────────────
@@ -271,7 +315,7 @@ public class ModerationWorker : BackgroundService
     // ── 429 Rate Limit — exponential backoff (FROM BACKUP) ─────────
     catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
     {
-      await HandleRetryAsync(db, chapterId, ex,
+      await HandleRetryAsync(db, chapterId, ModerationQueueContentType.CHAPTER, ex,
           isRateLimit: true, hubContext: hubContext, ct: ct);
     }
     // ── Transient errors — shorter backoff (FROM BACKUP) ───────────
@@ -280,7 +324,7 @@ public class ModerationWorker : BackgroundService
       _logger.LogError(ex,
           "[ModerationWorker] Error processing ChapterId={ChapterId}", chapterId);
 
-      await HandleRetryAsync(db, chapterId, ex,
+      await HandleRetryAsync(db, chapterId, ModerationQueueContentType.CHAPTER, ex,
           isRateLimit: false, hubContext: hubContext, ct: ct);
     }
   }
@@ -327,10 +371,108 @@ public class ModerationWorker : BackgroundService
     }
   }
 
+  // ── Translation Moderation ──────────────────────────────────────────
+  private async Task RunTranslationModerationAsync(
+      int translationId,
+      IServiceScope scope,
+      CancellationToken ct)
+  {
+    var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
+    var moderationService = scope.ServiceProvider.GetRequiredService<IModerationService>();
+    var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+    var notificationPusher = scope.ServiceProvider.GetRequiredService<INotificationPusher>();
+    var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<ModerationHub>>();
+
+    // Push "processing" status to frontend
+    await hubContext.Clients
+        .Group($"translation_{translationId}")
+        .SendAsync("ModerationProcessing", translationId, ct);
+
+    try
+    {
+      // ── Run AI moderation ──────────────────────────────────────
+      AiModerationResultDto result =
+          await moderationService.RunTranslationModerationAsync(translationId);
+
+      // ── Update queue status in DB ──────────────────────────────
+      var job = await db.ModerationQueues
+          .FirstOrDefaultAsync(q => q.ContentId == translationId
+                                 && q.ContentType == ModerationQueueContentType.TRANSLATION
+                                 && q.Status == QueueStatus.IN_REVIEW, ct);
+      if (job != null)
+      {
+        job.Status = QueueStatus.RESOLVED;
+        job.AssignedTo = null; // null = processed by AI
+        await db.SaveChangesAsync(ct);
+      }
+
+      _logger.LogInformation(
+          "[ModerationWorker] TranslationId={TranslationId} hoàn tất. Flagged={Flagged}.",
+          translationId, result.Flagged);
+
+      // ── Push result via SignalR ─────────────────────────────────
+      await hubContext.Clients
+          .Group($"translation_{translationId}")
+          .SendAsync("ModerationCompleted", new { translationId, result }, ct);
+
+      // ── Create notification for creator ────────────────────────
+      var translation = await db.Translations
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+                  .ThenInclude(team => team.TeamMembers)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
+
+      if (translation?.Chapter?.Series != null && translation.Permission?.Team != null)
+      {
+        var owners = translation.Permission.Team.TeamMembers
+            .Where(m => m.Role == Domain.Entities.TeamMemberRole.LEADER && m.IsActive)
+            .ToList();
+
+        var message = result.Flagged
+            ? $"Bản dịch chương {translation.Chapter.ChapterNumber} của \"{translation.Chapter.Series.Title}\" bị gắn cờ vi phạm"
+            : $"Bản dịch chương {translation.Chapter.ChapterNumber} của \"{translation.Chapter.Series.Title}\" đã qua kiểm duyệt";
+        var link = $"/creator/moderation-result?translationId={translationId}";
+
+        foreach (var owner in owners)
+        {
+          // Save notification to DB
+          var notification = await notificationService.CreateNotificationAsync(
+              owner.UserId,
+              "AI Kiểm duyệt",
+              message,
+              link,
+              result.Flagged
+                  ? NotificationType.CONTENT_REJECTED
+                  : NotificationType.CONTENT_APPROVED
+          );
+
+          // Push notification bell via SignalR
+          await notificationPusher.PushNotificationAsync(owner.UserId, notification);
+        }
+      }
+    }
+    catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+    {
+      await HandleRetryAsync(db, translationId, ModerationQueueContentType.TRANSLATION, ex,
+          isRateLimit: true, hubContext: hubContext, ct: ct);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex,
+          "[ModerationWorker] Error processing TranslationId={TranslationId}", translationId);
+
+      await HandleRetryAsync(db, translationId, ModerationQueueContentType.TRANSLATION, ex,
+          isRateLimit: false, hubContext: hubContext, ct: ct);
+    }
+  }
+
   // ── Retry logic (FROM BACKUP — adapted for DB queue) ──────────────────
   private async Task HandleRetryAsync(
       IMlndexDbContext db,
       int contentId,
+      ModerationQueueContentType contentType,
       Exception ex,
       bool isRateLimit,
       IHubContext<ModerationHub>? hubContext,
@@ -338,6 +480,7 @@ public class ModerationWorker : BackgroundService
   {
     var job = await db.ModerationQueues
         .FirstOrDefaultAsync(q => q.ContentId == contentId
+                               && q.ContentType == contentType
                                && q.Status == QueueStatus.IN_REVIEW, ct);
 
     var retryCount = job?.RetryCount ?? 0;
@@ -378,20 +521,21 @@ public class ModerationWorker : BackgroundService
     else
     {
       _logger.LogError(ex,
-          "[ModerationWorker] Max retries ({Max}) for ContentId={Id}. Marking DISMISSED.",
-          MAX_RETRIES, contentId);
+          "[ModerationWorker] Max retries ({Max}) for ContentId={Id} Type={Type}. Marking DISMISSED.",
+          MAX_RETRIES, contentId, contentType);
 
-      await MarkFailedAsync(db, contentId,
+      await MarkFailedAsync(db, contentId, contentType,
           isRateLimit ? "AI_RATE_LIMIT_EXCEEDED" : ex.Message, ct);
 
       // Notify frontend of failure
       if (hubContext != null)
       {
+        var groupName = contentType == ModerationQueueContentType.CHAPTER ? $"chapter_{contentId}" : $"translation_{contentId}";
         await hubContext.Clients
-            .Group($"chapter_{contentId}")
+            .Group(groupName)
             .SendAsync("ModerationFailed", new
             {
-              chapterId = contentId,
+              id = contentId,
               message = "Kiểm duyệt thất bại sau nhiều lần thử. Vui lòng liên hệ hỗ trợ."
             }, ct);
       }
@@ -402,28 +546,45 @@ public class ModerationWorker : BackgroundService
   private static async Task MarkFailedAsync(
       IMlndexDbContext db,
       int contentId,
+      ModerationQueueContentType contentType,
       string errorMsg,
       CancellationToken ct)
   {
     // Update queue status
     var job = await db.ModerationQueues
-        .FirstOrDefaultAsync(q => q.ContentId == contentId, ct);
+        .FirstOrDefaultAsync(q => q.ContentId == contentId && q.ContentType == contentType, ct);
     if (job != null)
     {
       job.Status = QueueStatus.DISMISSED;
       await db.SaveChangesAsync(ct);
     }
 
-    // Save error info to chapter AiScoresJson
-    var chapter = await db.Chapters.FindAsync(new object[] { contentId }, ct);
-    if (chapter != null)
+    // Save error info to AiScoresJson
+    if (contentType == ModerationQueueContentType.CHAPTER)
     {
-      chapter.AiScoresJson = JsonSerializer.Serialize(new
+      var chapter = await db.Chapters.FindAsync(new object[] { contentId }, ct);
+      if (chapter != null)
       {
-        error = errorMsg,
-        failedAt = DateTime.UtcNow
-      });
-      await db.SaveChangesAsync(ct);
+        chapter.AiScoresJson = JsonSerializer.Serialize(new
+        {
+          error = errorMsg,
+          failedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+      }
+    }
+    else if (contentType == ModerationQueueContentType.TRANSLATION)
+    {
+      var translation = await db.Translations.FindAsync(new object[] { contentId }, ct);
+      if (translation != null)
+      {
+        translation.AiScoresJson = JsonSerializer.Serialize(new
+        {
+          error = errorMsg,
+          failedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+      }
     }
   }
 }
