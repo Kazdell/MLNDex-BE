@@ -71,7 +71,7 @@ public class TopUpController : BaseController
 
 	/// <summary>
 	/// Tạo lệnh nạp tiền.
-	/// PaymentMethod: "PAYOS" | "VNPAY" | "MOMO" | "BANK_TRANSFER"
+	/// PaymentMethod: "PAYOS" | "VNPAY" | "MOMO" |
 	/// Trả về PaymentUrl hoặc BankInfo tuỳ method.
 	/// </summary>
 	[HttpPost("initiate")]

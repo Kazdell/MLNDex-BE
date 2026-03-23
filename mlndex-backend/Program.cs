@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
@@ -11,6 +12,7 @@ using Application.Interfaces.Payment;
 using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
+using Application.Services;
 using Application.Services.AIModeration;
 using Application.Services.Auth;
 using Application.Services.Community;
@@ -26,9 +28,11 @@ using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Common;
+using Infrastructure.DI;
 using Infrastructure.Persistence.Data;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
+using Infrastructure.Services.Payment;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -131,6 +135,9 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 			builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
 			builder.Services.AddScoped<ICoinRateService, CoinRateService>();
+			builder.Services.AddScoped<ITopUpService, TopUpService>();
+			builder.Services.AddScoped<IPaymentGatewayService, PayOsGatewayService>();
+			builder.Services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
 
 			// System Services — SystemConfigService cần filePath nên dùng factory
 			var systemConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemConfig", "config.json");
