@@ -6,73 +6,73 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.Moderation
 {
-    public class AccountModerationService : IAccountModerationService
+  public class AccountModerationService : IAccountModerationService
+  {
+    private readonly IMlndexDbContext _context;
+
+    public AccountModerationService(IMlndexDbContext context)
     {
-        private readonly IMlndexDbContext _context;
+      _context = context;
+    }
 
-        public AccountModerationService(IMlndexDbContext context)
+    public async Task<AccountActionResponse> ApplyAsync(
+        int userId,
+        int moderatorId,
+        AccountActionRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+      var user =
+          await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
+          ?? throw new KeyNotFoundException("User không tồn tại.");
+
+      switch (request.Action)
+      {
+        case AccountActionType.WARN:
+          await AddNotificationAsync(
+              userId,
+              "Cảnh báo tài khoản",
+              request.Reason ?? "Vi phạm chính sách.",
+              cancellationToken
+          );
+          break;
+        case AccountActionType.DEACTIVATE:
+          user.IsActive = false;
+          await AddNotificationAsync(
+              userId,
+              "Tài khoản bị vô hiệu hóa",
+              request.Reason ?? "Vi phạm chính sách.",
+              cancellationToken
+          );
+          break;
+        case AccountActionType.ACTIVATE:
+          user.IsActive = true;
+          await AddNotificationAsync(
+              userId,
+              "Tài khoản được kích hoạt lại",
+              request.Reason ?? "",
+              cancellationToken
+          );
+          break;
+        default:
+          throw new ArgumentOutOfRangeException();
+      }
+
+      await _context.SaveChangesAsync(cancellationToken);
+
+      return new AccountActionResponse
+      {
+        UserId = user.UserId,
+        IsActive = user.IsActive,
+        Message = request.Action switch
         {
-            _context = context;
-        }
-
-        public async Task<AccountActionResponse> ApplyAsync(
-            int userId,
-            int moderatorId,
-            AccountActionRequest request,
-            CancellationToken cancellationToken = default
-        )
-        {
-            var user =
-                await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
-                ?? throw new KeyNotFoundException("User không tồn tại.");
-
-            switch (request.Action)
-            {
-                case AccountActionType.WARN:
-                    await AddNotificationAsync(
-                        userId,
-                        "Cảnh báo tài khoản",
-                        request.Reason ?? "Vi phạm chính sách.",
-                        cancellationToken
-                    );
-                    break;
-                case AccountActionType.DEACTIVATE:
-                    user.IsActive = false;
-                    await AddNotificationAsync(
-                        userId,
-                        "Tài khoản bị vô hiệu hóa",
-                        request.Reason ?? "Vi phạm chính sách.",
-                        cancellationToken
-                    );
-                    break;
-                case AccountActionType.ACTIVATE:
-                    user.IsActive = true;
-                    await AddNotificationAsync(
-                        userId,
-                        "Tài khoản được kích hoạt lại",
-                        request.Reason ?? "",
-                        cancellationToken
-                    );
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return new AccountActionResponse
-            {
-                UserId = user.UserId,
-                IsActive = user.IsActive,
-                Message = request.Action switch
-                {
-                    AccountActionType.WARN => "Đã gửi cảnh báo",
-                    AccountActionType.DEACTIVATE => "Đã vô hiệu hóa tài khoản",
-                    AccountActionType.ACTIVATE => "Đã kích hoạt tài khoản",
-                    _ => "",
-                },
-            };
-        }
+          AccountActionType.WARN => "Đã gửi cảnh báo",
+          AccountActionType.DEACTIVATE => "Đã vô hiệu hóa tài khoản",
+          AccountActionType.ACTIVATE => "Đã kích hoạt tài khoản",
+          _ => "",
+        },
+      };
+    }
 
         private async Task AddNotificationAsync(
             int userId,
@@ -96,6 +96,43 @@ namespace Application.Services.Moderation
                 }
             );
             await Task.CompletedTask;
+        }
+
+        public async Task<bool> UpdateRolesAsync(
+            int userId,
+            UpdateUserRolesRequest request,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+
+            if (user == null) return false;
+
+            // Remove existing roles
+            _context.UserRoles.RemoveRange(user.UserRoles);
+
+            // Add new roles
+            foreach (var roleStr in request.Roles)
+            {
+                if (Enum.TryParse<RoleName>(roleStr.ToUpper(), out var roleNameEnum))
+                {
+                    var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == roleNameEnum, cancellationToken);
+                    if (role != null)
+                    {
+                        user.UserRoles.Add(new UserRole
+                        {
+                            UserId = userId,
+                            RoleId = role.RoleId,
+                            AssignedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
     }
 }

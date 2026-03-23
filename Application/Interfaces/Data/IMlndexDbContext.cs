@@ -21,6 +21,7 @@ namespace Application.Interfaces.Data
         DbSet<ChapterPage> ChapterPages { get; set; }
         DbSet<ChapterText> ChapterTexts { get; set; }
         DbSet<TranslationPermission> TranslationPermissions { get; set; }
+        DbSet<Domain.Entities.Language> Languages { get; set; }
         DbSet<Domain.Entities.Translation> Translations { get; set; }
         DbSet<TranslationPage> TranslationPages { get; set; }
         DbSet<TranslationText> TranslationTexts { get; set; }
@@ -45,4 +46,13 @@ namespace Application.Interfaces.Data
 
 		Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
+        DbSet<UserList> UserLists { get; set; }
+        DbSet<UserListItem> UserListItems { get; set; }
+        DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+        DbSet<TranslationCredit> TranslationCredits { get; set; }
+        DbSet<Appeal> Appeals { get; set; }
+        DbSet<SystemSetting> SystemSettings { get; set; }
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+  }
 }
