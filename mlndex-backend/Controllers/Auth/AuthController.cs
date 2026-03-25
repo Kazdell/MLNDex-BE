@@ -66,24 +66,54 @@ namespace mlndex_backend.Controllers.Auth
       if (string.IsNullOrEmpty(token))
         return BadRequestResponse("Token không hợp lệ.");
 
-      var result = await _authService.LogoutAsync(token);
-      return result.Success
-          ? OkResponse<object>(null, result.Message)
-          : BadRequestResponse(result.Message);
-    }
+			var result = await _authService.LogoutAsync(token);
+			return result.Success
+				? OkResponse<object>(null, result.Message)
+				: BadRequestResponse(result.Message);
+	}
 
-    // POST /api/auth/refresh
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
-    {
-      if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
+	// POST /api/auth/google
+	[HttpPost("google")]
+	public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
-      var result = await _authService.RefreshAsync(dto);
-      if (result == null)
-        return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
+			var result = await _authService.GoogleLoginAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Google token không hợp lệ.");
 
-      return OkResponse(result, "Token đã được cấp mới.");
-    }
+			return OkResponse(result, "Đăng nhập Google thành công.");
+		}
+
+	// POST /api/auth/facebook
+	[HttpPost("facebook")]
+	public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+			var result = await _authService.FacebookLoginAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Facebook token không hợp lệ.");
+
+			return OkResponse(result, "Đăng nhập Facebook thành công.");
+		}
+
+
+
+		// POST /api/auth/refresh
+		[HttpPost("refresh")]
+		public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
+		{
+			if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+			var result = await _authService.RefreshAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
+
+            return OkResponse(result, "Token đã được cấp mới.");
+        }
 
     // POST /api/auth/forgot-password — send OTP to email
     [HttpPost("forgot-password")]
