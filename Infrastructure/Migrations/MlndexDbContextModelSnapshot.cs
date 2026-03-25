@@ -314,6 +314,43 @@ namespace Infrastructure.Migrations
                     b.ToTable("CoinPackage", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.CoinRateSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CoinsPerVnd")
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("MaxTopUpVnd")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MinTopUpVnd")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("CoinRateSetting", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Comment", b =>
                 {
                     b.Property<int>("CommentId")
@@ -648,6 +685,53 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Notification", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.Property<int>("LayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LayerId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Height")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OriginalText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(MAX)");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TranslatedText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(MAX)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Width")
+                        .HasColumnType("float");
+
+                    b.Property<double>("X")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("float");
+
+                    b.HasKey("LayerId");
+
+                    b.HasIndex("PageId");
+
+                    b.ToTable("PageTextLayer", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Rating", b =>
@@ -1159,7 +1243,7 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("PermissionId")
+                    b.Property<int?>("PermissionId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("PublishedAt")
@@ -1919,6 +2003,17 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Domain.Entities.CoinRateSetting", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("UpdatedBy");
+                });
+
             modelBuilder.Entity("Domain.Entities.Comment", b =>
                 {
                     b.HasOne("Domain.Entities.Comment", "ParentComment")
@@ -2008,6 +2103,17 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.HasOne("Domain.Entities.ChapterPage", "Page")
+                        .WithMany("TextLayers")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
                 });
 
             modelBuilder.Entity("Domain.Entities.Rating", b =>
@@ -2231,8 +2337,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.TranslationPermission", "Permission")
                         .WithMany("Translations")
                         .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Chapter");
 
@@ -2489,6 +2594,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("ReadingHistories");
 
                     b.Navigation("Translations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.ChapterPage", b =>
+                {
+                    b.Navigation("TextLayers");
                 });
 
             modelBuilder.Entity("Domain.Entities.Comment", b =>

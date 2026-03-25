@@ -812,5 +812,65 @@ int chapterId, CancellationToken ct = default)
         throw;
       }
     }
+
+    public async Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default)
+    {
+      var chapter = await _db.Chapters
+          .Include(c => c.Series)
+              .ThenInclude(s => s.Creator)
+          .Include(c => c.Pages)
+          .Include(c => c.Translations)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+
+      if (chapter == null)
+        throw new KeyNotFoundException("Không tìm thấy chương.");
+
+      // Verify ownership
+      if (chapter.Series?.Creator?.UserId != userId)
+        throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
+
+      // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
+      // Let's assume it cascade deletes or we allow it. Here we just delete the images.
+      
+      foreach (var page in chapter.Pages)
+      {
+        if (!string.IsNullOrEmpty(page.ImageUrl))
+          await _storage.DeleteAsync(page.ImageUrl, ct);
+      }
+
+      _db.Chapters.Remove(chapter);
+      await _db.SaveChangesAsync(ct);
+      
+      _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
+    }
+
+    public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
+    {
+      // Verify team membership
+      var isMember = await _db.TeamMembers
+          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+          
+      if (!isMember)
+        throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+      var chapter = await _db.Chapters
+          .Include(c => c.Pages)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+
+      if (chapter == null)
+        throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+
+      // Delete images from cloud storage
+      foreach (var page in chapter.Pages)
+      {
+        if (!string.IsNullOrEmpty(page.ImageUrl))
+          await _storage.DeleteAsync(page.ImageUrl, ct);
+      }
+
+      _db.Chapters.Remove(chapter);
+      await _db.SaveChangesAsync(ct);
+
+      _logger.LogInformation("Nhóm {TeamId} xoá chương dịch {ChapterId} bởi User {UserId}", teamId, chapterId, userId);
+    }
   }
 }

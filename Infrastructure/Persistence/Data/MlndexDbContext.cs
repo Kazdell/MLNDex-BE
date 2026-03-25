@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Data;
+using Application.Interfaces.Data;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +32,7 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<SeriesGenre> SeriesGenres { get; set; }
 		public DbSet<Chapter> Chapters { get; set; }
 		public DbSet<ChapterPage> ChapterPages { get; set; }
+		public DbSet<PageTextLayer> PageTextLayers { get; set; }
 		public DbSet<ChapterText> ChapterTexts { get; set; }
 
 		// ==================== TRANSLATION ====================
@@ -467,6 +468,27 @@ namespace Infrastructure.Persistence.Data
 			});
 
 			// ====================================================
+			// PAGE_TEXT_LAYER
+			// ====================================================
+			modelBuilder.Entity<PageTextLayer>(e =>
+			{
+				e.ToTable("PageTextLayer");
+				e.HasKey(x => x.LayerId);
+				e.Property(x => x.LayerId).UseIdentityColumn();
+				e.Property(x => x.OriginalText).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.TranslatedText).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.X).IsRequired();
+				e.Property(x => x.Y).IsRequired();
+				e.Property(x => x.Width).IsRequired();
+				e.Property(x => x.Height).IsRequired();
+
+				e.HasOne(x => x.Page)
+				  .WithMany(p => p.TextLayers)
+				  .HasForeignKey(x => x.PageId)
+				  .OnDelete(DeleteBehavior.Cascade);
+			});
+
+			// ====================================================
 			// CHAPTER_TEXT
 			// ====================================================
 			modelBuilder.Entity<ChapterText>(e =>
@@ -506,7 +528,8 @@ namespace Infrastructure.Persistence.Data
 				e.HasOne(x => x.Permission)
 						  .WithMany(p => p.Translations)
 						  .HasForeignKey(x => x.PermissionId)
-						  .OnDelete(DeleteBehavior.Restrict);
+						  .OnDelete(DeleteBehavior.Restrict)
+						  .IsRequired(false);
 
 				e.HasOne(x => x.Language)
 						  .WithMany(l => l.Translations)

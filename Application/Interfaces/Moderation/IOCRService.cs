@@ -10,5 +10,8 @@ namespace Application.Interfaces.Moderation
   {
     // Nhận vào byte array của ảnh và trả về văn bản nhận diện được
     Task<string> ExtractTextFromImageAsync(byte[] imageBytes);
+    
+    // Mới: Trả về danh sách các vùng văn bản kèm tọa độ
+    Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes);
   }
 }

@@ -18,5 +18,7 @@ namespace Application.Interfaces.Creator
     Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default);
     Task<ChapterDetailDto?> GetForEditAsync(int chapterId, int userId, CancellationToken ct = default);
     Task<CreateChapterResponseDto> UpdateAsync(int chapterId, int userId, UpdateChapterDto dto, List<UploadPageDto>? newPages, CancellationToken ct = default);
+    Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default);
+    Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default);
   }
 }

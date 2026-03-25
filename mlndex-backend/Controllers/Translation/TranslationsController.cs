@@ -17,7 +17,8 @@ namespace mlndex_backend.Controllers.Translation
   public class UploadTranslationFormRequest
   {
     public int ChapterId { get; set; }
-    public int PermissionId { get; set; }
+    public int? PermissionId { get; set; } // null = unofficial
+    public int? TeamId { get; set; } // Required for unofficial
     public int LanguageId { get; set; }
     public string ContentType { get; set; } = "IMAGE";
     public string? CreditsJson { get; set; }
@@ -66,6 +67,7 @@ namespace mlndex_backend.Controllers.Translation
         {
           ChapterId = req.ChapterId,
           PermissionId = req.PermissionId,
+          TeamId = req.TeamId,
           LanguageId = req.LanguageId,
           ContentType = contentTypeEnum,
           ContentText = req.ContentText,
@@ -100,6 +102,37 @@ namespace mlndex_backend.Controllers.Translation
       var translation = await _service.GetTranslationByIdAsync(id);
       if (translation == null) return NotFoundResponse();
       return OkResponse(translation);
+    }
+    
+    // Get text layers for a specific page
+    [HttpGet("page-layer/{pageId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService)
+    {
+      try
+      {
+        var layers = await pageTranslationService.GetPageTextLayerAsync(pageId);
+        return OkResponse(layers);
+      }
+      catch (Exception ex)
+      {
+        return BadRequestResponse(ex.Message);
+      }
+    }
+
+    // Generate text layers for a specific page using AI OCR and Translation
+    [HttpPost("page-layer/generate/{pageId}")]
+    public async Task<IActionResult> GeneratePageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService, [FromQuery] string targetLanguage = "Vietnamese")
+    {
+      try
+      {
+        var layers = await pageTranslationService.GeneratePageTextLayerAsync(pageId, targetLanguage);
+        return OkResponse(layers);
+      }
+      catch (Exception ex)
+      {
+        return BadRequestResponse(ex.Message);
+      }
     }
 
     // Get all translations (Admin/Mod only in future).

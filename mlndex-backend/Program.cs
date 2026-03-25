@@ -24,7 +24,8 @@ using Infrastructure.Services;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Adapters.OCR;
+using Infrastructure.Adapters.Translation;
 using Infrastructure.Common;
 using Infrastructure.Hubs;
 using Infrastructure.Persistence.Data;
@@ -130,10 +131,12 @@ namespace mlndex_backend
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			builder.Services.AddScoped<IPageTranslationService, PageTranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			// OCR Services
 			builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+			builder.Services.AddScoped<IAiTranslationClient, AiTranslationClient>();
 
 			// Community Services
 			builder.Services.AddScoped<ICommentService, CommentService>();

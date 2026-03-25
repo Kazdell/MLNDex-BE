@@ -220,4 +220,28 @@ public class ChapterController : BaseController
     }
   }
 
+  [HttpDelete("creator/chapters/{id:int}")]
+  public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      await _service.DeleteAsync(id, userId, cancellationToken);
+      return OkResponse((object?)null, "Xóa chương thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
 }
