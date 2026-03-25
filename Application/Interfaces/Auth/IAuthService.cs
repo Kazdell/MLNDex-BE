@@ -18,5 +18,7 @@ namespace Application.Interfaces.Auth
     Task<ServiceResult> ForgotPasswordAsync(string email);
     Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword);
     Task<ServiceResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+    Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto);
+    Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto);
   }
 }
