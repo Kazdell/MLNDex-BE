@@ -239,6 +239,10 @@ namespace Application.Services.Translation
     public async Task<bool> AcceptInvitationAsync(int invitationId)
     {
       var userId = _userContext.UserId;
+
+      // Cooldown 24h check
+      await CheckLeaveTeamCooldownAsync(userId.Value);
+
       var invitation = await _context.TeamInvitations.FirstOrDefaultAsync(i => i.InvitationId == invitationId && i.InviteeId == userId && i.Status == TeamInvitationStatus.PENDING);
       if (invitation == null) return false;
 
@@ -305,7 +309,10 @@ namespace Application.Services.Translation
       var userId = _userContext.UserId;
       if (userId == null) throw new UnauthorizedAccessException();
 
-      if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == userId))
+      // Cooldown 24h check
+      await CheckLeaveTeamCooldownAsync(userId.Value);
+
+      if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive))
       {
         throw new Exception("You are already a member of this team.");
       }
@@ -348,6 +355,9 @@ namespace Application.Services.Translation
       var leaderId = _userContext.UserId;
       var request = await _context.TeamJoinRequests.Include(r => r.Team).FirstOrDefaultAsync(r => r.RequestId == requestId && r.Team.LeaderId == leaderId && r.Status == TeamJoinRequestStatus.PENDING);
       if (request == null) return false;
+
+      // Cooldown 24h check for the requesting user
+      await CheckLeaveTeamCooldownAsync(request.UserId);
 
       request.Status = TeamJoinRequestStatus.APPROVED;
       request.RespondedAt = DateTime.UtcNow;
@@ -473,6 +483,55 @@ namespace Application.Services.Translation
           $"/teams",
           NotificationType.TEAM_MEMBER_REMOVED
       );
+
+      return true;
+    }
+
+    public async Task<bool> LeaveTeamAsync(int teamId)
+    {
+      var userId = _userContext.UserId;
+      if (userId == null) throw new UnauthorizedAccessException();
+
+      var team = await _context.TranslationTeams.FindAsync(teamId);
+      if (team == null) throw new Exception("Team not found.");
+
+      // Leader cannot leave — must disband or transfer leadership
+      if (team.LeaderId == userId.Value)
+        throw new Exception("Trưởng nhóm không thể rời nhóm. Vui lòng giải tán nhóm hoặc chuyển quyền trước.");
+
+      var member = await _context.TeamMembers
+          .FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == userId.Value && m.IsActive);
+      if (member == null) return false;
+
+      // Soft-delete: mark inactive + record leave time for 24h cooldown
+      member.IsActive = false;
+      member.LeftAt = DateTime.UtcNow;
+      await _context.SaveChangesAsync();
+
+      // Notify all remaining active members
+      var leavingUser = await _context.Users.FindAsync(userId.Value);
+      var displayName = leavingUser?.DisplayName ?? leavingUser?.Username ?? "Thành viên";
+      var username = leavingUser?.Username ?? "";
+
+      var remainingMembers = await _context.TeamMembers
+          .Where(m => m.TeamId == teamId && m.IsActive && m.UserId != userId.Value)
+          .Select(m => m.UserId)
+          .ToListAsync();
+
+      // Also notify Leader if not in TeamMembers table (seed data edge case)
+      if (!remainingMembers.Contains(team.LeaderId))
+        remainingMembers.Add(team.LeaderId);
+
+      foreach (var memberId in remainingMembers)
+      {
+        await _notificationService.CreateNotificationAsync(
+            memberId,
+            displayName,
+            $"Đã rời khỏi nhóm {team.TeamName}",
+            $"/profile/{username}",
+            NotificationType.TEAM_MEMBER_LEFT
+        );
+      }
 
       return true;
     }
@@ -612,6 +671,23 @@ namespace Application.Services.Translation
       }
 
       return userTeams.OrderByDescending(t => t.TeamId).Take(limit);
+    }
+
+    private async Task CheckLeaveTeamCooldownAsync(int userId)
+    {
+      var cutoff = DateTime.UtcNow.AddHours(-24);
+      var recentLeave = await _context.TeamMembers
+          .Where(m => m.UserId == userId && !m.IsActive && m.LeftAt != null && m.LeftAt > cutoff)
+          .OrderByDescending(m => m.LeftAt)
+          .FirstOrDefaultAsync();
+
+      if (recentLeave != null)
+      {
+        var remaining = recentLeave.LeftAt.Value.AddHours(24) - DateTime.UtcNow;
+        var hours = (int)remaining.TotalHours;
+        var minutes = remaining.Minutes;
+        throw new Exception($"Bạn phải chờ {hours} giờ {minutes} phút nữa sau khi rời nhóm trước để có thể tham gia nhóm khác.");
+      }
     }
 
     private TranslationTeamDto MapToDto(TranslationTeam team)

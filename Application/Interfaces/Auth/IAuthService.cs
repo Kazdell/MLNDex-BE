@@ -17,5 +17,6 @@ namespace Application.Interfaces.Auth
     Task<ServiceResult> LogoutAsync(string token);
     Task<ServiceResult> ForgotPasswordAsync(string email);
     Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword);
+    Task<ServiceResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
   }
 }

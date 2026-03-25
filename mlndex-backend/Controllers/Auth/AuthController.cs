@@ -108,5 +108,22 @@ namespace mlndex_backend.Controllers.Auth
           ? OkResponse<object>(null, result.Message)
           : BadRequestResponse(result.Message);
     }
+
+    // POST /api/auth/change-password
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+      if (!ModelState.IsValid)
+        return BadRequestResponse("Dữ liệu không hợp lệ.");
+
+      var userId = GetUserId();
+      if (userId == 0) return UnauthorizedResponse("Chưa đăng nhập.");
+
+      var result = await _authService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
+      return result.Success
+          ? OkResponse<object>(null, result.Message)
+          : BadRequestResponse(result.Message);
+    }
   }
 }

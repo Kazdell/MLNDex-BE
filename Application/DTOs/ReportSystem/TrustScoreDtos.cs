@@ -57,6 +57,8 @@ namespace Application.DTOs.ReportSystem
   public class UserTranslationHistoryDto
   {
     public int TranslationId { get; set; }
+    public int SeriesId { get; set; }
+    public int ChapterId { get; set; }
     public string SeriesTitle { get; set; } = string.Empty;
     public string ChapterTitle { get; set; } = string.Empty;
     public float ChapterNumber { get; set; }

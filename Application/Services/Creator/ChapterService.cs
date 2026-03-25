@@ -542,6 +542,40 @@ int chapterId, CancellationToken ct = default)
 
       return await _db.Chapters
           .Where(c => c.SeriesId == seriesId)
+          // Creator chapters typically shouldn't have TeamId set, but to be sure we only get original or all?
+          // The current system gets all. We keep it as is.
+          .OrderByDescending(c => c.ChapterNumber)
+          .Select(c => new ChapterListItemDto
+          {
+            ChapterId = c.ChapterId,
+            ChapterNumber = c.ChapterNumber,
+            Title = c.Title,
+            Status = c.Status.ToString(),
+            ModerationStatus = c.ModerationStatus.ToString(),
+            PageCount = c.PageCount ?? 0,
+            Views = c.Views,
+            PublishedAt = c.PublishedAt,
+            CreatedAt = c.CreatedAt,
+          })
+          .ToListAsync(ct);
+    }
+
+    public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
+    {
+      // Verify team membership
+      var isMember = await _db.TeamMembers
+          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+          
+      if (!isMember)
+        throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+      // Check if series exists
+      var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
+      if (!seriesExists)
+        throw new KeyNotFoundException("Series không tồn tại.");
+
+      return await _db.Chapters
+          .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
           .OrderByDescending(c => c.ChapterNumber)
           .Select(c => new ChapterListItemDto
           {

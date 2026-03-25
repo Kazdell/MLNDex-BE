@@ -117,4 +117,29 @@ public class TranslationChapterController : BaseController
       return ErrorResponse(ex.Message);
     }
   }
+
+  [HttpGet("teams/{teamId:int}/series/{seriesId:int}/chapters")]
+  public async Task<IActionResult> GetTeamChaptersBySeries(int teamId, int seriesId, CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      var result = await _service.GetTeamChaptersBySeriesAsync(teamId, seriesId, userId, cancellationToken);
+      return OkResponse(result);
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
 }
