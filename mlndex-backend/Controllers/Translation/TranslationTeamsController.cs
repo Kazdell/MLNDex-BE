@@ -255,6 +255,23 @@ namespace mlndex_backend.Controllers.Translation
       }
     }
 
+    // Member voluntarily leaves the team.
+    [Authorize]
+    [HttpPost("{id}/leave")]
+    public async Task<IActionResult> LeaveTeam(int id)
+    {
+      try
+      {
+        var success = await _service.LeaveTeamAsync(id);
+        if (!success) return NotFoundResponse("You are not a member of this team.");
+        return OkResponse("Successfully left the team.");
+      }
+      catch (Exception ex)
+      {
+        return BadRequestResponse(ex.Message);
+      }
+    }
+
     // Assign a role to a team member.
     [HttpPut("{id}/members/{userId}/role")]
     public async Task<IActionResult> AssignRole(int id, int userId, [FromBody] AssignTeamMemberRoleDto dto)

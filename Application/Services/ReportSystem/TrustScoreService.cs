@@ -200,6 +200,8 @@ namespace Application.Services.ReportSystem
       return credits.Select(tc => new UserTranslationHistoryDto
       {
         TranslationId = tc.TranslationId,
+        SeriesId = tc.Translation?.Chapter?.Series?.SeriesId ?? 0,
+        ChapterId = tc.Translation?.Chapter?.ChapterId ?? 0,
         SeriesTitle = tc.Translation?.Chapter?.Series?.Title ?? "Unknown",
         ChapterTitle = tc.Translation?.Chapter?.Title ?? "Unknown",
         ChapterNumber = tc.Translation?.Chapter?.ChapterNumber ?? 0,
