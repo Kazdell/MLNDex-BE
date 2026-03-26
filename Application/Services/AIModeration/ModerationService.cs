@@ -640,6 +640,22 @@ namespace Application.Services.AIModeration
       int penaltyScore = 0;
       var flagReasons = new List<string>();
 
+      // Load dynamic blacklist from DB
+      var config = _db.SystemConfigs.FirstOrDefault();
+      var dynamicWords = config != null && !string.IsNullOrEmpty(config.BlacklistWordsJson)
+          ? JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
+          : new List<string>();
+
+      // Check against dynamic blacklist (Treat as profanity/mild violation)
+      foreach (var word in dynamicWords)
+      {
+          if (cleanedText.Contains(word.ToLower()))
+          {
+              penaltyScore += 20; // Default penalty for manual blacklist
+              flagReasons.Add($"Blacklist: {word}");
+          }
+      }
+
       // Illegal content -> Instant ban
       foreach (var entry in _blacklist.IllegalContentList)
       {

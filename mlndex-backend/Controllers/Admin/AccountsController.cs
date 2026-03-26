@@ -58,7 +58,8 @@ namespace mlndex_backend.Controllers.Admin
 
             try
             {
-                var result = await _service.UpdateRolesAsync(userId, request, cancellationToken);
+                var moderatorId = GetUserId();
+                var result = await _service.UpdateRolesAsync(userId, moderatorId, request, cancellationToken);
                 if (!result)
                     return NotFoundResponse("User không tồn tại.");
 

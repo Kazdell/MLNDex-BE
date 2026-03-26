@@ -48,7 +48,7 @@ namespace Application.Interfaces.Data
         DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
         DbSet<TranslationCredit> TranslationCredits { get; set; }
         DbSet<Appeal> Appeals { get; set; }
-        DbSet<SystemSetting> SystemSettings { get; set; }
+        DbSet<SystemConfigs> SystemConfigs { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
   }

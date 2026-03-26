@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Data;
+using Application.Interfaces.Data;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -75,7 +75,7 @@ namespace Infrastructure.Persistence.Data
 		public DbSet<UserListItem> UserListItems { get; set; }
 
 		// ==================== SYSTEM ====================
-		public DbSet<SystemSetting> SystemSettings { get; set; }
+		public DbSet<SystemConfigs> SystemConfigs { get; set; }
 		public DbSet<CoinRateSetting> CoinRateSettings { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -99,6 +99,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.Bio).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.IsActive).IsRequired();
+				e.Property(x => x.TrustScore).HasDefaultValue(0);
+				e.Property(x => x.CannotUpload).HasDefaultValue(false);
 			});
 
 			// ====================================================
@@ -1093,16 +1095,18 @@ namespace Infrastructure.Persistence.Data
 			});
 
 			// ====================================================
-			// SYSTEM_SETTING
+			// SYSTEM_CONFIGS
 			// ====================================================
-			modelBuilder.Entity<SystemSetting>(e =>
+			modelBuilder.Entity<SystemConfigs>(e =>
 			{
-				e.ToTable("SystemSetting");
-				e.HasKey(x => x.SettingId);
-				e.Property(x => x.SettingId).UseIdentityColumn();
-				e.HasIndex(x => x.Key).IsUnique();
-				e.Property(x => x.Key).HasMaxLength(100).IsRequired();
-				e.Property(x => x.Value).IsRequired();
+				e.ToTable("SystemConfigs");
+				e.HasKey(x => x.Id);
+				e.Property(x => x.Id).UseIdentityColumn();
+				e.Property(x => x.ExchangeRateCoinToVnd).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalFeePercent).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalMinCoins).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalMaxCoins).HasColumnType("decimal(18,2)");
+				e.Property(x => x.BlacklistWordsJson).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 			});
 
