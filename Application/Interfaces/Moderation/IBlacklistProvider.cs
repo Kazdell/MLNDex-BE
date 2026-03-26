@@ -12,5 +12,6 @@ namespace Application.Interfaces.Moderation
     List<BannedTagDto> RestrictedTags { get; }
     Dictionary<string, ThresholdRule> Thresholds { get; }
     void LoadAll();
+    void SetDynamicBlacklist(List<string> words);
   }
 }
