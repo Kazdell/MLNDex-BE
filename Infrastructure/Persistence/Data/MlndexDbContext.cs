@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Data;
+using Application.Interfaces.Data;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -74,32 +74,34 @@ namespace Infrastructure.Persistence.Data
         public DbSet<UserList> UserLists { get; set; }
         public DbSet<UserListItem> UserListItems { get; set; }
 
-        // ==================== SYSTEM ====================
-        public DbSet<SystemSetting> SystemSettings { get; set; }
-        public DbSet<CoinRateSetting> CoinRateSettings { get; set; }
+		// ==================== SYSTEM ====================
+		public DbSet<SystemConfigs> SystemConfigs { get; set; }
+		public DbSet<CoinRateSetting> CoinRateSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // ====================================================
-            // USER
-            // ====================================================
-            modelBuilder.Entity<User>(e =>
-            {
-                e.ToTable("User");
-                e.HasKey(x => x.UserId);
-                e.Property(x => x.UserId).UseIdentityColumn();
-                e.HasIndex(x => x.Username).IsUnique();
-                e.HasIndex(x => x.Email).IsUnique();
-                e.Property(x => x.Username).HasMaxLength(25).IsRequired();
-                e.Property(x => x.Email).HasMaxLength(256).IsRequired();
-                e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
-                e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
-                e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
-                e.Property(x => x.Bio).HasColumnType("nvarchar(MAX)");
-                e.Property(x => x.IsActive).IsRequired();
-            });
+			// ====================================================
+			// USER
+			// ====================================================
+			modelBuilder.Entity<User>(e =>
+			{
+				e.ToTable("User");
+				e.HasKey(x => x.UserId);
+				e.Property(x => x.UserId).UseIdentityColumn();
+				e.HasIndex(x => x.Username).IsUnique();
+				e.HasIndex(x => x.Email).IsUnique();
+				e.Property(x => x.Username).HasMaxLength(25).IsRequired();
+				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
+				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
+				e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.Bio).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.IsActive).IsRequired();
+				e.Property(x => x.TrustScore).HasDefaultValue(0);
+				e.Property(x => x.CannotUpload).HasDefaultValue(false);
+			});
 
             // ====================================================
             // ROLE
@@ -1097,19 +1099,21 @@ namespace Infrastructure.Persistence.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
-            // ====================================================
-            // SYSTEM_SETTING
-            // ====================================================
-            modelBuilder.Entity<SystemSetting>(e =>
-            {
-                e.ToTable("SystemSetting");
-                e.HasKey(x => x.SettingId);
-                e.Property(x => x.SettingId).UseIdentityColumn();
-                e.HasIndex(x => x.Key).IsUnique();
-                e.Property(x => x.Key).HasMaxLength(100).IsRequired();
-                e.Property(x => x.Value).IsRequired();
-                e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-            });
+			// ====================================================
+			// SYSTEM_CONFIGS
+			// ====================================================
+			modelBuilder.Entity<SystemConfigs>(e =>
+			{
+				e.ToTable("SystemConfigs");
+				e.HasKey(x => x.Id);
+				e.Property(x => x.Id).UseIdentityColumn();
+				e.Property(x => x.ExchangeRateCoinToVnd).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalFeePercent).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalMinCoins).HasColumnType("decimal(18,2)");
+				e.Property(x => x.WithdrawalMaxCoins).HasColumnType("decimal(18,2)");
+				e.Property(x => x.BlacklistWordsJson).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+			});
 
             // ====================================================
             // Coin_Rate_Setting

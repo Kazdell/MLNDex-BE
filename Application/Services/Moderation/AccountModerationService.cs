@@ -26,6 +26,9 @@ namespace Application.Services.Moderation
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
           ?? throw new KeyNotFoundException("User không tồn tại.");
 
+      if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
+        throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+
       switch (request.Action)
       {
         case AccountActionType.WARN:
@@ -100,15 +103,35 @@ namespace Application.Services.Moderation
 
         public async Task<bool> UpdateRolesAsync(
             int userId,
+            int moderatorId,
             UpdateUserRolesRequest request,
             CancellationToken cancellationToken = default
         )
         {
             var user = await _context.Users
                 .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
             if (user == null) return false;
+
+            // Security Check: Minimum 1 Admin
+            var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToList();
+            var newRoles = request.Roles.Select(r => Enum.TryParse<RoleName>(r.ToUpper(), out var rn) ? rn : (RoleName?)null)
+                                        .Where(rn => rn != null)
+                                        .Select(rn => rn!.Value)
+                                        .ToList();
+
+            if (currentRoles.Contains(RoleName.ADMIN) && !newRoles.Contains(RoleName.ADMIN))
+            {
+                var adminRoleId = (await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleName.ADMIN, cancellationToken))?.RoleId;
+                var otherAdminsCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == adminRoleId && ur.UserId != userId, cancellationToken);
+                
+                if (otherAdminsCount == 0)
+                {
+                    throw new InvalidOperationException("Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.");
+                }
+            }
 
             // Remove existing roles
             _context.UserRoles.RemoveRange(user.UserRoles);

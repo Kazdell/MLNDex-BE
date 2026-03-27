@@ -15,8 +15,12 @@ namespace Application.DTOs.Financial
   {
     public decimal TotalCoinPurchased { get; set; }
     public decimal TotalWithdrawCoins { get; set; }
-    public decimal NetCoins => TotalCoinPurchased - TotalWithdrawCoins;
+    public decimal NetCoins { get; set; }
     public int TotalUnlocks { get; set; }
+    public decimal TotalCoinPurchasedVnd { get; set; }
+    public decimal TotalWithdrawVnd { get; set; }
+    public decimal NetVnd { get; set; }
+    public decimal ExchangeRateUsed { get; set; }
   }
 
   public class CreatorRevenueDto

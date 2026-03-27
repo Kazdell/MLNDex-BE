@@ -13,6 +13,7 @@ namespace Application.Interfaces.Moderation
 
         Task<bool> UpdateRolesAsync(
             int userId,
+            int moderatorId,
             UpdateUserRolesRequest request,
             CancellationToken cancellationToken = default
         );

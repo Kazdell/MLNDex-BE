@@ -284,6 +284,30 @@ namespace Application.Services.Auth
 			return ServiceResult.Ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập.");
 		}
 
+		// ── CHANGE PASSWORD (authenticated user) ─────────────
+		public async Task<ServiceResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+		{
+			var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+			if (user == null)
+				return ServiceResult.Fail("Tài khoản không tồn tại.");
+
+			// Verify current password
+			if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+				return ServiceResult.Fail("Mật khẩu hiện tại không đúng.");
+
+			// Prevent reusing the same password
+			if (BCrypt.Net.BCrypt.Verify(newPassword, user.PasswordHash))
+				return ServiceResult.Fail("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+
+			user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+			// Invalidate refresh token to force re-login on other devices
+			user.RefreshToken = null;
+			user.RefreshTokenExpiryTime = null;
+			await _context.SaveChangesAsync();
+
+			return ServiceResult.Ok("Đổi mật khẩu thành công.");
+		}
+
 		// ── GOOGLE LOGIN ─────────────────────────────────────────
 		public async Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto)
 		{

@@ -948,37 +948,38 @@ namespace Infrastructure.Migrations
                     b.ToTable("SeriesGenre", (string)null);
                 });
 
-            modelBuilder.Entity("Domain.Entities.SystemSetting", b =>
+            modelBuilder.Entity("Domain.Entities.SystemConfigs", b =>
                 {
-                    b.Property<int>("SettingId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SettingId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Key")
+                    b.Property<string>("BlacklistWordsJson")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(MAX)");
+
+                    b.Property<decimal>("ExchangeRateCoinToVnd")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("WithdrawalFeePercent")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.HasKey("SettingId");
+                    b.Property<decimal>("WithdrawalMaxCoins")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.HasIndex("Key")
-                        .IsUnique();
+                    b.Property<decimal>("WithdrawalMinCoins")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.ToTable("SystemSetting", (string)null);
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemConfigs", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.TeamGenre", b =>
@@ -1105,6 +1106,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LeftAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Role")
@@ -1538,7 +1542,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(MAX)");
 
                     b.Property<bool>("CannotUpload")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1584,7 +1590,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("TrustScore")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Username")
                         .IsRequired()

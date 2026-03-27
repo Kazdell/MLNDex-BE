@@ -46,6 +46,7 @@ namespace Domain.Entities
     TEAM_JOIN_APPROVED,
     TEAM_JOIN_REJECTED,
     TEAM_MEMBER_REMOVED,
+    TEAM_MEMBER_LEFT,
     TEAM_ROLE_CHANGED,
     SYSTEM
   }

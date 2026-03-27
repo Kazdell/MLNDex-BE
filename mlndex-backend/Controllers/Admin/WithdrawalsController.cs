@@ -1,10 +1,12 @@
 using Application.DTOs.Financial;
 using Application.Interfaces.Financial;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers.Admin
 {
   [Route("api/admin/withdrawals")]
+  [Authorize(Roles = "MODERATOR,ADMIN")]
   public class WithdrawalsController : BaseController
   {
     private readonly IWithdrawalService _service;

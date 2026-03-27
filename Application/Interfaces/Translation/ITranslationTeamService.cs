@@ -26,6 +26,7 @@ namespace Application.Interfaces.Translation
     Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId);
 
     Task<bool> RemoveMemberAsync(int teamId, int targetUserId);
+    Task<bool> LeaveTeamAsync(int teamId);
     Task<TeamMemberDto> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleDto roleDto);
 
     // Team stats and series
