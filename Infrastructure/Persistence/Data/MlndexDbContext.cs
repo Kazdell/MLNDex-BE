@@ -96,9 +96,9 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Username).HasMaxLength(25).IsRequired();
 				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
 				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
-				e.Property(x => x.DisplayAvatar).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.Bio).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.DisplayAvatar);
+				e.Property(x => x.BannerUrl);
+				e.Property(x => x.Bio);
 				e.Property(x => x.IsActive).IsRequired();
 				e.Property(x => x.TrustScore).HasDefaultValue(0);
 				e.Property(x => x.CannotUpload).HasDefaultValue(false);
@@ -306,8 +306,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.ModerationStatus)
 						  .HasConversion<string>()
 						  .IsRequired();
-				e.Property(x => x.AvatarUrl).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.BannerUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.AvatarUrl);
+				e.Property(x => x.BannerUrl);
 				e.Property(x => x.Facebook).HasMaxLength(255);
 				e.Property(x => x.Discord).HasMaxLength(255);
 				e.Property(x => x.Website).HasMaxLength(255);
@@ -377,8 +377,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.SeriesId).UseIdentityColumn();
 				e.HasIndex(x => x.Title).IsUnique();
 				e.Property(x => x.Title).HasMaxLength(450).IsRequired();
-				e.Property(x => x.Description).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.CoverImageUrl).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.Description);
+				e.Property(x => x.CoverImageUrl);
 				e.Property(x => x.SeriesFormat).HasConversion<string>().IsRequired();
 				e.Property(x => x.AgeRating).HasConversion<string>().IsRequired();
 				e.Property(x => x.Status).HasConversion<string>().IsRequired();
@@ -477,8 +477,8 @@ namespace Infrastructure.Persistence.Data
 				e.ToTable("PageTextLayer");
 				e.HasKey(x => x.LayerId);
 				e.Property(x => x.LayerId).UseIdentityColumn();
-				e.Property(x => x.OriginalText).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.TranslatedText).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.OriginalText);
+				e.Property(x => x.TranslatedText);
 				e.Property(x => x.X).IsRequired();
 				e.Property(x => x.Y).IsRequired();
 				e.Property(x => x.Width).IsRequired();
@@ -716,11 +716,11 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.WithdrawalId).UseIdentityColumn();
 				e.Property(x => x.AmountCoins).HasColumnType("decimal(10,2)").IsRequired();
 				e.Property(x => x.AmountVnd).HasColumnType("decimal(10,2)").IsRequired();
-				e.Property(x => x.BankAccountInfo).HasColumnType("nvarchar(MAX)").IsRequired();
+				e.Property(x => x.BankAccountInfo).IsRequired();
 				e.Property(x => x.RequestedAt).IsRequired();
 				e.Property(x => x.ProcessedAt);
 				e.Property(x => x.Status).HasConversion<string>().IsRequired();
-				e.Property(x => x.Note).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.Note);
 
 				e.HasOne(x => x.Creator)
 						  .WithMany(c => c.WithdrawalRequests)
@@ -785,7 +785,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.CommentId).UseIdentityColumn();
 				e.Property(x => x.TargetId).IsRequired();
 				e.Property(x => x.TargetType).HasConversion<string>().IsRequired();
-				e.Property(x => x.Content).HasColumnType("nvarchar(MAX)").IsRequired();
+				e.Property(x => x.Content).IsRequired();
 				e.Property(x => x.IsDeleted).IsRequired();
 				e.Property(x => x.CreatedAt).IsRequired();
 				e.Property(x => x.UpdatedAt).IsRequired();
@@ -919,7 +919,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.ContentType).HasConversion<string>().IsRequired();
 				e.Property(x => x.Reason).HasConversion<string>().IsRequired();
 				e.Property(x => x.Description).HasMaxLength(255);
-				e.Property(x => x.EvidenceUrlsJson).HasColumnType("nvarchar(MAX)");
+				e.Property(x => x.EvidenceUrlsJson);
 				e.Property(x => x.Status).HasConversion<string>().IsRequired().HasDefaultValue(ReportStatus.Pending);
 				e.Property(x => x.CreatedAt).IsRequired();
 
@@ -972,7 +972,7 @@ namespace Infrastructure.Persistence.Data
 				e.HasKey(x => x.ActionId);
 				e.Property(x => x.ActionId).UseIdentityColumn();
 				e.Property(x => x.Action).HasConversion<string>().IsRequired();
-				e.Property(x => x.Reason).HasColumnType("nvarchar(MAX)").IsRequired();
+				e.Property(x => x.Reason).IsRequired();
 				e.Property(x => x.ActedAt).IsRequired();
 
 				e.HasOne(x => x.Queue)
@@ -1072,7 +1072,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Id).UseIdentityColumn();
 
 				e.Property(x => x.Reason).HasMaxLength(500);
-				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+				e.Property(x => x.CreatedAt).IsRequired();
 
 				e.HasOne(x => x.User)
 						  .WithMany(u => u.TrustScoreHistories)
@@ -1099,7 +1099,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
 				e.Property(x => x.EvidenceUrl).HasMaxLength(500);
 				e.Property(x => x.ReviewNotes).HasMaxLength(2000);
-				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+				e.Property(x => x.CreatedAt).IsRequired();
 
 				e.HasOne(x => x.User)
 						  .WithMany()
@@ -1129,8 +1129,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.WithdrawalFeePercent).HasColumnType("decimal(18,2)");
 				e.Property(x => x.WithdrawalMinCoins).HasColumnType("decimal(18,2)");
 				e.Property(x => x.WithdrawalMaxCoins).HasColumnType("decimal(18,2)");
-				e.Property(x => x.BlacklistWordsJson).HasColumnType("nvarchar(MAX)");
-				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
+				e.Property(x => x.BlacklistWordsJson);
+				e.Property(x => x.UpdatedAt).IsRequired();
 			});
 
 			// ====================================================

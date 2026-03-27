@@ -16,12 +16,14 @@ namespace mlndex_backend.Controllers.Creator
   {
     private readonly MlndexDbContext _context;
     private readonly ISeriesService _service;
+    private readonly IRecommendationService _recommendationService;
     private readonly IMemoryCache _cache;
 
-    public SeriesController(MlndexDbContext context, ISeriesService service, IMemoryCache cache)
+    public SeriesController(MlndexDbContext context, ISeriesService service, IRecommendationService recommendationService, IMemoryCache cache)
     {
       _context = context;
       _service = service;
+      _recommendationService = recommendationService;
       _cache = cache;
     }
 
@@ -165,7 +167,7 @@ namespace mlndex_backend.Controllers.Creator
           return OkResponse(cachedResult);
         }
 
-        var result = await _service.GetRecommendationsAsync(0, limit, currentSeriesId);
+        var result = await _recommendationService.GetRecommendationsAsync(0, limit, currentSeriesId);
 
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
@@ -175,7 +177,7 @@ namespace mlndex_backend.Controllers.Creator
       }
       else
       {
-        var result = await _service.GetRecommendationsAsync(userId, limit, currentSeriesId);
+        var result = await _recommendationService.GetRecommendationsAsync(userId, limit, currentSeriesId);
         return OkResponse(result);
       }
     }

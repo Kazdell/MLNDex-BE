@@ -102,6 +102,7 @@ namespace mlndex_backend
 
 			// Creator Services
 			builder.Services.AddScoped<ISeriesService, SeriesService>();
+			builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 			builder.Services.AddScoped<IChapterService, ChapterService>();
 			builder.Services.AddScoped<IGenreService, GenreService>();
 			builder.Services.AddScoped<ICreatorService, CreatorService>();

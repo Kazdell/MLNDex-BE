@@ -108,6 +108,36 @@ namespace Application.Services.Translation
         // once the Creator team implements chapter locking feature.
 
         isOfficial = false;
+
+        // ---- AUTO-RESOLVE OR CREATE UNOFFICIAL PERMISSION ----
+        var existingPerm = await _context.TranslationPermissions
+            .FirstOrDefaultAsync(p => p.TeamId == resolvedTeamId && p.SeriesId == chapter.SeriesId && p.LanguageId == dto.LanguageId);
+            
+        if (existingPerm != null)
+        {
+            dto.PermissionId = existingPerm.PermissionId;
+        }
+        else
+        {
+            var creatorUserId = await _context.CreatorProfiles
+                .Where(c => c.CreatorId == chapter.Series.CreatorId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+                
+            var newPerm = new TranslationPermission
+            {
+               SeriesId = chapter.SeriesId,
+               TeamId = resolvedTeamId,
+               LanguageId = dto.LanguageId,
+               Origin = PermissionOrigin.REQUESTED_BY_TEAM,
+               GrantedBy = creatorUserId,
+               Status = TranslationPermissionStatus.UNOFFICIAL,
+               GrantedAt = DateTime.UtcNow
+            };
+            _context.TranslationPermissions.Add(newPerm);
+            await _context.SaveChangesAsync();
+            dto.PermissionId = newPerm.PermissionId;
+        }
       }
 
       var translation = new Domain.Entities.Translation
@@ -218,6 +248,20 @@ namespace Application.Services.Translation
           foreach (var url in uploadedUrls)
             await _storage.DeleteAsync(url);
         }
+        
+        // Rollback DB Entity
+        if (translation.TranslationId > 0)
+        {
+           try 
+           {
+              _context.Translations.Remove(translation);
+              await _context.SaveChangesAsync();
+           } 
+           catch (Exception rollbackEx)
+           {
+              _logger.LogError(rollbackEx, "Failed to rollback translation record {Id}", translation.TranslationId);
+           }
+        }
         throw;
       }
 
@@ -288,6 +332,8 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
       if (translation == null) throw new Exception("Translation not found.");
+      
+      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
       if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
       {
@@ -315,6 +361,8 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
       if (translation == null) return false;
+      
+      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
       if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
       {
