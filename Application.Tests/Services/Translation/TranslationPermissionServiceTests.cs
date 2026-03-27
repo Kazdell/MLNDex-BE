@@ -429,7 +429,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 99, SeriesId = 10, TeamId = 1, LanguageId = 1, Status = TranslationPermissionStatus.UNOFFICIAL });
       
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 1, PermissionId = 99, ChapterId = 100, IsOfficial = false });
-      db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, PermissionId = 99, ChapterId = 100, IsOfficial = false });
+      db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, PermissionId = 99, ChapterId = 101, IsOfficial = false });
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 3, PermissionId = 88, ChapterId = 100, IsOfficial = false }); // Different permission
       await db.SaveChangesAsync();
 
@@ -456,7 +456,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 99, SeriesId = 10, TeamId = 1, LanguageId = 1, Status = TranslationPermissionStatus.GRANTED });
       
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 1, PermissionId = 99, ChapterId = 100, IsOfficial = true });
-      db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, PermissionId = 99, ChapterId = 100, IsOfficial = true });
+      db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, PermissionId = 99, ChapterId = 101, IsOfficial = true });
       await db.SaveChangesAsync();
 
       await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = false }); // Creator revokes
@@ -477,8 +477,8 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(456);
       await SeedBaseData(db, creatorUserId: 456);
       
-      db.TeamMembers.Add(new TeamMember { TeamId = 1, UserId = 111, IsActive = true, JoinedAt = DateTime.UtcNow });
-      db.TeamMembers.Add(new TeamMember { TeamId = 1, UserId = 222, IsActive = false, JoinedAt = DateTime.UtcNow }); // Inactive
+      db.TeamMembers.Add(new TeamMember { MembershipId = 101, TeamId = 1, UserId = 111, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = 102, TeamId = 1, UserId = 222, IsActive = false, JoinedAt = DateTime.UtcNow }); // Inactive
       
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 99, SeriesId = 10, TeamId = 1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
@@ -520,7 +520,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       await SeedBaseData(db);
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = 1, SeriesId = 10 });
-      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 10 });
+      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 11 }); // Distinct SeriesId
       await db.SaveChangesAsync();
 
       var result = await CreateService(db).GetTeamPermissionsAsync(1);
@@ -539,7 +539,7 @@ namespace Application.Tests.Services.Translation
       db.CreatorProfiles.Add(new CreatorProfile { CreatorId = 6, UserId = 789, PenName = "Author 2" });
       
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, GrantedBy = 456, TeamId = 1, SeriesId = 10 });
-      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, GrantedBy = 789, TeamId = 1, SeriesId = 10 });
+      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, GrantedBy = 789, TeamId = 1, SeriesId = 11 }); // Distinct SeriesId
       await db.SaveChangesAsync();
 
       var result = await CreateService(db).GetCreatorPermissionsAsync(456);
@@ -588,10 +588,11 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       await SeedBaseData(db, creatorUserId: 456);
-      db.TeamMembers.Add(new TeamMember { TeamId = 1, UserId = 111, IsActive = true });
+      db.TeamMembers.Add(new TeamMember { MembershipId = 101, TeamId = 1, UserId = 111, IsActive = true });
+      db.Series.Add(new Series { SeriesId = 11, CreatorId = 5, Title = "Another Manga" });
       
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = 1, SeriesId = 10, Status = TranslationPermissionStatus.PENDING, CreatedAt = DateTime.UtcNow.AddHours(-73) });
-      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 10, Status = TranslationPermissionStatus.PENDING, CreatedAt = DateTime.UtcNow.AddHours(-100) });
+      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 11, Status = TranslationPermissionStatus.PENDING, CreatedAt = DateTime.UtcNow.AddHours(-100) }); // Distinct SeriesId
       await db.SaveChangesAsync();
 
       var count = await CreateService(db).AutoDenyExpiredRequestsAsync(72);
@@ -612,10 +613,12 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       await SeedBaseData(db);
+      db.Series.Add(new Series { SeriesId = 11, CreatorId = 5, Title = "Another Manga" });
+      db.Series.Add(new Series { SeriesId = 12, CreatorId = 5, Title = "Third Manga" });
       
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = 1, SeriesId = 10, Status = TranslationPermissionStatus.GRANTED, CreatedAt = DateTime.UtcNow.AddHours(-100) });
-      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 10, Status = TranslationPermissionStatus.UNOFFICIAL, CreatedAt = DateTime.UtcNow.AddHours(-100) });
-      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 3, TeamId = 1, SeriesId = 10, Status = TranslationPermissionStatus.DENIED, CreatedAt = DateTime.UtcNow.AddHours(-100) });
+      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 2, TeamId = 1, SeriesId = 11, Status = TranslationPermissionStatus.UNOFFICIAL, CreatedAt = DateTime.UtcNow.AddHours(-100) });
+      db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 3, TeamId = 1, SeriesId = 12, Status = TranslationPermissionStatus.DENIED, CreatedAt = DateTime.UtcNow.AddHours(-100) });
       await db.SaveChangesAsync();
 
       var count = await CreateService(db).AutoDenyExpiredRequestsAsync(72);

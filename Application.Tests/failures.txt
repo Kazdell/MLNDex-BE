@@ -1,0 +1,29 @@
+Parsing c:/Users/ACER/Downloads/MLNDex/MLNDex-BE/Application.Tests/TestResults\ACER_LAPTOP_2026-03-27_17_31_00.trx...
+
+FAIL: Application.Tests.Services.Translation.TranslationServiceTests.Upload_ShouldRollbackAndThrow_WhenStorageUploadFails
+ -> Expected count to be 0, but found 1 (difference of 1).
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.AssignRoleAsync_ShouldUpdateRole_AndSendNotification
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.CreateTeamAsync_ShouldLinkGenres_WhenGenreIdsProvided
+ -> Microsoft.EntityFrameworkCore.DbUpdateException : An error occurred while saving the entity changes. See the inner exception for details.
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.DisbandTeamAsync_ShouldDeleteTeamAndMembers_WhenCallerIsLeader
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.RemoveMemberAsync_ShouldSucceed_WhenRemovingEditorRole
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.GetTeamByIdAsync_ShouldIncludeMembers_WhenTeamHasMembers
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.InviteMemberAsync_ShouldCreateInvitation_AndSendNotification
+ -> Expected id to be greater than 0, but found 0.
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.InviteMemberAsync_ShouldThrow_WhenUserAlreadyMember
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.LeaveTeamAsync_ShouldMarkMemberInactive_AndNotifyRemainingMembers
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.ApproveJoinRequestAsync_ShouldAddRequesterAsMember_WhenLeaderApproves
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.RemoveMemberAsync_ShouldRemoveMember_AndSendNotification
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.RemoveMemberAsync_ShouldThrow_WhenCallerIsNotLeader
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+FAIL: Application.Tests.Services.Translation.TranslationTeamServiceTests.RemoveMemberAsync_ShouldReturnFalse_WhenMemberAlreadyInactive
+ -> System.InvalidOperationException : The instance of entity type 'TeamMember' cannot be tracked because another instance with the same key value for {'M
+Total failures: 13

@@ -139,12 +139,12 @@ namespace Application.Services.Creator
                 return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
             }
 
-            // 4. Vòng lặp CF cơ sở Genre
+            // 4. Vòng lặp CF cơ sở Genre (tối đa 3 vòng)
             int loopCount = 0;
             foreach (var genreId in targetGenres)
             {
                 if (recommendedSeriesIds.Count >= limit) break;
-                if (loopCount >= 3) break; // Limit deep CF loops
+                if (loopCount >= 3) break;
 
                 await CollectCFByGenre(genreId, limit, recommendedSeriesIds, excludedIds, userId);
                 loopCount++;
@@ -153,35 +153,13 @@ namespace Application.Services.Creator
             if (recommendedSeriesIds.Count >= limit) 
                 return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
 
-            // 5. Mở rộng Series Authors
+            // 5. Mở rộng Series Authors (Tìm thêm từ tác giả đã đọc)
             if (readSeriesIds.Any())
             {
                 await CollectSameAuthor(limit, recommendedSeriesIds, excludedIds, readSeriesIds);
             }
 
-            if (recommendedSeriesIds.Count >= limit) 
-                return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
-
-            // 6. Any genre left before hitting loop 3 limit (nếu lúc trước vòng lặp break ra vì điều kiện khác, hoặc xử lý các fallback genre)
-            int targetGenresCount = targetGenres.Count;
-            if (loopCount < 3 && targetGenresCount > loopCount)
-            {
-                foreach (var genreId in targetGenres.Skip(loopCount))
-                {
-                    if (recommendedSeriesIds.Count >= limit) break;
-                    if (loopCount >= 3) break;
-
-                    await CollectCFByGenre(genreId, limit, recommendedSeriesIds, excludedIds, userId);
-                    loopCount++;
-                }
-            }
-
-            // 7. Fallback cuối
-            if (recommendedSeriesIds.Count < limit)
-            {
-                await FillWithPopular(limit, recommendedSeriesIds, excludedIds);
-            }
-
+            // KHÔNG CO FALLBACK NẾU CHƯA ĐỦ TRUYỆN. Trả về bao nhiêu có bấy nhiêu.
             return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
         }
 
@@ -213,24 +191,6 @@ namespace Application.Services.Creator
                      .ToListAsync();
                      
                 recommendedSeriesIds.UnionWith(cfList);
-            }
-
-            remaining = limit - recommendedSeriesIds.Count;
-            if (remaining > 0)
-            {
-                // Fallback within genre
-                var popList = await _context.Series
-                    .Where(s => s.SeriesGenres.Any(sg => sg.GenreId == genreId) 
-                        && (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
-                        && !excludedIds.Contains(s.SeriesId)
-                        && !recommendedSeriesIds.Contains(s.SeriesId))
-                    .OrderByDescending(s => s.TotalRatings)
-                    .ThenByDescending(s => s.AverageRating)
-                    .Select(s => s.SeriesId)
-                    .Take(remaining)
-                    .ToListAsync();
-                    
-                recommendedSeriesIds.UnionWith(popList);
             }
         }
 

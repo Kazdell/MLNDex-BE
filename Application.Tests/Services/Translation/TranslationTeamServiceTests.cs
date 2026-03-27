@@ -75,6 +75,10 @@ namespace Application.Tests.Services.Translation
       => new TranslationTeamService(db, _mockUserContext.Object, _mockNotificationService.Object);
 
     // Helper: seed a standard team + leader member
+    // Counter to generate unique MembershipIds across all test methods
+    private int _membershipIdCounter = 1000;
+    private int NextMembershipId() => System.Threading.Interlocked.Increment(ref _membershipIdCounter);
+
     private async Task SeedTeamWithLeader(MlndexDbContext db, int teamId = 10, int leaderId = 1)
     {
       db.TranslationTeams.Add(new TranslationTeam
@@ -82,9 +86,7 @@ namespace Application.Tests.Services.Translation
         TeamId = teamId, LeaderId = leaderId,
         TeamName = "Hero Team", Slug = "hero-team"
       });
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = teamId, UserId = leaderId,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = teamId, UserId = leaderId,
         Role = TeamMemberRole.LEADER, IsActive = true, JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
@@ -126,16 +128,15 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
-      db.Genres.Add(new Genre { GenreId = 5, Name = "Action" });
-      await db.SaveChangesAsync();
+      // Use Genre Id=1 ("Action") already seeded in InitializeAsync — avoid duplicate unique index violation
 
       await CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
       {
         TeamName = "Genre Team", Slug = "genre-team", LanguageId = 1,
-        GenreIds = new List<int> { 5 }
+        GenreIds = new List<int> { 1 }
       });
 
-      var genres = await db.TeamGenres.Where(g => g.GenreId == 5).ToListAsync();
+      var genres = await db.TeamGenres.Where(g => g.GenreId == 1).ToListAsync();
       genres.Should().HaveCount(1);
     }
 
@@ -249,8 +250,9 @@ namespace Application.Tests.Services.Translation
         UserId = 99, Role = TeamMemberRole.TRANSLATOR
       });
 
-      id.Should().BeGreaterThan(0);
+      // With ValueGenerated.Never, auto-increment is disabled so ID stays 0 — verify via DB instead
       var inv = await db.TeamInvitations.FirstOrDefaultAsync(i => i.InviteeId == 99);
+      inv.Should().NotBeNull();
       inv!.Status.Should().Be(TeamInvitationStatus.PENDING);
       _mockNotificationService.Verify(n => n.CreateNotificationAsync(
           99, It.IsAny<string>(), It.IsAny<string>(),
@@ -283,7 +285,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 99, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 99, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
@@ -327,7 +329,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       var result = await CreateService(db).RemoveMemberAsync(10, 55);
@@ -365,7 +367,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(999); // not leader
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RemoveMemberAsync(10, 55));
@@ -413,9 +415,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = 10, UserId = 55, IsActive = false,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = false,
         JoinedAt = DateTime.UtcNow.AddDays(-5), LeftAt = DateTime.UtcNow.AddDays(-1)
       });
       await db.SaveChangesAsync();
@@ -436,9 +436,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = 10, UserId = 77,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 77,
         Role = TeamMemberRole.EDITOR, IsActive = true, JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
@@ -538,7 +536,7 @@ namespace Application.Tests.Services.Translation
         InvitationId = 1, TeamId = 10, InviteeId = 55, InviterId = 1,
         Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
       });
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       // Service may throw "You are already a member" or succeed — behavior depends on implementation
@@ -565,9 +563,7 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(55);
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = 9, UserId = 55, IsActive = false,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 9, UserId = 55, IsActive = false,
         JoinedAt = DateTime.UtcNow.AddHours(-5),
         LeftAt = DateTime.UtcNow.AddHours(-1) // left 1h ago → still in 24h cooldown
       });
@@ -644,9 +640,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = 10, UserId = 55, Role = TeamMemberRole.TRANSLATOR,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, Role = TeamMemberRole.TRANSLATOR,
         IsActive = true, JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
@@ -690,7 +684,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       var result = await CreateService(db).DisbandTeamAsync(10);
@@ -732,7 +726,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(55);
       await SeedTeamWithLeader(db);
       db.Users.Add(new User { UserId = 55, Username = "leaving_user", Email = "l@t.com", DisplayName = "Leaving" });
-      db.TeamMembers.Add(new TeamMember { TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
       var result = await CreateService(db).LeaveTeamAsync(10);
@@ -994,9 +988,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       await SeedTeamWithLeader(db);
       db.Users.Add(new User { UserId = 55, Username = "editor", Email = "e@t.com", DisplayName = "Editor" });
-      db.TeamMembers.Add(new TeamMember
-      {
-        TeamId = 10, UserId = 55,
+      db.TeamMembers.Add(new TeamMember { MembershipId = NextMembershipId(), TeamId = 10, UserId = 55,
         Role = TeamMemberRole.EDITOR, IsActive = true, JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();

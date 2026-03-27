@@ -250,18 +250,16 @@ namespace Application.Services.Translation
         }
         
         // Rollback DB Entity
-        if (translation.TranslationId > 0)
+        try 
         {
-           try 
-           {
-              _context.Translations.Remove(translation);
-              await _context.SaveChangesAsync();
-           } 
-           catch (Exception rollbackEx)
-           {
-              _logger.LogError(rollbackEx, "Failed to rollback translation record {Id}", translation.TranslationId);
-           }
+           _context.Translations.Remove(translation);
+           await _context.SaveChangesAsync();
+        } 
+        catch (Exception rollbackEx)
+        {
+           _logger.LogError(rollbackEx, "Failed to rollback translation record {Id}", translation.TranslationId);
         }
+        
         throw;
       }
 
