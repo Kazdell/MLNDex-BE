@@ -75,19 +75,7 @@ namespace Application.Services.Auth
 			_context.Users.Add(user);
 			await _context.SaveChangesAsync();
 
-			// 5. Gán role READER mặc định
-			var readerRole = await _context.Roles
-				.FirstOrDefaultAsync(r => r.RoleName == RoleName.READER);
-			if (readerRole != null)
-			{
-				_context.UserRoles.Add(new UserRole
-				{
-					UserId = user.UserId,
-					RoleId = readerRole.RoleId,
-					AssignedAt = DateTime.UtcNow
-				});
-				await _context.SaveChangesAsync();
-			}
+			await CreateDefaultUserDataAsync(user);
 
 			// 6. Gửi OTP
 			var otp = await _otpService.GenerateOtpAsync(dto.Email);
@@ -399,19 +387,7 @@ namespace Application.Services.Auth
 				_context.Users.Add(user);
 				await _context.SaveChangesAsync();
 
-				// Gán role READER mặc định
-				var readerRole = await _context.Roles
-					.FirstOrDefaultAsync(r => r.RoleName == RoleName.READER);
-				if (readerRole != null)
-				{
-					_context.UserRoles.Add(new UserRole
-					{
-						UserId = user.UserId,
-						RoleId = readerRole.RoleId,
-						AssignedAt = DateTime.UtcNow
-					});
-					await _context.SaveChangesAsync();
-				}
+				await CreateDefaultUserDataAsync(user);
 
 				// Load lại roles để GenerateJwtToken dùng
 				// Load lại user kèm roles sau khi tạo mới
@@ -442,6 +418,33 @@ namespace Application.Services.Auth
 			}
 
 			return username;
+		}
+
+		private async Task CreateDefaultUserDataAsync(Domain.Entities.User user)
+		{
+			// Gán role READER
+			var readerRole = await _context.Roles
+				.FirstOrDefaultAsync(r => r.RoleName == RoleName.READER);
+			if (readerRole != null)
+			{
+				_context.UserRoles.Add(new UserRole
+				{
+					UserId = user.UserId,
+					RoleId = readerRole.RoleId,
+					AssignedAt = DateTime.UtcNow
+				});
+			}
+
+			// Tạo Wallet mặc định
+			_context.Wallets.Add(new Wallet
+			{
+				UserId = user.UserId,
+				CoinBalance = 0,
+				TotalEarned = 0,
+				TotalSpent = 0
+			});
+
+			await _context.SaveChangesAsync();
 		}
 	}
 }

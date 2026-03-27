@@ -10,6 +10,7 @@ namespace Application.DTOs.Chapter
         public int SeriesId { get; set; }
         public string? SeriesTitle { get; set; }
         public string? UploaderName { get; set; }
+        public int? CreatorUserId { get; set; }
         public string? TranslatorTeamName { get; set; }
         public float ChapterNumber { get; set; }
         public string? Title { get; set; }
