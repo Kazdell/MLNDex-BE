@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
@@ -7,29 +8,35 @@ using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.Payment;
+using Application.Interfaces.Services;
 using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
+using Application.Services;
 using Application.Services.AIModeration;
 using Application.Services.Auth;
+using Application.Services.BackgroundJobs;
 using Application.Services.Community;
 using Application.Services.Creator;
 using Application.Services.Financial;
 using Application.Services.Moderation;
+using Application.Services.Payment;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
-using Application.Interfaces.Services;
-using Infrastructure.Services;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
 using Infrastructure.Adapters.Tesseract;
 using Infrastructure.Common;
+using Infrastructure.DI;
 using Infrastructure.Hubs;
 using Infrastructure.Persistence.Data;
+using Infrastructure.Services;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
+using Infrastructure.Services.Payment;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -39,12 +46,6 @@ using mlndex_backend.Hubs;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Application.Interfaces;
-using Infrastructure.DI;
-using Application.Interfaces.Payment;
-using Application.Services.Payment;
-using Application.Services;
-using Infrastructure.Services.Payment;
 
 namespace mlndex_backend
 {
@@ -124,8 +125,9 @@ namespace mlndex_backend
 			builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
 			builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
 			builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
+            builder.Services.AddHostedService<ChapterUnlockWorker>();
 
-			builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+            builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
