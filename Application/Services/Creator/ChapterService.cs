@@ -982,23 +982,24 @@ namespace Application.Services.Creator
                 UserId = userId,
                 WalletId = wallet.WalletId,
                 Type = TransactionType.CHAPTER_UNLOCK,
-                AmountCoins = price,
+                AmountCoins = price, // Đảm bảo price tương thích kiểu dữ liệu
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Mở khóa chapter {chapterId} — series {chapter.SeriesId}",
-                CreatedAt = now,  // dùng lại biến now
+                CreatedAt = now,
             };
             _db.Transactions.Add(coinTransaction);
 
-            // ── 9. Add ChapterUnlock TRƯỚC khi SaveChanges ──────────────────
-            _db.ChapterUnlocks.Add(new ChapterUnlock
+            // ── 9. Add ChapterUnlock (Lưu ý kiểu decimal của CoinsPaid) ────────
+            var unlockRecord = new ChapterUnlock
             {
                 ChapterId = chapterId,
                 UserId = userId,
-                Transaction = coinTransaction,  // EF tự resolve TransactionId
-                CoinsPaid = price,
-                UnlockSource = UnlockSource.COIN,
-            });
-
+                // Gán Navigation Property, EF sẽ tự map TransactionId sau khi SaveChanges
+                Transaction = coinTransaction,
+                CoinsPaid = (decimal)price, // Ép kiểu sang decimal để khớp với Entity
+                UnlockSource = UnlockSource.COIN
+            };
+            _db.ChapterUnlocks.Add(unlockRecord);
             // ── 10. Một lần SaveChanges duy nhất ────────────────────────────
             await _db.SaveChangesAsync(ct);
 

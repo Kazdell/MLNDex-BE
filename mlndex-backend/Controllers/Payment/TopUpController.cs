@@ -46,7 +46,6 @@ public class TopUpController : BaseController
 	{
 		var userId = GetUserId();
 		if (userId == 0) return UnauthorizedResponse();
-
 		var wallet = await _topUpService.GetWalletAsync(userId);
 		return OkResponse(wallet);
 	}

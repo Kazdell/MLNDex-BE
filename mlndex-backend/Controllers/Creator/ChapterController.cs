@@ -12,7 +12,7 @@ namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
 [Route("api")]
-[Authorize(Roles = "CREATOR,ADMIN")]
+[Authorize(Roles = "CREATOR,ADMIN,READER")]
 public class ChapterController : BaseController
 {
     private readonly IChapterService _service;
@@ -25,7 +25,7 @@ public class ChapterController : BaseController
         _service = service;
         _db = db;
     }
-
+    [Authorize(Roles = "CREATOR,ADMIN")]
     [HttpPost("creator/chapters/create")]
     [RequestSizeLimit(300 * 1024 * 1024)]
     public async Task<IActionResult> Create(
@@ -121,7 +121,7 @@ public class ChapterController : BaseController
         }
     }
 
-
+    [Authorize(Roles = "CREATOR,ADMIN")]
     [HttpGet("creator/series/{seriesId:int}/chapters")]
     public async Task<IActionResult> GetBySeries(int seriesId, CancellationToken cancellationToken)
     {
@@ -147,6 +147,7 @@ public class ChapterController : BaseController
         }
     }
 
+    [Authorize(Roles = "CREATOR,ADMIN")]
     [HttpGet("creator/chapters/{id:int}/edit")]
     public async Task<IActionResult> GetForEdit(int id, CancellationToken cancellationToken)
     {
@@ -168,6 +169,8 @@ public class ChapterController : BaseController
             return ErrorResponse(ex.Message);
         }
     }
+
+    [Authorize(Roles = "CREATOR,ADMIN")]
     [HttpPut("creator/chapters/{id:int}")]
     [RequestSizeLimit(300 * 1024 * 1024)]
     public async Task<IActionResult> Update(
@@ -254,6 +257,7 @@ public class ChapterController : BaseController
         }
     }
 
+    [Authorize(Roles = "CREATOR,ADMIN")]
     [HttpPatch("creator/chapters/{chapterId:int}/lock")]
     public async Task<IActionResult> UpdateLockStatus(
     int chapterId,
@@ -287,7 +291,6 @@ public class ChapterController : BaseController
     }
 
     [HttpPost("chapters/{chapterId:int}/unlock")]
-    [Authorize] // ← thêm Authorize riêng vì controller đang require CREATOR,ADMIN
     public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
     {
         int userId = GetUserId();

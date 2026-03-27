@@ -78,7 +78,7 @@ namespace Application.Services.BackgroundJobs
                 chapter.LockStatus = ChapterLockStatus.UNLOCKED;
                 chapter.UnlockTime = null;
                 chapter.UnlockPriceCoins = null;
-                chapter.UpdatedAt = now; // ← thêm nếu entity có field này
+                chapter.UpdatedAt = now; // thêm nếu entity có field này
             }
 
             await db.SaveChangesAsync(ct);
