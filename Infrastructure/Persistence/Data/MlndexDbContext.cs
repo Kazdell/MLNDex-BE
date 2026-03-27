@@ -5,83 +5,83 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Data
 {
-	public class MlndexDbContext : DbContext, IMlndexDbContext
-	{
-		public MlndexDbContext(DbContextOptions<MlndexDbContext> options) : base(options) { }
+    public class MlndexDbContext : DbContext, IMlndexDbContext
+    {
+        public MlndexDbContext(DbContextOptions<MlndexDbContext> options) : base(options) { }
 
-		// ==================== USER MANAGEMENT ====================
-		public DbSet<User> Users { get; set; }
-		public DbSet<Role> Roles { get; set; }
-		public DbSet<UserRole> UserRoles { get; set; }
+        // ==================== USER MANAGEMENT ====================
+        public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
 
-		// ==================== CREATOR ====================
-		public DbSet<CreatorProfile> CreatorProfiles { get; set; }
+        // ==================== CREATOR ====================
+        public DbSet<CreatorProfile> CreatorProfiles { get; set; }
 
-		// ==================== VIP ====================
-		public DbSet<VipPlan> VipPlans { get; set; }
-		public DbSet<VipSubscription> VipSubscriptions { get; set; }
+        // ==================== VIP ====================
+        public DbSet<VipPlan> VipPlans { get; set; }
+        public DbSet<VipSubscription> VipSubscriptions { get; set; }
 
-		// ==================== TRANSLATION TEAM ====================
-		public DbSet<TranslationTeam> TranslationTeams { get; set; }
-		public DbSet<TeamMember> TeamMembers { get; set; }
-		public DbSet<TeamGenre> TeamGenres { get; set; }
+        // ==================== TRANSLATION TEAM ====================
+        public DbSet<TranslationTeam> TranslationTeams { get; set; }
+        public DbSet<TeamMember> TeamMembers { get; set; }
+        public DbSet<TeamGenre> TeamGenres { get; set; }
 
-		// ==================== CONTENT ====================
-		public DbSet<Series> Series { get; set; }
-		public DbSet<Genre> Genres { get; set; }
-		public DbSet<SeriesGenre> SeriesGenres { get; set; }
-		public DbSet<Chapter> Chapters { get; set; }
-		public DbSet<ChapterPage> ChapterPages { get; set; }
-		public DbSet<PageTextLayer> PageTextLayers { get; set; }
-		public DbSet<ChapterText> ChapterTexts { get; set; }
+        // ==================== CONTENT ====================
+        public DbSet<Series> Series { get; set; }
+        public DbSet<Genre> Genres { get; set; }
+        public DbSet<SeriesGenre> SeriesGenres { get; set; }
+        public DbSet<Chapter> Chapters { get; set; }
+        public DbSet<PageTextLayer> PageTextLayers { get; set; }
+        public DbSet<ChapterPage> ChapterPages { get; set; }
+        public DbSet<ChapterText> ChapterTexts { get; set; }
 
-		// ==================== TRANSLATION ====================
-		public DbSet<TranslationPermission> TranslationPermissions { get; set; }
-		public DbSet<TeamInvitation> TeamInvitations { get; set; }
-		public DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
-		public DbSet<Translation> Translations { get; set; }
-		public DbSet<TranslationPage> TranslationPages { get; set; }
-		public DbSet<TranslationText> TranslationTexts { get; set; }
-		public DbSet<Language> Languages { get; set; }
-		public DbSet<TranslationCredit> TranslationCredits { get; set; }
-		public DbSet<TranslationTeamJoin> TranslationTeamJoins { get; set; }
+        // ==================== TRANSLATION ====================
+        public DbSet<TranslationPermission> TranslationPermissions { get; set; }
+        public DbSet<TeamInvitation> TeamInvitations { get; set; }
+        public DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
+        public DbSet<Translation> Translations { get; set; }
+        public DbSet<TranslationPage> TranslationPages { get; set; }
+        public DbSet<TranslationText> TranslationTexts { get; set; }
+        public DbSet<Language> Languages { get; set; }
+        public DbSet<TranslationCredit> TranslationCredits { get; set; }
+        public DbSet<TranslationTeamJoin> TranslationTeamJoins { get; set; }
 
-		// ==================== FINANCIAL ====================
-		public DbSet<Wallet> Wallets { get; set; }
-		public DbSet<Transaction> Transactions { get; set; }
-		public DbSet<CoinPackage> CoinPackages { get; set; }
-		public DbSet<ChapterUnlock> ChapterUnlocks { get; set; }
-		public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+        // ==================== FINANCIAL ====================
+        public DbSet<Wallet> Wallets { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<CoinPackage> CoinPackages { get; set; }
+        public DbSet<ChapterUnlock> ChapterUnlocks { get; set; }
+        public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
 
-		// ==================== INTERACTION ====================
-		public DbSet<ReadingHistory> ReadingHistories { get; set; }
-		public DbSet<Follow> Follows { get; set; }
-		public DbSet<Comment> Comments { get; set; }
-		public DbSet<Bookmark> Bookmarks { get; set; }
-		public DbSet<Rating> Ratings { get; set; }
-		public DbSet<Like> Likes { get; set; }
+        // ==================== INTERACTION ====================
+        public DbSet<ReadingHistory> ReadingHistories { get; set; }
+        public DbSet<Follow> Follows { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<Bookmark> Bookmarks { get; set; }
+        public DbSet<Rating> Ratings { get; set; }
+        public DbSet<Like> Likes { get; set; }
 
-		// ==================== NOTIFICATION ====================
-		public DbSet<Notification> Notifications { get; set; }
+        // ==================== NOTIFICATION ====================
+        public DbSet<Notification> Notifications { get; set; }
 
-		// ==================== REPORT & MODERATION ====================
-		public DbSet<Report> Reports { get; set; }
-		public DbSet<ModerationQueue> ModerationQueues { get; set; }
-		public DbSet<ModerationAction> ModerationActions { get; set; }
-		public DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
-		public DbSet<Appeal> Appeals { get; set; }
+        // ==================== REPORT & MODERATION ====================
+        public DbSet<Report> Reports { get; set; }
+        public DbSet<ModerationQueue> ModerationQueues { get; set; }
+        public DbSet<ModerationAction> ModerationActions { get; set; }
+        public DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+        public DbSet<Appeal> Appeals { get; set; }
 
-		// ==================== LISTS ====================
-		public DbSet<UserList> UserLists { get; set; }
-		public DbSet<UserListItem> UserListItems { get; set; }
+        // ==================== LISTS ====================
+        public DbSet<UserList> UserLists { get; set; }
+        public DbSet<UserListItem> UserListItems { get; set; }
 
 		// ==================== SYSTEM ====================
 		public DbSet<SystemConfigs> SystemConfigs { get; set; }
 		public DbSet<CoinRateSetting> CoinRateSettings { get; set; }
 
-		protected override void OnModelCreating(ModelBuilder modelBuilder)
-		{
-			base.OnModelCreating(modelBuilder);
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
 			// ====================================================
 			// USER
@@ -160,6 +160,12 @@ namespace Infrastructure.Persistence.Data
 						  .WithOne(u => u.CreatorProfile)
 						  .HasForeignKey<CreatorProfile>(x => x.UserId)
 						  .OnDelete(DeleteBehavior.Restrict);
+
+				// Unlock settings from main branch
+				e.Property(x => x.UnlockEnabled).IsRequired().HasDefaultValue(false);
+				e.Property(x => x.DefaultUnlockPriceCoins);
+				e.Property(x => x.FreeAfterEnabled).IsRequired().HasDefaultValue(false);
+				e.Property(x => x.DefaultFreeAfterDays);
 			});
 
 			// ====================================================
@@ -919,7 +925,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.ContentType).HasConversion<string>().IsRequired();
 				e.Property(x => x.Reason).HasConversion<string>().IsRequired();
 				e.Property(x => x.Description).HasMaxLength(255);
-				e.Property(x => x.EvidenceUrlsJson);
+				e.Property(x => x.EvidenceUrlsJson).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.Status).HasConversion<string>().IsRequired().HasDefaultValue(ReportStatus.Pending);
 				e.Property(x => x.CreatedAt).IsRequired();
 
@@ -972,7 +978,7 @@ namespace Infrastructure.Persistence.Data
 				e.HasKey(x => x.ActionId);
 				e.Property(x => x.ActionId).UseIdentityColumn();
 				e.Property(x => x.Action).HasConversion<string>().IsRequired();
-				e.Property(x => x.Reason).IsRequired();
+				e.Property(x => x.Reason).HasColumnType("nvarchar(MAX)").IsRequired();
 				e.Property(x => x.ActedAt).IsRequired();
 
 				e.HasOne(x => x.Queue)
@@ -1072,7 +1078,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Id).UseIdentityColumn();
 
 				e.Property(x => x.Reason).HasMaxLength(500);
-				e.Property(x => x.CreatedAt).IsRequired();
+				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
 				e.HasOne(x => x.User)
 						  .WithMany(u => u.TrustScoreHistories)
@@ -1099,7 +1105,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
 				e.Property(x => x.EvidenceUrl).HasMaxLength(500);
 				e.Property(x => x.ReviewNotes).HasMaxLength(2000);
-				e.Property(x => x.CreatedAt).IsRequired();
+				e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
 				e.HasOne(x => x.User)
 						  .WithMany()
@@ -1133,23 +1139,21 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.UpdatedAt).IsRequired();
 			});
 
-			// ====================================================
-			// Coin_Rate_Setting
-			// Coin_Rate_Setting
-			// ====================================================
-			modelBuilder.Entity<CoinRateSetting>(e =>
-			{
-				e.ToTable("CoinRateSetting");
-				e.HasKey(x => x.Id);
-				e.Property(x => x.Id).UseIdentityColumn();
-				e.Property(x => x.CoinsPerVnd).HasColumnType("decimal(10,4)").IsRequired();
-				e.Property(x => x.MinTopUpVnd).IsRequired();
-				e.Property(x => x.MaxTopUpVnd).IsRequired();
-				e.Property(x => x.IsActive).IsRequired();
-				e.Property(x => x.UpdatedByUserId).IsRequired();
-				e.Property(x => x.UpdatedAt).IsRequired();
-				e.Property(x => x.Note).HasMaxLength(200);
-
+            // ====================================================
+            // Coin_Rate_Setting
+            // ====================================================
+            modelBuilder.Entity<CoinRateSetting>(e =>
+            {
+                e.ToTable("CoinRateSetting");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).UseIdentityColumn();
+                e.Property(x => x.CoinsPerVnd).HasColumnType("decimal(10,4)").IsRequired();
+                e.Property(x => x.MinTopUpVnd).IsRequired();
+                e.Property(x => x.MaxTopUpVnd).IsRequired();
+                e.Property(x => x.IsActive).IsRequired();
+                e.Property(x => x.UpdatedByUserId).IsRequired();
+                e.Property(x => x.UpdatedAt).IsRequired();
+                e.Property(x => x.Note).HasMaxLength(200);
 				e.HasOne(x => x.UpdatedBy)
 					.WithMany()
 					.HasForeignKey(x => x.UpdatedByUserId)

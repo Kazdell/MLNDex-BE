@@ -49,10 +49,8 @@ namespace Domain.Entities
 
   public enum ChapterLockStatus
   {
-    FREE,
     UNLOCKED,
-    COIN_LOCK,
-    TIMED_LOCK
+    LOCKED
   }
 
   public enum ChapterStatus

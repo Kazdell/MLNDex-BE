@@ -62,22 +62,38 @@ public class TopUpService : ITopUpService
 			.ToListAsync();
 	}
 
-	public async Task<WalletResponseDto> GetWalletAsync(int userId)
-	{
-		var wallet = await _context.Wallets
-			.FirstOrDefaultAsync(w => w.UserId == userId)
-			?? throw new KeyNotFoundException("Không tìm thấy ví của user.");
+    public async Task<WalletResponseDto> GetWalletAsync(int userId)
+    {
+        // Sử dụng tên chuẩn trong DbContext của bạn (Wallet không có 's')
+        var wallet = await _context.Wallets
+            .FirstOrDefaultAsync(w => w.UserId == userId);
 
-		return new WalletResponseDto
-		{
-			WalletId = wallet.WalletId,
-			CoinBalance = wallet.CoinBalance,
-			TotalEarned = wallet.TotalEarned,
-			TotalSpent = wallet.TotalSpent
-		};
-	}
+        // Nếu không tìm thấy dữ liệu trong DB
+        if (wallet == null)
+        {
+            // Khởi tạo ví mới để tránh lỗi KeyNotFoundException
+            wallet = new Wallet
+            {
+                UserId = userId,
+                CoinBalance = 0,
+                TotalEarned = 0,
+                TotalSpent = 0
+            };
 
-	public async Task<TransactionPagedResponseDto> GetTransactionHistoryAsync(
+            _context.Wallets.Add(wallet);
+            await _context.SaveChangesAsync();
+        }
+
+        return new WalletResponseDto
+        {
+            WalletId = wallet.WalletId,
+            CoinBalance = wallet.CoinBalance,
+            TotalEarned = wallet.TotalEarned,
+            TotalSpent = wallet.TotalSpent
+        };
+    }
+
+    public async Task<TransactionPagedResponseDto> GetTransactionHistoryAsync(
 		int userId, int page = 1, int pageSize = 20)
 	{
 		var query = _context.Transactions
