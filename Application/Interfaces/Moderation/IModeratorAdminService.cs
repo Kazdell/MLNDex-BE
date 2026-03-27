@@ -9,6 +9,6 @@ namespace Application.Interfaces.Moderation
         CancellationToken cancellationToken = default
     );
     Task<ModeratorDto> AssignAsync(int userId, CancellationToken cancellationToken = default);
-    Task RemoveAsync(int userId, CancellationToken cancellationToken = default);
+    Task RemoveAsync(int userId, int moderatorId, CancellationToken cancellationToken = default);
   }
 }

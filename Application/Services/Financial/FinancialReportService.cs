@@ -23,6 +23,9 @@ namespace Application.Services.Financial
       var from = request.From ?? DateTime.MinValue;
       var to = request.To ?? DateTime.MaxValue;
 
+      var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken);
+      var exchangeRate = config?.ExchangeRateCoinToVnd ?? 1000m;
+
       var totalCoinPurchased =
           await _context
               .Transactions.Where(t => t.CreatedAt >= from && t.CreatedAt <= to)
@@ -67,6 +70,11 @@ namespace Application.Services.Financial
           TotalCoinPurchased = totalCoinPurchased,
           TotalWithdrawCoins = totalWithdrawCoins,
           TotalUnlocks = totalUnlocks,
+          TotalCoinPurchasedVnd = totalCoinPurchased * exchangeRate,
+          TotalWithdrawVnd = totalWithdrawCoins * exchangeRate,
+          NetCoins = totalCoinPurchased - totalWithdrawCoins,
+          NetVnd = (totalCoinPurchased - totalWithdrawCoins) * exchangeRate,
+          ExchangeRateUsed = exchangeRate
         },
         TopCreators = topCreators,
       };

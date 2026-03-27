@@ -1,5 +1,6 @@
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers.Admin
@@ -25,6 +26,7 @@ namespace mlndex_backend.Controllers.Admin
     }
 
     [HttpPost]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Assign(
         [FromBody] AssignModeratorRequest request,
         CancellationToken cancellationToken
@@ -45,11 +47,13 @@ namespace mlndex_backend.Controllers.Admin
     }
 
     [HttpDelete("{userId:int}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Remove(int userId, CancellationToken cancellationToken)
     {
       try
       {
-        await _service.RemoveAsync(userId, cancellationToken);
+        var moderatorId = GetUserId();
+        await _service.RemoveAsync(userId, moderatorId, cancellationToken);
         return OkResponse<object?>(null, "Moderator removed");
       }
       catch (KeyNotFoundException ex)

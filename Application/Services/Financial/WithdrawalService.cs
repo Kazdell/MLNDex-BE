@@ -146,5 +146,76 @@ namespace Application.Services.Financial
         Note = entity.Note,
       };
     }
+
+    public async Task<WithdrawalReviewItemDto> RequestAsync(
+        int creatorId,
+        CreateWithdrawalRequestDto dto,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Hệ thống chưa được cấu hình.");
+
+        // 1. Validate limits
+        if (dto.AmountCoins < config.WithdrawalMinCoins)
+            throw new ArgumentException($"Số tiền rút tối thiểu là {config.WithdrawalMinCoins} coins.");
+        if (config.WithdrawalMaxCoins > 0 && dto.AmountCoins > config.WithdrawalMaxCoins)
+            throw new ArgumentException($"Số tiền rút tối đa là {config.WithdrawalMaxCoins} coins.");
+
+        // 2. Check wallet balance
+        var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == creatorId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
+
+        if (wallet.CoinBalance < dto.AmountCoins)
+            throw new InvalidOperationException("Số dư không đủ để thực hiện yêu cầu này.");
+
+        // 3. Calculate VND amount after fee
+        var amountVnd = dto.AmountCoins * config.ExchangeRateCoinToVnd * (1 - config.WithdrawalFeePercent / 100);
+
+        // 4. Create request
+        var entity = new WithdrawalRequest
+        {
+            CreatorId = creatorId,
+            AmountCoins = dto.AmountCoins,
+            AmountVnd = amountVnd,
+            BankAccountInfo = $"{dto.BankName} | {dto.AccountNumber} | {dto.AccountName}",
+            RequestedAt = DateTime.UtcNow,
+            Status = WithdrawalStatus.PENDING
+        };
+
+        // 5. Deduct coins from balance (or mark as pending - here we deduct immediately for simplicity)
+        wallet.CoinBalance -= dto.AmountCoins;
+        // Optionally add to total spent or similar? 
+
+        _context.WithdrawalRequests.Add(entity);
+
+        // Add a system transaction record
+        _context.Transactions.Add(new Transaction
+        {
+            UserId = creatorId,
+            WalletId = wallet.WalletId,
+            Type = TransactionType.WITHDRAWAL,
+            AmountCoins = dto.AmountCoins,
+            Status = TransactionStatus.PENDING,
+            Note = $"Yêu cầu rút {dto.AmountCoins} coins ({amountVnd:N0} VND)",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var creator = await _context.CreatorProfiles.FindAsync(creatorId);
+
+        return new WithdrawalReviewItemDto
+        {
+            WithdrawalId = entity.WithdrawalId,
+            CreatorId = entity.CreatorId,
+            CreatorName = creator?.PenName ?? "Unknown",
+            AmountCoins = entity.AmountCoins,
+            AmountVnd = entity.AmountVnd,
+            BankAccountInfo = entity.BankAccountInfo,
+            RequestedAt = entity.RequestedAt,
+            Status = entity.Status
+        };
+    }
   }
 }
