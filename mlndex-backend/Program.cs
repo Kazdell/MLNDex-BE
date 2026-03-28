@@ -115,6 +115,7 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IReportService, ReportService>();
 			builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
 			builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+			builder.Services.AddScoped<ICommentModerationService, CommentModerationService>();
 
 			// Isolated Report & TrustScore Services
 			builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
