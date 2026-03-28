@@ -7,7 +7,8 @@ namespace Application.DTOs.Translation
   public class UploadTranslationDto
   {
     public int ChapterId { get; set; }
-    public int PermissionId { get; set; }
+    public int? PermissionId { get; set; } // null = unofficial
+    public int? TeamId { get; set; } // Required for unofficial (no permission)
     public int LanguageId { get; set; }
     public ContentType ContentType { get; set; } // IMAGE or TEXT
     public List<Application.DTOs.Chapter.UploadPageDto>? Pages { get; set; } // If Manga

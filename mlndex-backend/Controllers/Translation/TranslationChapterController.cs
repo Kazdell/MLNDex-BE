@@ -28,95 +28,6 @@ public class TranslationChapterController : BaseController
     _db = db;
   }
 
-  [HttpPost("chapters/create")]
-  [RequestSizeLimit(300 * 1024 * 1024)]
-  public async Task<IActionResult> Create(
-      [FromForm] int seriesId,
-      [FromForm] float chapterNumber,
-      [FromForm] string? title,
-      [FromForm] int? languageId,
-      [FromForm] string? language,
-      [FromForm] int teamId,
-      [FromForm] int? chapterId, // Base Chapter ID
-      [FromForm] int? permissionId,
-      [FromForm] string? creditsJson,
-      [FromForm] string? jointTeamIdsJson,
-      [FromForm] IFormFileCollection pages,
-      CancellationToken cancellationToken)
-  {
-    int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
-
-    // Guard: Block upload if user trust score is depleted
-    var currentUser = await _db.Users.FindAsync(userId);
-    if (currentUser?.CannotUpload == true)
-      return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
-
-    // Resolve languageId from language name/code if not provided directly
-    int? resolvedLanguageId = languageId;
-    if (resolvedLanguageId == null && !string.IsNullOrEmpty(language))
-    {
-      var lang = await _db.Languages.FirstOrDefaultAsync(
-          l => l.Name == language || l.Code == language, cancellationToken);
-      resolvedLanguageId = lang?.LanguageId;
-    }
-
-    // 1. Validate files
-    if (pages == null || pages.Count == 0)
-      return BadRequestResponse("Chưa có trang nào được gửi lên.");
-
-    foreach (var file in pages)
-    {
-      var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-      if (!AllowedExtensions.Contains(ext))
-        return BadRequestResponse($"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp");
-
-      if (file.Length > MaxFileSizeBytes)
-        return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
-    }
-
-    // 2. Build DTO — Translation upload: TeamId is required
-    var dto = new CreateChapterDto
-    {
-      SeriesId = seriesId,
-      ChapterNumber = chapterNumber,
-      Title = title,
-      LanguageId = resolvedLanguageId,
-      TeamId = teamId,
-      BaseChapterId = chapterId,
-      PermissionId = permissionId,
-      CreditsJson = creditsJson,
-      JointTeamIdsJson = jointTeamIdsJson,
-      Pages = pages.Select((file, index) => new UploadPageDto
-      {
-        FileStream = file.OpenReadStream(),
-        FileName = file.FileName,
-        PageNumber = index + 1
-      }).ToList()
-    };
-
-    try
-    {
-      var result = await _service.CreateAsync(userId, dto, cancellationToken);
-      return OkResponse(result, "Đăng chương dịch thành công.");
-    }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-      return UnauthorizedResponse(ex.Message);
-    }
-    catch (InvalidOperationException ex)
-    {
-      return BadRequestResponse(ex.Message);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
-  }
 
   [HttpGet("teams/{teamId:int}/series/{seriesId:int}/chapters")]
   public async Task<IActionResult> GetTeamChaptersBySeries(int teamId, int seriesId, CancellationToken cancellationToken)
@@ -128,6 +39,31 @@ public class TranslationChapterController : BaseController
     {
       var result = await _service.GetTeamChaptersBySeriesAsync(teamId, seriesId, userId, cancellationToken);
       return OkResponse(result);
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
+
+  [HttpDelete("teams/{teamId:int}/chapters/{id:int}")]
+  public async Task<IActionResult> DeleteTranslationChapter(int teamId, int id, CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      await _service.DeleteTranslationChapterAsync(id, teamId, userId, cancellationToken);
+      return OkResponse((object?)null, "Xóa chương dịch thành công.");
     }
     catch (KeyNotFoundException ex)
     {

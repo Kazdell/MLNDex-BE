@@ -19,6 +19,7 @@ namespace Application.Interfaces.Data
         DbSet<SeriesGenre> SeriesGenres { get; set; }
         DbSet<Domain.Entities.Chapter> Chapters { get; set; }
         DbSet<ChapterPage> ChapterPages { get; set; }
+        DbSet<PageTextLayer> PageTextLayers { get; set; }
         DbSet<ChapterText> ChapterTexts { get; set; }
         DbSet<TranslationPermission> TranslationPermissions { get; set; }
         DbSet<Domain.Entities.Language> Languages { get; set; }

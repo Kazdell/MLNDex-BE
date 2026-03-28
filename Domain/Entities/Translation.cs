@@ -11,7 +11,7 @@ namespace Domain.Entities
   {
     public int TranslationId { get; set; }
     public int ChapterId { get; set; }
-    public int PermissionId { get; set; }
+    public int? PermissionId { get; set; }
     public int LanguageId { get; set; } = 1;
     public ContentType ContentType { get; set; }
     public TranslationQualityStatus QualityStatus { get; set; }
@@ -25,7 +25,7 @@ namespace Domain.Entities
     // Navigation
     public Language Language { get; set; } = null!;
     public Chapter Chapter { get; set; } = null!;
-    public TranslationPermission Permission { get; set; } = null!;
+    public TranslationPermission? Permission { get; set; }
     public ICollection<TranslationPage> TranslationPages { get; set; } = new List<TranslationPage>();
     public TranslationText? TranslationText { get; set; }
     public ICollection<TranslationCredit> TranslationCredits { get; set; } = new List<TranslationCredit>();

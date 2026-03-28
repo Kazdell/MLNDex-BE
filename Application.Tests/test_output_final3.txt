@@ -1,0 +1,145 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Domain -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Domain\bin\Debug\net8.0\Domain.dll
+  Application -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\bin\Debug\net8.0\Application.dll
+  Infrastructure -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\bin\Debug\net8.0\Infrastructure.dll
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Shared\DatabaseFixture.cs(20,28): warning CS0618: 'MsSqlBuilder.MsSqlBuilder()' is obsolete: 'This parameterless constructor is obsolete and will be removed. Use the constructor with the image parameter instead: https://github.com/testcontainers/testcontainers-dotnet/discussions/1470#discussioncomment-15185721.' [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Application.Tests.csproj]
+  Application.Tests -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\bin\Debug\net8.0\Application.Tests.dll
+Test run for C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\bin\Debug\net8.0\Application.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\bin\Debug\net8.0\Application.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.3.1+6b60a9e56a (64-bit .NET 8.0.25)
+[xUnit.net 00:00:00.07]   Discovering: Application.Tests
+[xUnit.net 00:00:00.10]   Discovered:  Application.Tests
+[xUnit.net 00:00:00.11]   Starting:    Application.Tests
+[testcontainers.org 00:00:00.07] Connected to Docker:
+  Host: npipe://./pipe/docker_engine
+  Server Version: 29.3.1
+  Kernel Version: 5.15.167.4-microsoft-standard-WSL2
+  API Version: 1.54
+  Operating System: Docker Desktop
+  Total Memory: 3.83 GB
+  Labels: 
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli
+[testcontainers.org 00:00:00.27] Docker container 51cf64f104e6 created
+[testcontainers.org 00:00:00.31] Start Docker container 51cf64f104e6
+[testcontainers.org 00:00:00.52] Wait for Docker container 51cf64f104e6 to complete readiness checks
+[testcontainers.org 00:00:01.57] Docker container 51cf64f104e6 ready
+[testcontainers.org 00:00:01.69] Docker container e76ee0c4d426 created
+[testcontainers.org 00:00:01.70] Start Docker container e76ee0c4d426
+[testcontainers.org 00:00:01.90] Wait for Docker container e76ee0c4d426 to complete readiness checks
+[testcontainers.org 00:00:01.91] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container e76ee0c4d426
+[testcontainers.org 00:00:01.97] Execute "/opt/mssql-tools18/bin/sqlcmd -C -Q SELECT 1;" at Docker container e76ee0c4d426
+[testcontainers.org 00:00:09.56] Execute "/opt/mssql-tools18/bin/sqlcmd -C -Q SELECT 1;" at Docker container e76ee0c4d426
+[testcontainers.org 00:00:10.65] Execute "/opt/mssql-tools18/bin/sqlcmd -C -Q SELECT 1;" at Docker container e76ee0c4d426
+[testcontainers.org 00:00:11.82] Execute "/opt/mssql-tools18/bin/sqlcmd -C -Q SELECT 1;" at Docker container e76ee0c4d426
+[testcontainers.org 00:00:11.93] Docker container e76ee0c4d426 ready
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Assign_Admin_Role [622 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Admin_Can_Warn_Regular_User [190 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Admin_Can_Ban_Moderator [84 ms]
+[xUnit.net 00:00:20.51]     Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles [FAIL]
+[xUnit.net 00:00:20.51]       Expected a <System.UnauthorizedAccessException> to be thrown, but found <System.InvalidOperationException>:
+[xUnit.net 00:00:20.51]       System.InvalidOperationException: Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.
+[xUnit.net 00:00:20.51]          at Application.Services.Moderation.AccountModerationService.UpdateRolesAsync(Int32 userId, Int32 moderatorId, UpdateUserRolesRequest request, CancellationToken cancellationToken) in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\AccountModerationService.cs:line 174
+[xUnit.net 00:00:20.52]          at Application.Tests.Services.Moderation.AccountModerationServiceTests.<>c__DisplayClass17_0.<<UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles>b__0>d.MoveNext() in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs:line 215
+[xUnit.net 00:00:20.52]       --- End of stack trace from previous location ---
+[xUnit.net 00:00:20.52]          at FluentAssertions.Specialized.AsyncFunctionAssertions`2.InvokeWithInterceptionAsync(Func`1 action).
+[xUnit.net 00:00:20.52]       Stack Trace:
+[xUnit.net 00:00:20.52]            at FluentAssertions.Specialized.DelegateAssertionsBase`2.<>c__DisplayClass8_0`1.<ThrowInternal>b__0(AssertionChain chain)
+[xUnit.net 00:00:20.52]            at FluentAssertions.Specialized.DelegateAssertionsBase`2.ThrowInternal[TException](Exception exception, String because, Object[] becauseArgs)
+[xUnit.net 00:00:20.52]            at FluentAssertions.Specialized.AsyncFunctionAssertions`2.ThrowAsync[TException](String because, Object[] becauseArgs)
+[xUnit.net 00:00:20.52]            at FluentAssertions.ExceptionAssertionsExtensions.WithMessage[TException](Task`1 task, String expectedWildcardPattern, String because, Object[] becauseArgs)
+[xUnit.net 00:00:20.52]         C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs(216,0): at Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles()
+[xUnit.net 00:00:20.52]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:21.70]     Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Admin_Can_Add_Roles_To_Regular_User [FAIL]
+[xUnit.net 00:00:21.70]       System.InvalidOperationException : The instance of entity type 'UserRole' cannot be tracked because another instance with the same key value for {'UserRoleId'} is already being tracked. When attaching existing entities, ensure that only one entity instance with a given key value is attached. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the conflicting key values.
+[xUnit.net 00:00:21.70]       Stack Trace:
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.ThrowIdentityConflict(InternalEntityEntry entry)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(TKey key, InternalEntityEntry entry, Boolean updateDuplicate)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(TKey key, InternalEntityEntry entry)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(InternalEntityEntry entry)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.StartTracking(InternalEntityEntry entry)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState oldState, EntityState newState, Boolean acceptChanges, Boolean modifyProperties)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState entityState, Boolean acceptChanges, Boolean modifyProperties, Nullable`1 forceStateWhenUnknownKey, Nullable`1 fallbackState)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.PaintAction(EntityEntryGraphNode`1 node)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityEntryGraphIterator.TraverseGraph[TState](EntityEntryGraphNode`1 node, Func`2 handleNode)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.AttachGraph(InternalEntityEntry rootEntry, EntityState targetState, EntityState storeGeneratedWithKeySetTargetState, Boolean forceStateWhenUnknownKey)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.NavigationFixer.NavigationCollectionChanged(InternalEntityEntry entry, INavigationBase navigationBase, IEnumerable`1 added, IEnumerable`1 removed)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntryNotifier.NavigationCollectionChanged(InternalEntityEntry entry, INavigationBase navigationBase, IEnumerable`1 added, IEnumerable`1 removed)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.DetectNavigationChange(InternalEntityEntry entry, INavigationBase navigationBase)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.LocalDetectChanges(InternalEntityEntry entry)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.DetectChanges(IStateManager stateManager)
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker.DetectChanges()
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.DbContext.TryDetectChanges()
+[xUnit.net 00:00:21.70]            at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+[xUnit.net 00:00:21.70]         C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\AccountModerationService.cs(213,0): at Application.Services.Moderation.AccountModerationService.UpdateRolesAsync(Int32 userId, Int32 moderatorId, UpdateUserRolesRequest request, CancellationToken cancellationToken)
+[xUnit.net 00:00:21.70]         C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs(248,0): at Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Admin_Can_Add_Roles_To_Regular_User()
+[xUnit.net 00:00:21.70]         --- End of stack trace from previous location ---
+  Failed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles [165 ms]
+  Error Message:
+   Expected a <System.UnauthorizedAccessException> to be thrown, but found <System.InvalidOperationException>:
+System.InvalidOperationException: Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.
+   at Application.Services.Moderation.AccountModerationService.UpdateRolesAsync(Int32 userId, Int32 moderatorId, UpdateUserRolesRequest request, CancellationToken cancellationToken) in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\AccountModerationService.cs:line 174
+   at Application.Tests.Services.Moderation.AccountModerationServiceTests.<>c__DisplayClass17_0.<<UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles>b__0>d.MoveNext() in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs:line 215
+--- End of stack trace from previous location ---
+   at FluentAssertions.Specialized.AsyncFunctionAssertions`2.InvokeWithInterceptionAsync(Func`1 action).
+  Stack Trace:
+     at FluentAssertions.Specialized.DelegateAssertionsBase`2.<>c__DisplayClass8_0`1.<ThrowInternal>b__0(AssertionChain chain)
+   at FluentAssertions.Specialized.DelegateAssertionsBase`2.ThrowInternal[TException](Exception exception, String because, Object[] becauseArgs)
+   at FluentAssertions.Specialized.AsyncFunctionAssertions`2.ThrowAsync[TException](String because, Object[] becauseArgs)
+   at FluentAssertions.ExceptionAssertionsExtensions.WithMessage[TException](Task`1 task, String expectedWildcardPattern, String because, Object[] becauseArgs)
+   at Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Edit_Admin_Roles() in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs:line 216
+--- End of stack trace from previous location ---
+  Failed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Admin_Can_Add_Roles_To_Regular_User [104 ms]
+  Error Message:
+   System.InvalidOperationException : The instance of entity type 'UserRole' cannot be tracked because another instance with the same key value for {'UserRoleId'} is already being tracked. When attaching existing entities, ensure that only one entity instance with a given key value is attached. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the conflicting key values.
+  Stack Trace:
+     at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.ThrowIdentityConflict(InternalEntityEntry entry)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(TKey key, InternalEntityEntry entry, Boolean updateDuplicate)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(TKey key, InternalEntityEntry entry)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(InternalEntityEntry entry)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.StartTracking(InternalEntityEntry entry)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState oldState, EntityState newState, Boolean acceptChanges, Boolean modifyProperties)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState entityState, Boolean acceptChanges, Boolean modifyProperties, Nullable`1 forceStateWhenUnknownKey, Nullable`1 fallbackState)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.PaintAction(EntityEntryGraphNode`1 node)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityEntryGraphIterator.TraverseGraph[TState](EntityEntryGraphNode`1 node, Func`2 handleNode)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.AttachGraph(InternalEntityEntry rootEntry, EntityState targetState, EntityState storeGeneratedWithKeySetTargetState, Boolean forceStateWhenUnknownKey)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.NavigationFixer.NavigationCollectionChanged(InternalEntityEntry entry, INavigationBase navigationBase, IEnumerable`1 added, IEnumerable`1 removed)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntryNotifier.NavigationCollectionChanged(InternalEntityEntry entry, INavigationBase navigationBase, IEnumerable`1 added, IEnumerable`1 removed)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.DetectNavigationChange(InternalEntityEntry entry, INavigationBase navigationBase)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.LocalDetectChanges(InternalEntityEntry entry)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.ChangeDetector.DetectChanges(IStateManager stateManager)
+   at Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker.DetectChanges()
+   at Microsoft.EntityFrameworkCore.DbContext.TryDetectChanges()
+   at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+   at Application.Services.Moderation.AccountModerationService.UpdateRolesAsync(Int32 userId, Int32 moderatorId, UpdateUserRolesRequest request, CancellationToken cancellationToken) in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\AccountModerationService.cs:line 213
+   at Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Admin_Can_Add_Roles_To_Regular_User() in C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\Services\Moderation\AccountModerationServiceTests.cs:line 248
+--- End of stack trace from previous location ---
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Moderator_Cannot_Ban_Admin [55 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Admin_Cannot_Edit_Another_Admin_Roles [86 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Cannot_Remove_Last_Admin [50 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Admin_Cannot_Ban_Another_Admin [64 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Cannot_Self_Deactivate [29 ms]
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.UpdateRolesAsync_Moderator_Cannot_Assign_Moderator_Role [47 ms]
+[testcontainers.org 00:00:27.70] Stop Docker container e76ee0c4d426
+  Passed Application.Tests.Services.Moderation.AccountModerationServiceTests.ApplyAsync_Moderator_Cannot_Warn_Another_Moderator [49 ms]
+[testcontainers.org 00:00:29.43] Delete Docker container e76ee0c4d426
+[xUnit.net 00:00:29.73]   Finished:    Application.Tests
+
+Test Run Failed.
+Total tests: 12
+     Passed: 10
+     Failed: 2
+ Total time: 30.0843 Seconds
