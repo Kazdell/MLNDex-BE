@@ -1118,29 +1118,6 @@ namespace Infrastructure.Persistence.Data
 				 .HasForeignKey(x => x.UpdatedByUserId)
 				 .OnDelete(DeleteBehavior.SetNull);
 			});
-
-            // ====================================================
-            // Coin_Rate_Setting
-            // Coin_Rate_Setting
-            // ====================================================
-            //modelBuilder.Entity<CoinRateSetting>(e =>
-            //{
-            //    e.ToTable("CoinRateSetting");
-            //    e.HasKey(x => x.Id);
-            //    e.Property(x => x.Id).UseIdentityColumn();
-            //    e.Property(x => x.CoinsPerVnd).HasColumnType("decimal(10,4)").IsRequired();
-            //    e.Property(x => x.MinTopUpVnd).IsRequired();
-            //    e.Property(x => x.MaxTopUpVnd).IsRequired();
-            //    e.Property(x => x.IsActive).IsRequired();
-            //    e.Property(x => x.UpdatedByUserId).IsRequired();
-            //    e.Property(x => x.UpdatedAt).IsRequired();
-            //    e.Property(x => x.Note).HasMaxLength(200);
-
-            //    e.HasOne(x => x.UpdatedBy)
-            //        .WithMany()
-            //        .HasForeignKey(x => x.UpdatedByUserId)
-            //        .OnDelete(DeleteBehavior.Restrict);
-            //});
         }
     }
 }
