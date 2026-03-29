@@ -10,14 +10,14 @@ namespace mlndex_backend.Controllers.Payment;
 public class AdminPaymentController : BaseController
 {
 	private readonly ICoinPackageService _coinPackageService;
-	private readonly ICoinRateService _coinRateService;
+	//private readonly ICoinRateService _coinRateService;
 
 	public AdminPaymentController(
-		ICoinPackageService coinPackageService,
-		ICoinRateService coinRateService)
+		ICoinPackageService coinPackageService
+		)
 	{
 		_coinPackageService = coinPackageService;
-		_coinRateService = coinRateService;
+		//_coinRateService = coinRateService;
 	}
 
 	// ════════════════════════════════════════════════════════
@@ -71,51 +71,5 @@ public class AdminPaymentController : BaseController
 	{
 		await _coinPackageService.DeactivateAsync(id);
 		return OkResponse<object>(null!, "Vô hiệu hoá gói coin thành công.");
-	}
-
-	// ════════════════════════════════════════════════════════
-	// COIN RATE
-	// ════════════════════════════════════════════════════════
-
-	/// <summary>Xem tỷ giá đang active.</summary>
-	[HttpGet("rate")]
-	public async Task<IActionResult> GetActiveRate()
-	{
-		var rate = await _coinRateService.GetActiveRateAsync();
-		return OkResponse(rate);
-	}
-
-	/// <summary>Lịch sử thay đổi tỷ giá — mới nhất lên đầu.</summary>
-	[HttpGet("rate/history")]
-	public async Task<IActionResult> GetRateHistory()
-	{
-		var history = await _coinRateService.GetHistoryAsync();
-		return OkResponse(history);
-	}
-
-	/// <summary>
-	/// Cập nhật tỷ giá mới.
-	/// Tự động deactivate rate cũ, insert rate mới trong 1 transaction.
-	/// Note bắt buộc — ghi lý do thay đổi.
-	/// </summary>
-	[HttpPost("rate")]
-	public async Task<IActionResult> UpdateRate([FromBody] UpdateCoinRateDto dto)
-	{
-		if (!ModelState.IsValid)
-			return BadRequestResponse("Dữ liệu không hợp lệ.");
-
-		var adminId = GetUserId();
-		if (adminId == 0) return UnauthorizedResponse();
-
-		var result = await _coinRateService.UpdateRateAsync(adminId, dto);
-		return OkResponse(result, "Cập nhật tỷ giá thành công.");
-	}
-
-	/// <summary>Preview coins sẽ nhận khi nhập số VND.</summary>
-	[HttpGet("rate/preview")]
-	public async Task<IActionResult> PreviewCoins([FromQuery] long amountVnd)
-	{
-		var coins = await _coinRateService.CalculateCoinsAsync(amountVnd);
-		return OkResponse(new { amountVnd, coinsWillReceive = coins });
 	}
 }

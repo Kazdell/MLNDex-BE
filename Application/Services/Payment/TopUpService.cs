@@ -1,11 +1,14 @@
 ﻿using Application.DTOs.Payment;
 using Application.DTOs.Request;
+using Application.DTOs.System;
 using Application.Interfaces;
 using Application.Interfaces.Data;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Threading;
 
 namespace Application.Services;
 
@@ -30,18 +33,20 @@ public class TopUpService : ITopUpService
 	// Queries
 	// ────────────────────────────────────────────────
 
-	public async Task<CoinRateResponseDto> GetCoinRateAsync()
+	public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
 	{
-		var rate = await _context.CoinRateSettings
-			.Where(r => r.IsActive)
-			.FirstOrDefaultAsync()
-			?? throw new InvalidOperationException("Chưa có tỷ giá coin nào được cấu hình.");
+		var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
+			?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
 
-		return new CoinRateResponseDto
+		return new SystemConfigDto
 		{
-			CoinsPerVnd = rate.CoinsPerVnd,
-			MinTopUpVnd = rate.MinTopUpVnd,
-			MaxTopUpVnd = rate.MaxTopUpVnd
+			ExchangeRateCoinToVnd = config.ExchangeRateCoinToVnd,
+			WithdrawalFeePercent = config.WithdrawalFeePercent,
+			WithdrawalMinCoins = config.WithdrawalMinCoins,
+			WithdrawalMaxCoins = config.WithdrawalMaxCoins,
+			BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
+				? new List<string>()
+				: JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
 		};
 	}
 
@@ -132,34 +137,27 @@ public class TopUpService : ITopUpService
 	{
 		var method = request.PaymentMethod.ToUpper();
 
-		var rate = await _context.CoinRateSettings
-			.Where(r => r.IsActive)
-			.FirstOrDefaultAsync()
-			?? throw new InvalidOperationException("Chưa có tỷ giá coin nào được cấu hình.");
+		var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
+			?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
 
-		// Tính amountVnd và coins
 		long amountVnd;
 		long coinsWillReceive;
-
 		if (request.PackageId.HasValue)
 		{
 			var package = await _context.CoinPackages
 				.FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
 				?? throw new KeyNotFoundException("Gói coin không tồn tại hoặc đã ngừng bán.");
-
 			amountVnd = (long)package.PriceVnd;
 			coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
 		}
 		else
 		{
 			amountVnd = request.CustomAmountVnd!.Value;
-
-			if (amountVnd < rate.MinTopUpVnd)
-				throw new ArgumentException($"Số tiền tối thiểu là {rate.MinTopUpVnd:N0} VND.");
-			if (amountVnd > rate.MaxTopUpVnd)
-				throw new ArgumentException($"Số tiền tối đa là {rate.MaxTopUpVnd:N0} VND.");
-
-			coinsWillReceive = (long)Math.Floor(amountVnd * rate.CoinsPerVnd);
+			if (amountVnd < (long)rate.WithdrawalMinCoins)
+				throw new ArgumentException($"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
+			if (amountVnd > (long)rate.WithdrawalMaxCoins)
+				throw new ArgumentException($"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
+			coinsWillReceive = (long)Math.Floor(amountVnd / rate.ExchangeRateCoinToVnd);
 		}
 
 		var wallet = await _context.Wallets
@@ -169,7 +167,6 @@ public class TopUpService : ITopUpService
 		var txnRef = GenerateOrderCode().ToString();
 		var expiredAt = DateTime.UtcNow.AddMinutes(15);
 
-		// Tạo Transaction PENDING
 		var transaction = new Transaction
 		{
 			UserId = userId,
@@ -180,14 +177,11 @@ public class TopUpService : ITopUpService
 			Note = $"{method}|{txnRef}",
 			CreatedAt = DateTime.UtcNow
 		};
-
 		_context.Transactions.Add(transaction);
 		await _context.SaveChangesAsync();
 
-		// PAYOS / VNPAY / MOMO: gọi gateway tạo link
 		var user = await _context.Users.FindAsync(userId);
 		var gateway = _gatewayFactory.GetGateway(method);
-
 		var gatewayResult = await gateway.CreatePaymentAsync(new GatewayCreateRequest
 		{
 			TxnRef = txnRef,

@@ -11,5 +11,7 @@ namespace Domain.Entities
         public decimal WithdrawalMaxCoins { get; set; }
         public string BlacklistWordsJson { get; set; } = "[]";
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    }
+		public int? UpdatedByUserId { get; set; }
+		public User? UpdatedByUser { get; set; }
+	}
 }
