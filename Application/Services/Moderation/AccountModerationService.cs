@@ -29,6 +29,36 @@ namespace Application.Services.Moderation
       if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
         throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
 
+      // Fetch the moderator to check their permissions
+      var moderator = await _context.Users
+          .Include(u => u.UserRoles)
+          .ThenInclude(ur => ur.Role)
+          .FirstOrDefaultAsync(u => u.UserId == moderatorId, cancellationToken);
+
+      if (moderator == null) throw new UnauthorizedAccessException("Người thực hiện không hợp lệ.");
+
+      var modRoles = moderator.UserRoles.Select(ur => ur.Role.RoleName).ToList();
+      var isModeratorLevel = modRoles.Contains(RoleName.MODERATOR) && !modRoles.Contains(RoleName.ADMIN);
+      var isAdminLevel = modRoles.Contains(RoleName.ADMIN);
+
+      var currentUserRolesCount = await _context.UserRoles
+          .Include(ur => ur.Role)
+          .Where(ur => ur.UserId == userId)
+          .Select(ur => ur.Role.RoleName)
+          .ToListAsync(cancellationToken);
+
+      // Role Hierarchy Logic for Actions
+      if (isModeratorLevel)
+      {
+          if (currentUserRolesCount.Contains(RoleName.ADMIN) || currentUserRolesCount.Contains(RoleName.MODERATOR))
+              throw new UnauthorizedAccessException("Bạn không có quyền thực thi hành động này lên Hệ thống Quản trị (Moderator/Admin).");
+      }
+      else if (isAdminLevel && userId != moderatorId)
+      {
+          if (currentUserRolesCount.Contains(RoleName.ADMIN))
+              throw new UnauthorizedAccessException("Admin không thể thực thi hành động này lên một Admin khác.");
+      }
+
       switch (request.Action)
       {
         case AccountActionType.WARN:
@@ -115,6 +145,18 @@ namespace Application.Services.Moderation
 
             if (user == null) return false;
 
+            // Fetch the moderator to check their permissions
+            var moderator = await _context.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.UserId == moderatorId, cancellationToken);
+
+            if (moderator == null) throw new UnauthorizedAccessException("Người thực hiện không hợp lệ.");
+
+            var modRoles = moderator.UserRoles.Select(ur => ur.Role.RoleName).ToList();
+            var isModeratorLevel = modRoles.Contains(RoleName.MODERATOR) && !modRoles.Contains(RoleName.ADMIN);
+            var isAdminLevel = modRoles.Contains(RoleName.ADMIN);
+
             // Security Check: Minimum 1 Admin
             var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToList();
             var newRoles = request.Roles.Select(r => Enum.TryParse<RoleName>(r.ToUpper(), out var rn) ? rn : (RoleName?)null)
@@ -131,6 +173,20 @@ namespace Application.Services.Moderation
                 {
                     throw new InvalidOperationException("Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.");
                 }
+            }
+
+            // Role Hierarchy Logic
+            if (isModeratorLevel)
+            {
+                if (currentRoles.Contains(RoleName.ADMIN) || currentRoles.Contains(RoleName.MODERATOR))
+                    throw new UnauthorizedAccessException("Bạn không có quyền thay đổi vai trò của Hệ thống Quản trị (Moderator/Admin).");
+                if (newRoles.Contains(RoleName.ADMIN) || newRoles.Contains(RoleName.MODERATOR))
+                    throw new UnauthorizedAccessException("Bạn không có quyền cấp quyền Hệ thống Quản trị (Moderator/Admin).");
+            }
+            else if (isAdminLevel && userId != moderatorId)
+            {
+                if (currentRoles.Contains(RoleName.ADMIN))
+                    throw new UnauthorizedAccessException("Admin không thể thay đổi vai trò của một Admin khác.");
             }
 
             // Remove existing roles

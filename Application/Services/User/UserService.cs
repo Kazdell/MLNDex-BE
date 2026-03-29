@@ -1,4 +1,5 @@
 using Application.DTOs.User;
+using Application.DTOs.Common;
 using Application.Interfaces.Data;
 using Application.Interfaces.User;
 using Domain.Entities;
@@ -117,31 +118,64 @@ namespace Application.Services.User
           .ToListAsync(cancellationToken);
     }
 
-        public async Task<List<UserSearchDto>> SearchUsersAsync(string query, CancellationToken cancellationToken)
-        {
-            var usersQuery = _context.Users
-                .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                .AsQueryable();
+    public async Task<PagedResult<UserSearchDto>> SearchUsersAsync(
+        string query, int page, int pageSize,
+        string? roleFilter, string? statusFilter,
+        CancellationToken cancellationToken)
+    {
+      var usersQuery = _context.Users
+          .Include(u => u.UserRoles)
+          .ThenInclude(ur => ur.Role)
+          .AsQueryable();
 
+      // Text search filter
       if (!string.IsNullOrWhiteSpace(query))
       {
-        usersQuery = usersQuery.Where(u => u.Username.Contains(query) || (u.DisplayName != null && u.DisplayName.Contains(query)));
+        var q = query.Trim();
+        usersQuery = usersQuery.Where(u =>
+            u.Username.Contains(q) ||
+            (u.DisplayName != null && u.DisplayName.Contains(q)));
       }
 
-            return await usersQuery
-                .Take(20)
-                .Select(u => new UserSearchDto
-                {
-                    UserId = u.UserId,
-                    Username = u.Username,
-                    DisplayName = u.DisplayName,
-                    Avatar = u.DisplayAvatar,
-                    Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
-                    IsActive = u.IsActive
-                })
-                .ToListAsync(cancellationToken);
-        }
+      // Role filter
+      if (!string.IsNullOrWhiteSpace(roleFilter))
+      {
+        usersQuery = usersQuery.Where(u =>
+            u.UserRoles.Any(ur => ur.Role.RoleName.ToString() == roleFilter));
+      }
+
+      // Status filter
+      if (!string.IsNullOrWhiteSpace(statusFilter))
+      {
+        if (statusFilter.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
+          usersQuery = usersQuery.Where(u => u.IsActive);
+        else if (statusFilter.Equals("BANNED", StringComparison.OrdinalIgnoreCase))
+          usersQuery = usersQuery.Where(u => !u.IsActive);
+      }
+
+      // Count before pagination
+      var totalCount = await usersQuery.CountAsync(cancellationToken);
+
+      // Paginate & project
+      var items = await usersQuery
+          .OrderByDescending(u => u.CreatedAt)
+          .Skip((page - 1) * pageSize)
+          .Take(pageSize)
+          .Select(u => new UserSearchDto
+          {
+            UserId = u.UserId,
+            Username = u.Username,
+            DisplayName = u.DisplayName,
+            Avatar = u.DisplayAvatar,
+            Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+            IsActive = u.IsActive,
+            Status = u.IsActive ? "ACTIVE" : "BANNED",
+            CreatedAt = u.CreatedAt
+          })
+          .ToListAsync(cancellationToken);
+
+      return new PagedResult<UserSearchDto>(items, totalCount, page, pageSize);
+    }
 
     public async Task<UserProfileDto?> GetPublicProfileAsync(string username, CancellationToken cancellationToken)
     {
@@ -210,6 +244,46 @@ namespace Application.Services.User
 
       await _context.SaveChangesAsync(cancellationToken);
       return true;
+    }
+
+    public async Task<UserStatsDto> GetUserStatsAsync(int days, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var startDateCurrent = now.AddDays(-days);
+        var startDate7Days = now.AddDays(-7);
+
+        // Fetch basic counts
+        var totalUsers = await _context.Users.CountAsync(cancellationToken);
+        var activeUsers = await _context.Users.CountAsync(u => u.IsActive == true, cancellationToken);
+        var bannedUsers = await _context.Users.CountAsync(u => u.IsActive == false, cancellationToken);
+        var newMembersLast7Days = await _context.Users.CountAsync(u => u.CreatedAt >= startDate7Days, cancellationToken);
+
+        // Chart Data (Group by Date)
+        var recentUsers = await _context.Users
+            .Where(u => u.CreatedAt >= startDateCurrent)
+            .Select(u => new { u.CreatedAt })
+            .ToListAsync(cancellationToken);
+
+        // Let's do a better grouping via memory
+        var isLongPeriod = days > 31;
+        var groupedList = recentUsers
+            .GroupBy(u => isLongPeriod ? new DateTime(u.CreatedAt.Year, u.CreatedAt.Month, 1) : u.CreatedAt.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new UserChartDataDto
+            {
+                Date = isLongPeriod ? g.Key.ToString("MM/yyyy") : g.Key.ToString("dd/MM"),
+                Count = g.Count()
+            })
+            .ToList();
+
+        return new UserStatsDto
+        {
+            TotalUsers = totalUsers,
+            ActiveUsers = activeUsers,
+            BannedUsers = bannedUsers,
+            NewMembersLast7Days = newMembersLast7Days,
+            ChartData = groupedList
+        };
     }
   }
 }

@@ -290,12 +290,16 @@ namespace Application.Services.Creator
                     .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId.Value, cancellationToken);
             }
 
+            bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
+    && chapter.Series.Creator?.UserId == userId.Value;
+
             var dto = new ChapterDetailDto
             {
                 ChapterId = chapter.ChapterId,
                 SeriesId = chapter.SeriesId,
                 SeriesTitle = chapter.Series?.Title,
                 UploaderName = chapter.Series?.Creator?.PenName,
+                CreatorUserId = chapter.Series?.Creator?.UserId,
                 TranslatorTeamName = chapter.Team?.TeamName,
                 ChapterNumber = chapter.ChapterNumber,
                 Title = chapter.Title,
@@ -305,17 +309,17 @@ namespace Application.Services.Creator
                 LockStatus = effectiveLockStatus.ToString(),
                 UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
                 UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-                IsUnlockedByUser = isUnlockedByUser,
+                IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
 
                 // Chặn Pages nếu locked và user chưa unlock
-                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser)
-                    ? chapter.Pages.Select(p => new ChapterPageResponseDto
-                    {
-                        PageId = p.PageId,
-                        ChapterId = p.ChapterId,
-                        PageNumber = p.PageNumber,
-                        ImageUrl = p.ImageUrl
-                    }).ToList()
+                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+                ? chapter.Pages.Select(p => new ChapterPageResponseDto
+                {
+                    PageId = p.PageId,
+                    ChapterId = p.ChapterId,
+                    PageNumber = p.PageNumber,
+                    ImageUrl = p.ImageUrl
+                }).ToList()
                 : new List<ChapterPageResponseDto>(),
             };
 
@@ -592,57 +596,57 @@ namespace Application.Services.Creator
             if (series.Creator.UserId != userId)
                 throw new UnauthorizedAccessException("Bạn không có quyền xem chapters của series này.");
 
-      return await _db.Chapters
-          .Where(c => c.SeriesId == seriesId)
-          // Creator chapters typically shouldn't have TeamId set, but to be sure we only get original or all?
-          // The current system gets all. We keep it as is.
-          .OrderByDescending(c => c.ChapterNumber)
-          .Select(c => new ChapterListItemDto
-          {
-            ChapterId = c.ChapterId,
-            ChapterNumber = c.ChapterNumber,
-            Title = c.Title,
-            Status = c.Status.ToString(),
-            ModerationStatus = c.ModerationStatus.ToString(),
-            PageCount = c.PageCount ?? 0,
-            Views = c.Views,
-            PublishedAt = c.PublishedAt,
-            CreatedAt = c.CreatedAt,
-          })
-          .ToListAsync(ct);
-    }
+            return await _db.Chapters
+                .Where(c => c.SeriesId == seriesId)
+                // Creator chapters typically shouldn't have TeamId set, but to be sure we only get original or all?
+                // The current system gets all. We keep it as is.
+                .OrderByDescending(c => c.ChapterNumber)
+                .Select(c => new ChapterListItemDto
+                {
+                    ChapterId = c.ChapterId,
+                    ChapterNumber = c.ChapterNumber,
+                    Title = c.Title,
+                    Status = c.Status.ToString(),
+                    ModerationStatus = c.ModerationStatus.ToString(),
+                    PageCount = c.PageCount ?? 0,
+                    Views = c.Views,
+                    PublishedAt = c.PublishedAt,
+                    CreatedAt = c.CreatedAt,
+                })
+                .ToListAsync(ct);
+        }
 
-    public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
-    {
-      // Verify team membership
-      var isMember = await _db.TeamMembers
-          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
-          
-      if (!isMember)
-        throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+        public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
+        {
+            // Verify team membership
+            var isMember = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
 
-      // Check if series exists
-      var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
-      if (!seriesExists)
-        throw new KeyNotFoundException("Series không tồn tại.");
+            if (!isMember)
+                throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
 
-      return await _db.Chapters
-          .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
-          .OrderByDescending(c => c.ChapterNumber)
-          .Select(c => new ChapterListItemDto
-          {
-            ChapterId = c.ChapterId,
-            ChapterNumber = c.ChapterNumber,
-            Title = c.Title,
-            Status = c.Status.ToString(),
-            ModerationStatus = c.ModerationStatus.ToString(),
-            PageCount = c.PageCount ?? 0,
-            Views = c.Views,
-            PublishedAt = c.PublishedAt,
-            CreatedAt = c.CreatedAt,
-          })
-          .ToListAsync(ct);
-    }
+            // Check if series exists
+            var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
+            if (!seriesExists)
+                throw new KeyNotFoundException("Series không tồn tại.");
+
+            return await _db.Chapters
+                .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
+                .OrderByDescending(c => c.ChapterNumber)
+                .Select(c => new ChapterListItemDto
+                {
+                    ChapterId = c.ChapterId,
+                    ChapterNumber = c.ChapterNumber,
+                    Title = c.Title,
+                    Status = c.Status.ToString(),
+                    ModerationStatus = c.ModerationStatus.ToString(),
+                    PageCount = c.PageCount ?? 0,
+                    Views = c.Views,
+                    PublishedAt = c.PublishedAt,
+                    CreatedAt = c.CreatedAt,
+                })
+                .ToListAsync(ct);
+        }
 
         // ── GET FOR EDIT (với ownership check + moderation info) ─────────────
         public async Task<ChapterDetailDto?> GetForEditAsync(
@@ -1049,6 +1053,64 @@ namespace Application.Services.Creator
                 Message = $"Mở khóa thành công! Đã trừ {price} coin.",
             };
         }
+    public async Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default)
+    {
+      var chapter = await _db.Chapters
+          .Include(c => c.Series)
+              .ThenInclude(s => s.Creator)
+          .Include(c => c.Pages)
+          .Include(c => c.Translations)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
+      if (chapter == null)
+        throw new KeyNotFoundException("Không tìm thấy chương.");
+
+      // Verify ownership
+      if (chapter.Series?.Creator?.UserId != userId)
+        throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
+
+      // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
+      // Let's assume it cascade deletes or we allow it. Here we just delete the images.
+      
+      foreach (var page in chapter.Pages)
+      {
+        if (!string.IsNullOrEmpty(page.ImageUrl))
+          await _storage.DeleteAsync(page.ImageUrl, ct);
+      }
+
+      _db.Chapters.Remove(chapter);
+      await _db.SaveChangesAsync(ct);
+      
+      _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
     }
+
+    public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
+    {
+      // Verify team membership
+      var isMember = await _db.TeamMembers
+          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+          
+      if (!isMember)
+        throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+      var chapter = await _db.Chapters
+          .Include(c => c.Pages)
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+
+      if (chapter == null)
+        throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+
+      // Delete images from cloud storage
+      foreach (var page in chapter.Pages)
+      {
+        if (!string.IsNullOrEmpty(page.ImageUrl))
+          await _storage.DeleteAsync(page.ImageUrl, ct);
+      }
+
+      _db.Chapters.Remove(chapter);
+      await _db.SaveChangesAsync(ct);
+
+      _logger.LogInformation("Nhóm {TeamId} xoá chương dịch {ChapterId} bởi User {UserId}", teamId, chapterId, userId);
+    }
+  }
 }

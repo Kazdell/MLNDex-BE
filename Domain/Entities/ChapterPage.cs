@@ -15,5 +15,6 @@ namespace Domain.Entities
 
     // Navigation
     public Chapter Chapter { get; set; } = null!;
+    public ICollection<PageTextLayer> TextLayers { get; set; } = new List<PageTextLayer>();
   }
 }

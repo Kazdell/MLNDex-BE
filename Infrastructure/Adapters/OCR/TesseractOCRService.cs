@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Tesseract;
 using SixLabors.ImageSharp;
 
-namespace Infrastructure.Adapters.Tesseract
+namespace Infrastructure.Adapters.OCR
 {
   public class TesseractOCRService : IOCRService
   {
@@ -49,6 +49,57 @@ namespace Infrastructure.Adapters.Tesseract
         catch (Exception ex)
         {
           _logger.LogError(ex, "Lỗi khi xử lý OCR với Tesseract.");
+          throw;
+        }
+      });
+    }
+
+    public async Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes)
+    {
+      return await Task.Run(() =>
+      {
+        var regions = new List<Application.Models.OCR.OCRRegion>();
+        try
+        {
+          byte[] pngBytes;
+          using (var memStream = new MemoryStream(imageBytes))
+          {
+            using var image = Image.Load(memStream);
+            using var outStream = new MemoryStream();
+            image.SaveAsPng(outStream);
+            pngBytes = outStream.ToArray();
+          }
+
+          using var engine = new TesseractEngine(_dataPath, "vie+eng", EngineMode.Default);
+          using var img = Pix.LoadFromMemory(pngBytes);
+          using var page = engine.Process(img);
+
+          using var iter = page.GetIterator();
+          iter.Begin();
+          do
+          {
+            if (iter.TryGetBoundingBox(PageIteratorLevel.Block, out var rect))
+            {
+              var text = iter.GetText(PageIteratorLevel.Block);
+              if (!string.IsNullOrWhiteSpace(text))
+              {
+                regions.Add(new Application.Models.OCR.OCRRegion
+                {
+                  Text = text.Trim(),
+                  X = rect.X1,
+                  Y = rect.Y1,
+                  Width = rect.Width,
+                  Height = rect.Height
+                });
+              }
+            }
+          } while (iter.Next(PageIteratorLevel.Block));
+
+          return regions;
+        }
+        catch (Exception ex)
+        {
+          _logger.LogError(ex, "Lỗi khi trích xuất vùng văn bản với Tesseract OCR.");
           throw;
         }
       });

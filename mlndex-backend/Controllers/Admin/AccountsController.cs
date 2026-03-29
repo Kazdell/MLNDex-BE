@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace mlndex_backend.Controllers.Admin
 {
   [Route("api/admin/accounts")]
-  [Authorize(Roles = "ADMIN")]
+  [Authorize(Roles = "ADMIN,MODERATOR")]
   public class AccountsController : BaseController
   {
     private readonly IAccountModerationService _service;
