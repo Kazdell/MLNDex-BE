@@ -91,8 +91,15 @@ namespace Application.Tests.Shared
     /// </summary>
     public class TestMlndexDbContext : MlndexDbContext
     {
-        // Only disable IDENTITY for tables we need to seed with specific IDs
-        private static readonly HashSet<string> _tablesWithManualIds = new() { "User", "Role" };
+        // Tables where tests seed with explicit IDs. Uses entity ClrType name.
+        // IMPORTANT: Do NOT include entities that services CREATE (e.g. TranslationTeam,
+        // TeamMember, TeamInvitation) - those need IDENTITY auto-generation.
+        private static readonly HashSet<string> _entitiesWithManualIds = new() {
+            "User", "Role", "CreatorProfile", "Series", "Chapter", "Language",
+            "TranslationPermission", "Translation",
+            "Category", "Report", "TrustScoreHistory", "Appeal",
+            "Genre", "TranslationText", "TranslationPage"
+        };
 
         public TestMlndexDbContext(DbContextOptions<MlndexDbContext> options) : base(options)
         {
@@ -104,8 +111,8 @@ namespace Application.Tests.Shared
             
             foreach (var entity in modelBuilder.Model.GetEntityTypes().ToList())
             {
-                var tableName = entity.GetTableName();
-                if (tableName == null || !_tablesWithManualIds.Contains(tableName))
+                // Match by CLR type name (e.g., "User", "TranslationTeam")
+                if (!_entitiesWithManualIds.Contains(entity.ClrType.Name))
                     continue;
 
                 foreach (var property in entity.GetProperties())

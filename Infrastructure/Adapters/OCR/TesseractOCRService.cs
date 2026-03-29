@@ -23,7 +23,7 @@ namespace Infrastructure.Adapters.OCR
       _dataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata");
     }
 
-    public async Task<string> ExtractTextFromImageAsync(byte[] imageBytes)
+    public async Task<string> ExtractTextFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng")
     {
       return await Task.Run(() =>
       {
@@ -39,7 +39,7 @@ namespace Infrastructure.Adapters.OCR
             pngBytes = outStream.ToArray();
           }
 
-          using var engine = new TesseractEngine(_dataPath, "vie+eng", EngineMode.Default);
+          using var engine = new TesseractEngine(_dataPath, languageCode, EngineMode.Default);
           using var img = Pix.LoadFromMemory(pngBytes);
           using var page = engine.Process(img);
 
@@ -54,23 +54,27 @@ namespace Infrastructure.Adapters.OCR
       });
     }
 
-    public async Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes)
+    public async Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng")
     {
       return await Task.Run(() =>
       {
         var regions = new List<Application.Models.OCR.OCRRegion>();
         try
         {
+          int imageWidth;
+          int imageHeight;
           byte[] pngBytes;
           using (var memStream = new MemoryStream(imageBytes))
           {
             using var image = Image.Load(memStream);
+            imageWidth = image.Width;
+            imageHeight = image.Height;
             using var outStream = new MemoryStream();
             image.SaveAsPng(outStream);
             pngBytes = outStream.ToArray();
           }
 
-          using var engine = new TesseractEngine(_dataPath, "vie+eng", EngineMode.Default);
+          using var engine = new TesseractEngine(_dataPath, languageCode, EngineMode.Default);
           using var img = Pix.LoadFromMemory(pngBytes);
           using var page = engine.Process(img);
 
@@ -86,10 +90,10 @@ namespace Infrastructure.Adapters.OCR
                 regions.Add(new Application.Models.OCR.OCRRegion
                 {
                   Text = text.Trim(),
-                  X = rect.X1,
-                  Y = rect.Y1,
-                  Width = rect.Width,
-                  Height = rect.Height
+                  X = Math.Round(((double)rect.X1 / imageWidth) * 100, 2),
+                  Y = Math.Round(((double)rect.Y1 / imageHeight) * 100, 2),
+                  Width = Math.Round(((double)rect.Width / imageWidth) * 100, 2),
+                  Height = Math.Round(((double)rect.Height / imageHeight) * 100, 2)
                 });
               }
             }

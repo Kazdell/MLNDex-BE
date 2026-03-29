@@ -9,9 +9,9 @@ namespace Application.Interfaces.Moderation
   public interface IOCRService
   {
     // Nhận vào byte array của ảnh và trả về văn bản nhận diện được
-    Task<string> ExtractTextFromImageAsync(byte[] imageBytes);
+    Task<string> ExtractTextFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng");
     
     // Mới: Trả về danh sách các vùng văn bản kèm tọa độ
-    Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes);
+    Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng");
   }
 }

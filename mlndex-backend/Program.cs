@@ -130,6 +130,7 @@ namespace mlndex_backend
 			builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
             builder.Services.AddHostedService<ChapterUnlockWorker>();
 
+            builder.Services.AddHttpClient();
             builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
 			// Translation Team Services
@@ -141,6 +142,8 @@ namespace mlndex_backend
 			// OCR Services
 			builder.Services.AddScoped<IOCRService, TesseractOCRService>();
 			builder.Services.AddScoped<IAiTranslationClient, AiTranslationClient>();
+			builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
+			builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 
 			// Community Services
 			builder.Services.AddScoped<ICommentService, CommentService>();

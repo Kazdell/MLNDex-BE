@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
@@ -23,13 +23,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Adapters\OCR\tessdata\vie.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\vie.traineddata</TargetPath>
-		</None>
-		<None Update="Adapters\OCR\tessdata\eng.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\eng.traineddata</TargetPath>
+		<None Update="Adapters\OCR\tessdata\*.traineddata">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<TargetPath>tessdata\%(Filename)%(Extension)</TargetPath>
 		</None>
 		<None Update="x64\*.dll">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>

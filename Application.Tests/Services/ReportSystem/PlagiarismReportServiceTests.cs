@@ -10,27 +10,60 @@ using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Application.Tests.Shared;
+
 namespace Application.Tests.Services.ReportSystem
 {
-  public class PlagiarismReportServiceTests
+  [Collection("Database collection")]
+  public class PlagiarismReportServiceTests : IAsyncLifetime
   {
-    private MlndexDbContext CreateInMemoryDbContext()
-    {
-      var options = new DbContextOptionsBuilder<MlndexDbContext>()
-          .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-          .Options;
+    private readonly DatabaseFixture _fixture;
+    private MlndexDbContext _db = default!;
+    private int _seedTeamId;
 
-      return new MlndexDbContext(options);
+    public PlagiarismReportServiceTests(DatabaseFixture fixture)
+    {
+      _fixture = fixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+      await _fixture.ResetDatabaseAsync();
+      _db = _fixture.CreateDbContext();
+
+      // Seed shared base data that satisfies all FK constraints
+      _db.Users.AddRange(
+          new User { UserId = 1, Username = "reporter1", Email = "reporter1@gmail.com", DisplayName = "R1", PasswordHash = "hash" },
+          new User { UserId = 2, Username = "baduser", Email = "baduser@test.com", TrustScore = 100, DisplayName = "B1", PasswordHash = "hash" },
+          new User { UserId = 3, Username = "moderator1", Email = "mod1@test.com", DisplayName = "M1", PasswordHash = "hash" },
+          new User { UserId = 10, Username = "leader1", Email = "leader1@test.com", DisplayName = "L1", PasswordHash = "hash" }
+      );
+      _db.Languages.Add(new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" });
+      _db.CreatorProfiles.Add(new CreatorProfile { CreatorId = 1, UserId = 1, PenName = "Creator1" });
+      await _db.SaveChangesAsync();
+
+      _db.Series.Add(new Series { SeriesId = 10, Title = "Test Series", CreatorId = 1 });
+      var team = new TranslationTeam { TeamName = "Team A", Slug = "team-a", TrustScore = 100, LeaderId = 10, LanguageId = 1 };
+      _db.TranslationTeams.Add(team);
+      await _db.SaveChangesAsync();
+      _seedTeamId = team.TeamId;
+
+      _db.Chapters.Add(new Chapter { ChapterId = 1, SeriesId = 10, ChapterNumber = 1 });
+      await _db.SaveChangesAsync();
+
+      _db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, SeriesId = 10, TeamId = _seedTeamId, LanguageId = 1, GrantedBy = 1 });
+      await _db.SaveChangesAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+      await _db.DisposeAsync();
     }
 
     [Fact]
     public async Task CreateReportAsync_ShouldCreatePendingReport_WhenUserExists()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "reporter1", Email = "reporter1@gmail.com", DisplayName = "R1", PasswordHash = "hash" });
-      db.Series.Add(new Series { SeriesId = 10, Title = "Test Series" });
-      await db.SaveChangesAsync();
-
+      var db = _db;
       var service = new PlagiarismReportService(db);
       var request = new CreatePlagiarismReportRequest
       {
@@ -54,15 +87,13 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task ResolveReportAsync_ShouldApplyPenaltyToTeam_WhenTargetIsTeam()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "reporter1", Email = "reporter1@gmail.com", DisplayName = "R1", PasswordHash = "hash" });
-      db.TranslationTeams.Add(new TranslationTeam { TeamId = 5, TeamName = "Team A", Slug = "team-a", TrustScore = 100 });
+      var db = _db;
       db.Reports.Add(new Report
       {
         ReportId = 100,
         ReporterId = 1,
         ContentType = ReportTargetType.Team,
-        ContentId = 5,
+        ContentId = _seedTeamId,
         Status = ReportStatus.Pending,
         Reason = ReportReason.Plagiarism
       });
@@ -80,10 +111,10 @@ namespace Application.Tests.Services.ReportSystem
 
       result.Status.Should().Be(ReportStatus.Resolved);
 
-      var teamInDb = await db.TranslationTeams.FindAsync(5);
+      var teamInDb = await db.TranslationTeams.FindAsync(_seedTeamId);
       teamInDb?.TrustScore.Should().Be(50); // 100 - 50
 
-      var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.TranslationTeamId == 5);
+      var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.TranslationTeamId == _seedTeamId);
       history.Should().NotBeNull();
       history?.ScoreChange.Should().Be(-50);
       history?.RelatedReportId.Should().Be(100);
@@ -92,9 +123,7 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task ResolveReportAsync_ShouldApplyPenaltyToUser_WhenTargetIsUser()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "reporter1", Email = "reporter1@test.com", DisplayName = "R1", PasswordHash = "hash" });
-      db.Users.Add(new User { UserId = 2, Username = "baduser", Email = "baduser@test.com", TrustScore = 100, DisplayName = "B1", PasswordHash = "hash" });
+      var db = _db;
       db.Reports.Add(new Report
       {
         ReportId = 101,
@@ -130,8 +159,7 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task ResolveReportAsync_ShouldStrikeContent_WhenStrikeIsTrue()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "reporter1", Email = "reporter1@gmail.com", DisplayName = "R1", PasswordHash = "hash" });
+      var db = _db;
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 10, ModerationStatus = ModerationStatus.APPROVED, LanguageId = 1, ChapterId = 1, PermissionId = 1 });
       db.Reports.Add(new Report
       {
