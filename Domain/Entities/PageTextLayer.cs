@@ -23,6 +23,11 @@ namespace Domain.Entities
 
     public bool IsVerified { get; set; }
 
+    // Learning Cache — Box adjustment tracking for "xài ké" (crowdsource quality)
+    public bool IsUserAdjusted { get; set; }        // true = box was manually adjusted by a user
+    public int? AdjustedByUserId { get; set; }       // Who adjusted this box (FK to User)
+    public int AdjustmentCount { get; set; }          // How many times this box was adjusted (quality signal)
+
     // Translation cache metadata — ISO 639-1 codes
     public string SourceLanguage { get; set; } = "auto";        // auto, zh, ja, ko, en, vi
     public string TargetLanguage { get; set; } = "vi";           // vi, en, ja, ko, zh

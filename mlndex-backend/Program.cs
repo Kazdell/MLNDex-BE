@@ -144,7 +144,7 @@ namespace mlndex_backend
 			//   → last registration wins = Tesseract
 			builder.Services.AddScoped<TesseractOCRService>();
 			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
-			builder.Services.AddScoped<IAiTranslationClient, AiTranslationClient>();
+			builder.Services.AddScoped<IAiTranslationClient, GeminiTranslationClient>();
 			builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
 			builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 

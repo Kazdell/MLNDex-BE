@@ -70,6 +70,24 @@ namespace Infrastructure.Adapters.OCR
         // Áp dụng Otsu Thresholding tự động tìm lằn ranh nền trắng chữ đen (chuẩn Manga)
         Cv2.Threshold(gray, binarized, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
 
+        // --- FURIGANA REMOVAL (OpenCV Sandpaper) ---
+        // 1. Invert image to find contours (Text -> White, Bg -> Black)
+        using var invertedForContours = new Mat();
+        Cv2.BitwiseNot(binarized, invertedForContours);
+
+        Cv2.FindContours(invertedForContours, out OpenCvSharp.Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
+        foreach (var contour in contours)
+        {
+            var rect = Cv2.BoundingRect(contour);
+            // Nếu diện tích quá bé (Width và Height nhỏ), khả năng cao là Furigana hoặc nhiễu rác
+            // Xóa bằng cách tô trắng đè lên binarized (trả về nền trắng gốc)
+            if (rect.Width < 14 && rect.Height < 14) 
+            {
+                Cv2.DrawContours(binarized, new[] { contour }, -1, Scalar.White, -1);
+            }
+        }
+        // -------------------------------------------
+
         if (invert)
         {
             Cv2.BitwiseNot(binarized, binarized);
@@ -102,6 +120,78 @@ namespace Infrastructure.Adapters.OCR
         }
       });
     }
+
+        private string ExtractBestTextFromCrop(Mat src, OpenCvSharp.Rect roi, string actualLang, TesseractEngine engine)
+        {
+            var isCJK = actualLang.Contains("jpn") || actualLang.Contains("kor") || actualLang.Contains("chi");
+            var psmsToTry = isCJK 
+                ? new[] { PageSegMode.SingleBlockVertText, PageSegMode.SingleBlock, PageSegMode.SparseText, PageSegMode.Auto, PageSegMode.SingleLine }
+                : new[] { PageSegMode.SingleBlock, PageSegMode.SparseText, PageSegMode.Auto, PageSegMode.SingleLine };
+
+            string bestText = string.Empty;
+            Func<string, int> getCjkCount = (str) => System.Text.RegularExpressions.Regex.Matches(str ?? "", @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}").Count;
+
+            using var cropped = new Mat(src, roi);
+            using var gray = new Mat();
+            Cv2.CvtColor(cropped, gray, ColorConversionCodes.BGR2GRAY);
+            using var binarized = new Mat();
+            Cv2.Threshold(gray, binarized, 150, 255, ThresholdTypes.Binary);
+
+            Cv2.ImEncode(".png", binarized, out byte[] pngBytes);
+
+            void ProcessAttempt(byte[] imageToProcess)
+            {
+                foreach (var psm in psmsToTry)
+                {
+                    try
+                    {
+                        using var img = Pix.LoadFromMemory(imageToProcess);
+                        using var page = engine.Process(img, psm);
+                        var text = page.GetText()?.Trim() ?? string.Empty;
+
+                        if (isCJK)
+                        {
+                            int currentCjk = getCjkCount(text);
+                            int bestCjk = getCjkCount(bestText);
+                            double ratio = text.Length > 0 ? (double)currentCjk / text.Length : 0;
+
+                            if (currentCjk > bestCjk) 
+                            {
+                                if (ratio >= 0.3 || bestCjk == 0) bestText = text;
+                            }
+                            else if (currentCjk > 0 && currentCjk == bestCjk)
+                            {
+                                if (text.Length < bestText.Length) bestText = text;
+                            }
+                        }
+                        else
+                        {
+                            if (text.Length > bestText.Length) bestText = text;
+                        }
+                    } 
+                    catch { /* ignore mode failure */ }
+                }
+            }
+
+            ProcessAttempt(pngBytes);
+
+            if (string.IsNullOrWhiteSpace(bestText) || (isCJK && getCjkCount(bestText) == 0))
+            {
+                Cv2.BitwiseNot(binarized, binarized);
+                Cv2.ImEncode(".png", binarized, out byte[] invertedPng);
+                ProcessAttempt(invertedPng);
+            }
+
+            if (!string.IsNullOrWhiteSpace(bestText))
+            {
+               if (isCJK && getCjkCount(bestText) > 0) 
+                   bestText = bestText.Replace(" ", "").Replace("\r", "").Replace("\n", ""); 
+               else 
+                   bestText = bestText.Replace("\r", "").Replace("\n", " ");
+            }
+
+            return bestText ?? string.Empty;
+        }
 
     public async Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng")
     {
@@ -208,12 +298,8 @@ namespace Infrastructure.Adapters.OCR
                       
                       // Mở rộng hit-box khổng lồ (3.0x font size) đa hướng để hút tất cả text rải rác trong 1 Bong bóng thoại 
                       // Manga bubbles thường cách xa nhau, nên hút mạnh tay rất an toàn.
-                      int extensionX = (int)(refSize * 3.0);
-                      int extensionY = (int)(refSize * 3.0);
-
-                      // Đảm bảo không quá nhỏ đối với các ảnh độ phân giải lớn
-                      extensionX = Math.Max(extensionX, 50);
-                      extensionY = Math.Max(extensionY, 50);
+                      int extensionX = Math.Max((int)(refSize * 3.0), 50);
+                      int extensionY = Math.Max((int)(refSize * 3.0), 50);
 
                       // Create expanded Hitbox for this line to detect neighbors
                       int lx1 = line.X - extensionX;
@@ -343,6 +429,48 @@ namespace Infrastructure.Adapters.OCR
         {
           _logger.LogError(ex, "Error extracting text regions with Tesseract OCR.");
           throw;
+        }
+      });
+    }
+
+    public async Task<string> ExtractTextFromCroppedRegionAsync(
+        byte[] imageBytes, double xPct, double yPct, double wPct, double hPct, string languageCode = "auto")
+    {
+      languageCode = MapToTesseractCode(languageCode);
+      return await Task.Run(() =>
+      {
+        try
+        {
+          using var src = Cv2.ImDecode(imageBytes, ImreadModes.Color);
+          if (src.Empty()) return string.Empty;
+
+          int imgW = src.Width; int imgH = src.Height;
+          int cropX = Math.Max(0, (int)(xPct / 100.0 * imgW));
+          int cropY = Math.Max(0, (int)(yPct / 100.0 * imgH));
+          int cropW = Math.Min(imgW - cropX, (int)(wPct / 100.0 * imgW));
+          int cropH = Math.Min(imgH - cropY, (int)(hPct / 100.0 * imgH));
+
+          if (cropW < 10 || cropH < 10) return string.Empty;
+
+          var actualLang = languageCode;
+          if (languageCode.Contains("jpn") && File.Exists(Path.Combine(_dataPath, "jpn_vert.traineddata"))) actualLang = "jpn_vert+jpn";
+          else if (languageCode.Contains("kor") && File.Exists(Path.Combine(_dataPath, "kor_vert.traineddata"))) actualLang = "kor_vert+kor";
+          else if (languageCode.Contains("chi_sim") && File.Exists(Path.Combine(_dataPath, "chi_sim_vert.traineddata"))) actualLang = "chi_sim_vert+chi_sim";
+
+          TesseractEngine engine;
+          try { engine = new TesseractEngine(_dataPath, actualLang, EngineMode.LstmOnly); }
+          catch { engine = new TesseractEngine(_dataPath, "eng", EngineMode.LstmOnly); }
+
+          using (engine)
+          {
+              var roi = new OpenCvSharp.Rect(cropX, cropY, cropW, cropH);
+              return ExtractBestTextFromCrop(src, roi, actualLang, engine);
+          }
+        }
+        catch (Exception ex)
+        {
+          _logger.LogError(ex, "Error extracting text from cropped region.");
+          return string.Empty;
         }
       });
     }

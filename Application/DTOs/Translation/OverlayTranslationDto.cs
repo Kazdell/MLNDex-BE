@@ -10,11 +10,14 @@ namespace Application.DTOs.Translation
 
     public class OverlayTranslationResponse
     {
+        public int LayerId { get; set; }          // Unique ID for tracking individual boxes
         public double X { get; set; }
         public double Y { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
         public string OriginalText { get; set; }
         public string TranslatedText { get; set; }
+        public bool IsUserAdjusted { get; set; }  // Was this box manually adjusted?
+        public string Provider { get; set; }      // To identify if it's from Vision AI or standard OCR
     }
 }
