@@ -64,10 +64,7 @@ public class TopUpService : ITopUpService
 			})
 			.ToListAsync();
 	}
-
-	/// <summary>
-	/// Thêm ví mới nếu người dùng chưa có ví.
-	/// </summary>
+	// Thêm ví mới nếu người dùng chưa có ví.
     public async Task<WalletResponseDto> GetWalletAsync(int userId)
     {
         var wallet = await _context.Wallets
