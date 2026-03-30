@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Payment;
+using Application.DTOs.Payment;
 using Application.Interfaces.Data;
 using Application.Interfaces.Payment;
 using Domain.Entities;
@@ -18,6 +18,9 @@ public class CoinRateService : ICoinRateService
 		_logger = logger;
 	}
 
+	/// <summary>
+	/// Lấy thiết lập tỷ lệ quy đổi xu hiện đang hoạt động.
+	/// </summary>
 	public async Task<CoinRateResponseDto> GetActiveRateAsync()
 	{
 		var rate = await _context.CoinRateSettings
@@ -36,9 +39,11 @@ public class CoinRateService : ICoinRateService
 			.ToListAsync();
 	}
 
+	/// <summary>
+	/// Cập nhật tỷ lệ quy đổi xu mới và vô hiệu hoá các tỷ lệ đang hoạt động trước đó.
+	/// </summary>
 	public async Task<CoinRateResponseDto> UpdateRateAsync(int adminUserId, UpdateCoinRateDto dto)
 	{
-		// Deactivate tất cả rate cũ
 		var activeRates = await _context.CoinRateSettings
 			.Where(r => r.IsActive)
 			.ToListAsync();
@@ -46,7 +51,6 @@ public class CoinRateService : ICoinRateService
 		foreach (var old in activeRates)
 			old.IsActive = false;
 
-		// Insert rate mới
 		var newRate = new CoinRateSetting
 		{
 			CoinsPerVnd = dto.CoinsPerVnd,
@@ -68,6 +72,9 @@ public class CoinRateService : ICoinRateService
 		return ToDto(newRate);
 	}
 
+	/// <summary>
+	/// Tính toán số xu sẽ nhận được dựa trên số tiền nạp VNĐ theo tỷ lệ quy đổi hiện hành.
+	/// </summary>
 	public async Task<long> CalculateCoinsAsync(long amountVnd)
 	{
 		var rate = await _context.CoinRateSettings

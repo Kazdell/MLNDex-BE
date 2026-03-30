@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Payment;
+using Application.DTOs.Payment;
 using Application.DTOs.Request;
 using Application.Interfaces;
 using Application.Interfaces.Data;
@@ -26,9 +26,7 @@ public class TopUpService : ITopUpService
 		_logger = logger;
 	}
 
-	// ────────────────────────────────────────────────
-	// Queries
-	// ────────────────────────────────────────────────
+
 
 	public async Task<CoinRateResponseDto> GetCoinRateAsync()
 	{
@@ -62,16 +60,16 @@ public class TopUpService : ITopUpService
 			.ToListAsync();
 	}
 
+	/// <summary>
+	/// Thêm ví mới nếu người dùng chưa có ví.
+	/// </summary>
     public async Task<WalletResponseDto> GetWalletAsync(int userId)
     {
-        // Sử dụng tên chuẩn trong DbContext của bạn (Wallet không có 's')
         var wallet = await _context.Wallets
             .FirstOrDefaultAsync(w => w.UserId == userId);
 
-        // Nếu không tìm thấy dữ liệu trong DB
         if (wallet == null)
         {
-            // Khởi tạo ví mới để tránh lỗi KeyNotFoundException
             wallet = new Wallet
             {
                 UserId = userId,
@@ -124,9 +122,7 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	// ────────────────────────────────────────────────
-	// Initiate top-up
-	// ────────────────────────────────────────────────
+
 
 	public async Task<TopUpInitResponseDto> InitiateAsync(int userId, CreateTopUpRequestDto request)
 	{
@@ -137,7 +133,6 @@ public class TopUpService : ITopUpService
 			.FirstOrDefaultAsync()
 			?? throw new InvalidOperationException("Chưa có tỷ giá coin nào được cấu hình.");
 
-		// Tính amountVnd và coins
 		long amountVnd;
 		long coinsWillReceive;
 
@@ -169,7 +164,6 @@ public class TopUpService : ITopUpService
 		var txnRef = GenerateOrderCode().ToString();
 		var expiredAt = DateTime.UtcNow.AddMinutes(15);
 
-		// Tạo Transaction PENDING
 		var transaction = new Transaction
 		{
 			UserId = userId,
@@ -184,7 +178,6 @@ public class TopUpService : ITopUpService
 		_context.Transactions.Add(transaction);
 		await _context.SaveChangesAsync();
 
-		// PAYOS / VNPAY / MOMO: gọi gateway tạo link
 		var user = await _context.Users.FindAsync(userId);
 		var gateway = _gatewayFactory.GetGateway(method);
 
@@ -214,9 +207,7 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	// ────────────────────────────────────────────────
-	// Callbacks
-	// ────────────────────────────────────────────────
+
 
 	public async Task<TopUpCallbackResponseDto> HandlePayOsWebhookAsync(PayOsWebhookData webhookData)
 	{
@@ -239,9 +230,7 @@ public class TopUpService : ITopUpService
 		return await ProcessCallbackAsync(callback);
 	}
 
-	// ────────────────────────────────────────────────
-	// Private helpers
-	// ────────────────────────────────────────────────
+
 
 	/// <summary>
 	/// Xử lý callback đã chuẩn hoá — dùng chung cho mọi cổng.
@@ -276,7 +265,6 @@ public class TopUpService : ITopUpService
 		if (callback.Status == "PAID")
 			return await CompleteTopUpAsync(transaction, callback.TxnRef);
 
-		// CANCELLED hoặc FAILED
 		transaction.Status = TransactionStatus.FAILED;
 		await _context.SaveChangesAsync();
 
