@@ -50,5 +50,5 @@ namespace Domain.Entities
     public ICollection<ModerationAction> ModerationActions { get; set; } = new List<ModerationAction>();
     public ICollection<TranslationCredit> TranslationCredits { get; set; } = new List<TranslationCredit>();
     public ICollection<TrustScoreHistory> TrustScoreHistories { get; set; } = new List<TrustScoreHistory>();
-  }
+	}
 }

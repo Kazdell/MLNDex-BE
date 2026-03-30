@@ -163,7 +163,6 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 			builder.Services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
 			builder.Services.AddScoped<ITopUpService, TopUpService>();
-			builder.Services.AddScoped<ICoinRateService, CoinRateService>();
 			builder.Services.AddScoped<IPaymentGatewayService, PayOsGatewayService>();
 			builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
 	
@@ -260,13 +259,6 @@ namespace mlndex_backend
 			app.MapHub<ModerationHub>("/hubs/moderation");
 
 			app.MapControllers();
-			/*
-			using (var scope = app.Services.CreateScope())
-			{
-				var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
-				db.Database.Migrate();
-			}
-			*/
 			app.Run();
 		}
 	}
