@@ -226,10 +226,6 @@ public class TopUpService : ITopUpService
 
 
 
-	/// <summary>
-	/// Xử lý callback đã chuẩn hoá — dùng chung cho mọi cổng.
-	/// Idempotent: gọi nhiều lần cùng TxnRef vẫn an toàn.
-	/// </summary>
 	private async Task<TopUpCallbackResponseDto> ProcessCallbackAsync(PaymentCallbackDto callback)
 	{
 		if (!callback.IsSignatureValid)
@@ -244,21 +240,45 @@ public class TopUpService : ITopUpService
 			};
 		}
 
-		var transaction = await FindPendingTransactionAsync(callback.Gateway, callback.TxnRef);
+		var transaction = await FindTransactionAsync(callback.Gateway, callback.TxnRef);
 		if (transaction == null)
 		{
-			_logger.LogWarning("[TopUp] Không tìm thấy PENDING transaction. TxnRef={TxnRef}", callback.TxnRef);
+			_logger.LogWarning("[TopUp] Không tìm thấy transaction. TxnRef={TxnRef}", callback.TxnRef);
 			return new TopUpCallbackResponseDto
 			{
 				TxnRef = callback.TxnRef,
 				Status = "failed",
-				Message = "Transaction không tồn tại hoặc đã xử lý."
+				Message = "Transaction không tồn tại."
 			};
 		}
 
+		// Nếu webhook đã xử lý thành công trước (ví dụ PayOS vừa gọi server-to-server xong user mới redirect về)
+		if (transaction.Status == TransactionStatus.COMPLETED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "success",
+				CoinsAdded = (long)transaction.AmountCoins,
+				Message = $"Giao dịch đã được ghi nhận thành công từ trước."
+			};
+		}
+
+		if (transaction.Status == TransactionStatus.FAILED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "failed",
+				Message = "Giao dịch đã bị huỷ hoặc thất bại trước đó."
+			};
+		}
+
+		// Đang PENDING thì ta tiếp tục xử lý
 		if (callback.Status == "PAID")
 			return await CompleteTopUpAsync(transaction, callback.TxnRef);
 
+		// Người dùng cancel hoặc error
 		transaction.Status = TransactionStatus.FAILED;
 		await _context.SaveChangesAsync();
 
@@ -294,14 +314,13 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	private async Task<Transaction?> FindPendingTransactionAsync(string gateway, string txnRef)
+	private async Task<Transaction?> FindTransactionAsync(string gateway, string txnRef)
 	{
 		var notePrefix = $"{gateway.ToUpper()}|{txnRef}";
 		_logger.LogInformation("[TopUp] Tìm transaction. NotePrefix={NotePrefix}", notePrefix);
 		return await _context.Transactions
 			.FirstOrDefaultAsync(t =>
 				t.Type == TransactionType.PURCHASE_COIN &&
-				t.Status == TransactionStatus.PENDING &&
 				t.Note != null && t.Note.StartsWith(notePrefix));
 	}
 
