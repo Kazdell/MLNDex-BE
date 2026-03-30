@@ -33,5 +33,6 @@ namespace Application.Interfaces.Translation
     Task<IEnumerable<TeamSeriesDto>> GetTeamSeriesAsync(int teamId);
     Task<TeamStatsDto> GetTeamStatsAsync(int teamId);
     Task<IEnumerable<TranslationTeamDto>> GetUserTeamsAsync(int userId, int limit = 5);
+
   }
 }
