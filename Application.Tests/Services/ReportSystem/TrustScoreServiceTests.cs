@@ -10,16 +10,45 @@ using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Application.Tests.Shared;
+
 namespace Application.Tests.Services.ReportSystem
 {
-  public class TrustScoreServiceTests
+  [Collection("Database collection")]
+  public class TrustScoreServiceTests : IAsyncLifetime
   {
-    private MlndexDbContext CreateInMemoryDbContext()
+    private readonly DatabaseFixture _fixture;
+    private MlndexDbContext _db = default!;
+    private int _seedTeamId;
+
+    public TrustScoreServiceTests(DatabaseFixture fixture)
     {
-      var options = new DbContextOptionsBuilder<MlndexDbContext>()
-          .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-          .Options;
-      return new MlndexDbContext(options);
+      _fixture = fixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+      await _fixture.ResetDatabaseAsync();
+      _db = _fixture.CreateDbContext();
+
+      // Seed shared base data
+      _db.Users.AddRange(
+          new User { UserId = 1, Username = "user1", Email = "u1@t.com", DisplayName = "U1", PasswordHash = "h" },
+          new User { UserId = 10, Username = "leader1", Email = "l1@t.com", DisplayName = "L1", PasswordHash = "h" },
+          new User { UserId = 99, Username = "moderator", Email = "mod@t.com", DisplayName = "Mod", PasswordHash = "h" }
+      );
+      _db.Languages.Add(new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" });
+      await _db.SaveChangesAsync();
+
+      var team = new TranslationTeam { TeamName = "Locked Team", Slug = "locked-team", TrustScore = 0, LockStatus = TeamLockStatus.LOCKED, LeaderId = 10, LanguageId = 1 };
+      _db.TranslationTeams.Add(team);
+      await _db.SaveChangesAsync();
+      _seedTeamId = team.TeamId;
+    }
+
+    public async Task DisposeAsync()
+    {
+      await _db.DisposeAsync();
     }
 
     // ── Phase A: Admin Restore ──────────────────────────
@@ -27,8 +56,10 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task RestoreTrustScore_ShouldIncreaseUserScore()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "blocked", Email = "b@t.com", DisplayName = "B", PasswordHash = "h", TrustScore = 0, CannotUpload = true });
+      var db = _db;
+      var user = await db.Users.FindAsync(1);
+      user!.TrustScore = 0;
+      user.CannotUpload = true;
       await db.SaveChangesAsync();
 
       var service = new TrustScoreService(db);
@@ -44,9 +75,9 @@ namespace Application.Tests.Services.ReportSystem
       result.NewScore.Should().Be(30);
       result.CanUpload.Should().BeTrue();
 
-      var user = await db.Users.FindAsync(1);
-      user!.CannotUpload.Should().BeFalse();
-      user.TrustScore.Should().Be(30);
+      var updatedUser = await db.Users.FindAsync(1);
+      updatedUser!.CannotUpload.Should().BeFalse();
+      updatedUser.TrustScore.Should().Be(30);
 
       var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.UserId == 1);
       history.Should().NotBeNull();
@@ -56,8 +87,9 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task RestoreTrustScore_ShouldCapAt100()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "user1", Email = "u@t.com", DisplayName = "U", PasswordHash = "h", TrustScore = 80 });
+      var db = _db;
+      var user = await db.Users.FindAsync(1);
+      user!.TrustScore = 80;
       await db.SaveChangesAsync();
 
       var service = new TrustScoreService(db);
@@ -75,22 +107,12 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task RestoreTrustScore_ShouldUnlockTeam()
     {
-      var db = CreateInMemoryDbContext();
-      db.TranslationTeams.Add(new TranslationTeam
-      {
-        TeamId = 1,
-        TeamName = "Locked Team",
-        Slug = "locked-team",
-        TrustScore = 0,
-        LockStatus = TeamLockStatus.LOCKED
-      });
-      await db.SaveChangesAsync();
-
+      var db = _db;
       var service = new TrustScoreService(db);
       var result = await service.RestoreTrustScoreAsync(new RestoreTrustScoreRequest
       {
         TargetType = TrustScoreTargetType.Team,
-        TargetId = 1,
+        TargetId = _seedTeamId,
         ScoreToRestore = 20,
         Reason = "Appeal approved"
       }, moderatorId: 99);
@@ -98,7 +120,7 @@ namespace Application.Tests.Services.ReportSystem
       result.NewScore.Should().Be(20);
       result.CanUpload.Should().BeTrue();
 
-      var team = await db.TranslationTeams.FindAsync(1);
+      var team = await db.TranslationTeams.FindAsync(_seedTeamId);
       team!.LockStatus.Should().Be(TeamLockStatus.ACTIVE);
     }
 
@@ -107,10 +129,7 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task CreateAppeal_ShouldCreatePendingAppeal()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "appealer", Email = "a@t.com", DisplayName = "A", PasswordHash = "h" });
-      await db.SaveChangesAsync();
-
+      var db = _db;
       var service = new TrustScoreService(db);
       var result = await service.CreateAppealAsync(1, new CreateAppealRequest
       {
@@ -126,8 +145,7 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task CreateAppeal_ShouldReject_WhenPendingExists()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "appealer", Email = "a@t.com", DisplayName = "A", PasswordHash = "h" });
+      var db = _db;
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "First appeal", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
@@ -141,8 +159,10 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task ReviewAppeal_ShouldApproveAndRestoreScore()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "appealer", Email = "a@t.com", DisplayName = "A", PasswordHash = "h", TrustScore = 10, CannotUpload = false });
+      var db = _db;
+      var user = await db.Users.FindAsync(1);
+      user!.TrustScore = 10;
+      user.CannotUpload = false;
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "Wrong penalty", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
@@ -157,15 +177,14 @@ namespace Application.Tests.Services.ReportSystem
       result.Status.Should().Be("Approved");
       result.ScoreRestored.Should().Be(40);
 
-      var user = await db.Users.FindAsync(1);
-      user!.TrustScore.Should().Be(50); // 10 + 40
+      var updatedUser = await db.Users.FindAsync(1);
+      updatedUser!.TrustScore.Should().Be(50); // 10 + 40
     }
 
     [Fact]
     public async Task ReviewAppeal_ShouldReject()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "appealer", Email = "a@t.com", DisplayName = "A", PasswordHash = "h" });
+      var db = _db;
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "Wrong", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
@@ -184,8 +203,8 @@ namespace Application.Tests.Services.ReportSystem
     [Fact]
     public async Task ApplyPenalty_ShouldSetCannotUpload_WhenScoreDropsToZero()
     {
-      var db = CreateInMemoryDbContext();
-      db.Users.Add(new User { UserId = 1, Username = "reporter", Email = "r@t.com", DisplayName = "R", PasswordHash = "h" });
+      var db = _db;
+      // Add a second user as violator
       db.Users.Add(new User { UserId = 2, Username = "violator", Email = "v@t.com", DisplayName = "V", PasswordHash = "h", TrustScore = 30 });
       db.Reports.Add(new Report
       {
@@ -206,9 +225,9 @@ namespace Application.Tests.Services.ReportSystem
         ResolutionNotes = "Plagiarism confirmed"
       });
 
-      var user = await db.Users.FindAsync(2);
-      user!.TrustScore.Should().BeLessThanOrEqualTo(0);
-      user.CannotUpload.Should().BeTrue();
+      var userInDb = await db.Users.FindAsync(2);
+      userInDb!.TrustScore.Should().BeLessThanOrEqualTo(0);
+      userInDb.CannotUpload.Should().BeTrue();
     }
   }
 }

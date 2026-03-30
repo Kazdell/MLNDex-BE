@@ -16,5 +16,10 @@ namespace Application.DTOs.Translation
     public string TranslatedText { get; set; } = string.Empty;
 
     public bool IsVerified { get; set; }
+
+    // Translation cache metadata
+    public string SourceLanguage { get; set; } = string.Empty;
+    public string TargetLanguage { get; set; } = string.Empty;
+    public string TranslationProvider { get; set; } = string.Empty;
   }
 }

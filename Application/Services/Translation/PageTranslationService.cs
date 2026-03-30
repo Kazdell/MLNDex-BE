@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Translation
 {
+    [Obsolete("Use ReaderTranslationService instead. Will be removed in Phase 3.")]
     public class PageTranslationService : IPageTranslationService
     {
         private readonly IMlndexDbContext _context;
@@ -51,7 +52,10 @@ namespace Application.Services.Translation
                 Height = l.Height,
                 OriginalText = l.OriginalText,
                 TranslatedText = l.TranslatedText,
-                IsVerified = l.IsVerified
+                IsVerified = l.IsVerified,
+                SourceLanguage = l.SourceLanguage,
+                TargetLanguage = l.TargetLanguage,
+                TranslationProvider = l.TranslationProvider
             }).ToList();
         }
 
@@ -118,7 +122,10 @@ namespace Application.Services.Translation
                     OriginalText = originalTexts[i],
                     TranslatedText = i < translatedTexts.Count ? translatedTexts[i] : originalTexts[i],
                     CreatedAt = DateTime.UtcNow,
-                    IsVerified = false // Initially false, users/translators can verify later
+                    IsVerified = false,
+                    SourceLanguage = "auto",
+                    TargetLanguage = targetLanguage,
+                    TranslationProvider = "OpenAI"
                 };
                 layersToSave.Add(layer);
             }
@@ -136,7 +143,10 @@ namespace Application.Services.Translation
                 Height = l.Height,
                 OriginalText = l.OriginalText,
                 TranslatedText = l.TranslatedText,
-                IsVerified = l.IsVerified
+                IsVerified = l.IsVerified,
+                SourceLanguage = l.SourceLanguage,
+                TargetLanguage = l.TargetLanguage,
+                TranslationProvider = l.TranslationProvider
             }).ToList();
         }
     }

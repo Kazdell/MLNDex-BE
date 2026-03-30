@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
@@ -13,6 +13,8 @@
 		<PackageReference Include="MailKit" Version="4.15.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
+		<PackageReference Include="OpenCvSharp4" Version="4.9.0.20240103" />
+		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.9.0.20240103" />
 		<PackageReference Include="payOS" Version="2.0.1" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
 		<PackageReference Include="Tesseract" Version="5.2.0" />
@@ -23,13 +25,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Adapters\OCR\tessdata\vie.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\vie.traineddata</TargetPath>
-		</None>
-		<None Update="Adapters\OCR\tessdata\eng.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\eng.traineddata</TargetPath>
+		<None Update="Adapters\OCR\tessdata\*.traineddata">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<TargetPath>tessdata\%(Filename)%(Extension)</TargetPath>
 		</None>
 		<None Update="x64\*.dll">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>

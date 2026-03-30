@@ -130,6 +130,7 @@ namespace mlndex_backend
 			builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
             builder.Services.AddHostedService<ChapterUnlockWorker>();
 
+            builder.Services.AddHttpClient();
             builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
 			// Translation Team Services
@@ -138,9 +139,14 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IPageTranslationService, PageTranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-			// OCR Services
-			builder.Services.AddScoped<IOCRService, TesseractOCRService>();
-			builder.Services.AddScoped<IAiTranslationClient, AiTranslationClient>();
+			// OCR Services — Tesseract fallback (Scoped)
+			// For single IOCRService injection (PageTranslationService, ModerationService):
+			//   → last registration wins = Tesseract
+			builder.Services.AddScoped<TesseractOCRService>();
+			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
+			builder.Services.AddScoped<IAiTranslationClient, GeminiTranslationClient>();
+			builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
+			builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 
 			// Community Services
 			builder.Services.AddScoped<ICommentService, CommentService>();
