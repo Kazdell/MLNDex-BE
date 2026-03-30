@@ -139,14 +139,10 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IPageTranslationService, PageTranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-			// OCR Services — ONNX AI Engine (Singleton) + Tesseract fallback (Scoped)
-			// Both registered as IOCRService for IEnumerable<IOCRService> in ReaderTranslationService
+			// OCR Services — Tesseract fallback (Scoped)
 			// For single IOCRService injection (PageTranslationService, ModerationService):
-			//   → last registration wins = Tesseract (always available, safe default)
-			// ReaderTranslationService picks the right one via ProviderName routing
-			builder.Services.AddSingleton<OnnxOcrService>();
+			//   → last registration wins = Tesseract
 			builder.Services.AddScoped<TesseractOCRService>();
-			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<OnnxOcrService>());
 			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
 			builder.Services.AddScoped<IAiTranslationClient, AiTranslationClient>();
 			builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
