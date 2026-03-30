@@ -3,9 +3,10 @@ namespace Application.DTOs.Translation
     public class OverlayTranslationRequest
     {
         public int PageId { get; set; }
-        public string SourceLanguage { get; set; } = "eng"; // jpn, kor, chi_sim, eng
-        public string TargetLanguage { get; set; } = "vie";
-        public string Provider { get; set; } = "Google"; // "Google" or "OpenAI"
+        public string SourceLanguage { get; set; } = "auto"; // ISO 639-1: auto, zh, ja, ko, en, vi
+        public string TargetLanguage { get; set; } = "vi";   // ISO 639-1: vi, en, ja, ko, zh
+        public string Provider { get; set; } = "Google";      // Translation provider: "Google" or "OpenAI"
+        public string OcrProvider { get; set; } = "onnx";     // OCR engine: "onnx" or "tesseract"
     }
 
     public class OverlayTranslationResponse

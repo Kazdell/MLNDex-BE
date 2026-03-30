@@ -16,7 +16,7 @@ namespace Application.Services.Translation
     public class ReaderTranslationService : IReaderTranslationService
     {
         private readonly IMlndexDbContext _context;
-        private readonly IOCRService _ocrService;
+        private readonly IEnumerable<IOCRService> _ocrServices;
         private readonly IAiTranslationClient _aiClient;
         private readonly IGoogleTranslationClient _googleClient;
         private readonly ILogger<ReaderTranslationService> _logger;
@@ -24,34 +24,84 @@ namespace Application.Services.Translation
 
         public ReaderTranslationService(
             IMlndexDbContext context,
-            IOCRService ocrService,
+            IEnumerable<IOCRService> ocrServices,
             IAiTranslationClient aiClient,
             IGoogleTranslationClient googleClient,
             ILogger<ReaderTranslationService> logger,
             HttpClient httpClient)
         {
             _context = context;
-            _ocrService = ocrService;
+            _ocrServices = ocrServices;
             _aiClient = aiClient;
             _googleClient = googleClient;
             _logger = logger;
             _httpClient = httpClient;
         }
 
+        private IOCRService GetOcrService(string ocrProvider)
+        {
+            // Route to specific OCR engine based on provider string
+            // Uses ProviderName from IOCRService interface (no concrete type dependency)
+            var matched = _ocrServices.FirstOrDefault(s => 
+                s.ProviderName.Equals(ocrProvider, StringComparison.OrdinalIgnoreCase));
+            
+            return matched ?? _ocrServices.First();
+        }
+
         public async Task<List<OverlayTranslationResponse>> GenerateOverlayTranslationsAsync(OverlayTranslationRequest request)
         {
-            // 1. Fetch image URL
+            string provider = request.Provider ?? "Google";
+
+            // ──────────────────────────────────────────────────────────────
+            // [CACHE-READY] Uncomment when OCR quality is stable.
+            // If DB already has layers for (PageId+SrcLang+TgtLang+Provider)
+            // → return immediately, skip entire OCR + Translation pipeline.
+            // ──────────────────────────────────────────────────────────────
+            // var cachedLayers = await _context.PageTextLayers
+            //     .AsNoTracking()
+            //     .Where(l => l.PageId == request.PageId
+            //               && l.SourceLanguage == request.SourceLanguage
+            //               && l.TargetLanguage == request.TargetLanguage
+            //               && l.TranslationProvider == provider)
+            //     .ToListAsync();
+            //
+            // if (cachedLayers.Any())
+            // {
+            //     _logger.LogInformation("Cache HIT PageId={PageId}, {Src}→{Tgt} ({Provider}, {Count} layers)",
+            //         request.PageId, request.SourceLanguage, request.TargetLanguage, provider, cachedLayers.Count);
+            //     return cachedLayers.Select(l => new OverlayTranslationResponse
+            //     {
+            //         X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
+            //         OriginalText = l.OriginalText, TranslatedText = l.TranslatedText
+            //     }).ToList();
+            // }
+
+            // ===== STEP 1: DELETE OLD LAYERS (Rebuild each time — test phase) =====
+            var existingLayers = await _context.PageTextLayers
+                .Where(l => l.PageId == request.PageId
+                          && l.SourceLanguage == request.SourceLanguage
+                          && l.TargetLanguage == request.TargetLanguage
+                          && l.TranslationProvider == provider)
+                .ToListAsync();
+
+            if (existingLayers.Any())
+            {
+                _context.PageTextLayers.RemoveRange(existingLayers);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Cleared {Count} old layers for PageId={PageId} ({Src}→{Tgt}, {Provider})",
+                    existingLayers.Count, request.PageId, request.SourceLanguage, request.TargetLanguage, provider);
+            }
+
+            // ===== STEP 2: FETCH PAGE =====
             var page = await _context.ChapterPages
                 .AsNoTracking()
                 .Include(p => p.Chapter).ThenInclude(c => c.Series)
                 .FirstOrDefaultAsync(p => p.PageId == request.PageId);
 
             if (page == null)
-            {
                 throw new Exception($"Chapter Page not found: {request.PageId}");
-            }
 
-            // 2. Download Image Bytes
+            // ===== STEP 3: DOWNLOAD IMAGE =====
             byte[] imageBytes;
             try
             {
@@ -63,53 +113,95 @@ namespace Application.Services.Translation
                 throw new Exception("Lỗi khi tải ảnh từ server.");
             }
 
-            // 3. Extract Texts and Bounding Boxes (OCR)
-            var regions = await _ocrService.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
+            // ===== STEP 4: OCR EXTRACT =====
+            var ocrService = GetOcrService(request.OcrProvider);
+            _logger.LogInformation("Using OCR: {Provider} ({Type}) for PageId {PageId}",
+                request.OcrProvider, ocrService.GetType().Name, request.PageId);
 
-            if (regions == null || regions.Count == 0)
+            List<Application.Models.OCR.OCRRegion> regions;
+            try
             {
-                return new List<OverlayTranslationResponse>();
+                regions = await ocrService.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
+            }
+            catch (Exception ex)
+            {
+                // Tesseract error → hard error (no fallback, notify user)
+                if (request.OcrProvider.Equals("tesseract", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogError(ex, "Tesseract OCR failed for PageId {PageId}", request.PageId);
+                    throw new Exception($"OCR Engine (Tesseract) gặp lỗi: {ex.Message}");
+                }
+
+                // ──────────────────────────────────────────────────────────────
+                // [FALLBACK-READY] Uncomment when ONNX/Paddle quality is stable.
+                // ONNX error → auto fallback to Tesseract.
+                // ──────────────────────────────────────────────────────────────
+                // _logger.LogWarning(ex, "OCR {Provider} failed for PageId {PageId}. Falling back to Tesseract.",
+                //     request.OcrProvider, request.PageId);
+                // var fallbackOcr = GetOcrService("tesseract");
+                // regions = await fallbackOcr.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
+
+                // [CURRENT] ONNX error → hard error (isolate each engine during testing)
+                _logger.LogError(ex, "OCR {Provider} failed for PageId {PageId}. Fallback disabled.",
+                    request.OcrProvider, request.PageId);
+                throw new Exception($"OCR Engine ({request.OcrProvider}) gặp lỗi: {ex.Message}");
             }
 
-            // Filter out empty regions to avoid wasting API calls
+            if (regions == null || regions.Count == 0)
+                return new List<OverlayTranslationResponse>();
+
             var validRegions = regions.Where(r => !string.IsNullOrWhiteSpace(r.Text)).ToList();
             if (validRegions.Count == 0) return new List<OverlayTranslationResponse>();
 
             var originalTexts = validRegions.Select(r => r.Text).ToList();
+
+            // ===== STEP 5: BATCH TRANSLATE =====
             List<string> translatedTexts;
 
-            // 4. Translate based on preferred provider
-            string provider = request.Provider ?? "Google";
-            
             if (provider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
             {
-                string contextStr = $"Dịch sang tiếng Việt cho ảnh truyện tranh. Ngôn ngữ nguồn là {request.SourceLanguage}. Context: Truyện mang tên {page.Chapter?.Series?.Title}.";
+                string contextStr = $"Translate to {request.TargetLanguage}. Source: {request.SourceLanguage}. Series: {page.Chapter?.Series?.Title}.";
                 translatedTexts = await _aiClient.TranslateTextsAsync(originalTexts, request.TargetLanguage, contextStr);
             }
-            else // Default to Google
+            else
             {
                 translatedTexts = await _googleClient.TranslateTextsAsync(originalTexts, request.SourceLanguage, request.TargetLanguage);
             }
 
-            // 5. Build Response mapping original bounding boxes back to translated text
-            var responseList = new List<OverlayTranslationResponse>();
+            // ===== STEP 6: SAVE TO DB WITH METADATA =====
+            var layersToSave = new List<Domain.Entities.PageTextLayer>();
             for (int i = 0; i < validRegions.Count; i++)
             {
                 var r = validRegions[i];
-                var translated = i < translatedTexts.Count ? translatedTexts[i] : r.Text;
-                
-                responseList.Add(new OverlayTranslationResponse
+                layersToSave.Add(new Domain.Entities.PageTextLayer
                 {
-                    X = r.X,
-                    Y = r.Y,
-                    Width = r.Width,
-                    Height = r.Height,
+                    PageId = request.PageId,
+                    X = r.X, Y = r.Y,
+                    Width = r.Width, Height = r.Height,
                     OriginalText = r.Text,
-                    TranslatedText = translated
+                    TranslatedText = i < translatedTexts.Count ? translatedTexts[i] : r.Text,
+                    CreatedAt = DateTime.UtcNow,
+                    IsVerified = false,
+                    SourceLanguage = request.SourceLanguage,
+                    TargetLanguage = request.TargetLanguage,
+                    TranslationProvider = provider
                 });
             }
 
-            return responseList;
+            _context.PageTextLayers.AddRange(layersToSave);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Saved {Count} layers: PageId={PageId} ({Src}→{Tgt}, {Provider})",
+                layersToSave.Count, request.PageId, request.SourceLanguage, request.TargetLanguage, provider);
+
+            // ===== STEP 7: RESPONSE =====
+            return layersToSave.Select(l => new OverlayTranslationResponse
+            {
+                X = l.X, Y = l.Y,
+                Width = l.Width, Height = l.Height,
+                OriginalText = l.OriginalText,
+                TranslatedText = l.TranslatedText
+            }).ToList();
         }
     }
 }

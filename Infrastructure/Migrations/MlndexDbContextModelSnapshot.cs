@@ -730,9 +730,30 @@ namespace Infrastructure.Migrations
                     b.Property<int>("PageId")
                         .HasColumnType("int");
 
+                    b.Property<string>("SourceLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("auto");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("vi");
+
                     b.Property<string>("TranslatedText")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TranslationProvider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Google");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -748,7 +769,8 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("LayerId");
 
-                    b.HasIndex("PageId");
+                    b.HasIndex("PageId", "SourceLanguage", "TargetLanguage", "TranslationProvider")
+                        .HasDatabaseName("IX_PageTextLayer_Cache");
 
                     b.ToTable("PageTextLayer", (string)null);
                 });

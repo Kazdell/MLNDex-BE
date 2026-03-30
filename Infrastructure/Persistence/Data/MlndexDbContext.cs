@@ -490,6 +490,15 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.Width).IsRequired();
 				e.Property(x => x.Height).IsRequired();
 
+				// Translation cache metadata columns
+				e.Property(x => x.SourceLanguage).HasMaxLength(10).HasDefaultValue("auto");
+				e.Property(x => x.TargetLanguage).HasMaxLength(10).HasDefaultValue("vi");
+				e.Property(x => x.TranslationProvider).HasMaxLength(20).HasDefaultValue("Google");
+
+				// Composite index for cache lookup: (PageId, SrcLang, TgtLang, Provider)
+				e.HasIndex(x => new { x.PageId, x.SourceLanguage, x.TargetLanguage, x.TranslationProvider })
+				 .HasDatabaseName("IX_PageTextLayer_Cache");
+
 				e.HasOne(x => x.Page)
 				  .WithMany(p => p.TextLayers)
 				  .HasForeignKey(x => x.PageId)

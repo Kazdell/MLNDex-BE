@@ -8,6 +8,11 @@ namespace Application.Interfaces.Moderation
 {
   public interface IOCRService
   {
+    /// <summary>
+    /// Identifier for this OCR provider (e.g., "tesseract", "onnx")
+    /// </summary>
+    string ProviderName { get; }
+    
     // Nhận vào byte array của ảnh và trả về văn bản nhận diện được
     Task<string> ExtractTextFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng");
     
