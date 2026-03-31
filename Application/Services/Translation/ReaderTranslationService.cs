@@ -38,6 +38,12 @@ namespace Application.Services.Translation
             _httpClient = httpClient;
         }
 
+        // Supported translation providers
+        private static readonly HashSet<string> SupportedProviders = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Google", "Gemini"
+        };
+
         // =====================================================================
         // PHASE 1: SCAN BOXES ONLY (no translation)
         // Learning Cache: returns user-adjusted boxes if they exist
@@ -48,21 +54,31 @@ namespace Application.Services.Translation
 
             // ── LEARNING CACHE CHECK ──
             // Priority: user-adjusted boxes > auto-detected boxes > fresh scan
-            var cachedLayers = await _context.PageTextLayers
+            // Group by (TargetLanguage, Provider) to avoid mixing boxes from different configs
+            var allCachedLayers = await _context.PageTextLayers
                 .AsNoTracking()
                 .Where(l => l.PageId == request.PageId
                           && l.SourceLanguage == request.SourceLanguage)
-                .OrderByDescending(l => l.IsUserAdjusted)  // User-adjusted first
-                .ThenByDescending(l => l.AdjustmentCount)   // Most-adjusted second
+                .OrderByDescending(l => l.IsUserAdjusted)
+                .ThenByDescending(l => l.AdjustmentCount)
                 .ThenByDescending(l => l.CreatedAt)
                 .ToListAsync();
 
-            if (cachedLayers.Any())
+            if (allCachedLayers.Any())
             {
-                _logger.LogInformation("ScanBoxes CACHE HIT: PageId={PageId}, {Count} boxes (UserAdjusted={Adjusted})",
-                    request.PageId, cachedLayers.Count, cachedLayers.Count(l => l.IsUserAdjusted));
+                // Pick a single consistent snapshot: prefer user-adjusted group, then latest
+                var bestGroup = allCachedLayers
+                    .GroupBy(l => new { l.TargetLanguage, l.TranslationProvider })
+                    .OrderByDescending(g => g.Any(l => l.IsUserAdjusted))
+                    .ThenByDescending(g => g.Max(l => l.AdjustmentCount))
+                    .ThenByDescending(g => g.Max(l => l.CreatedAt))
+                    .First();
 
-                return cachedLayers.Select(l => new BoxScanResponse
+                _logger.LogInformation("ScanBoxes CACHE HIT: PageId={PageId}, {Count} boxes (Group={Target}/{Provider}, UserAdjusted={Adjusted})",
+                    request.PageId, bestGroup.Count(), bestGroup.Key.TargetLanguage, bestGroup.Key.TranslationProvider,
+                    bestGroup.Count(l => l.IsUserAdjusted));
+
+                return bestGroup.Select(l => new BoxScanResponse
                 {
                     LayerId = l.LayerId,
                     X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
@@ -124,9 +140,14 @@ namespace Application.Services.Translation
             if (ocrResults.Count == 0)
                 return new List<OverlayTranslationResponse>();
 
-            // ── BATCH TRANSLATE ──
+            // ── BATCH TRANSLATE (route by provider) ──
             var originalTexts = ocrResults.Select(r => r.Text).ToList();
-            List<string> translatedTexts = await _googleClient.TranslateTextsAsync(originalTexts, request.SourceLanguage, request.TargetLanguage);
+            if (!SupportedProviders.Contains(provider))
+                throw new NotSupportedException($"Translation provider '{provider}' is not supported. Supported: {string.Join(", ", SupportedProviders)}");
+
+            List<string> translatedTexts = provider.Equals("Gemini", StringComparison.OrdinalIgnoreCase)
+                ? await _aiClient.TranslateTextsAsync(originalTexts, request.TargetLanguage, $"Manga translation from {request.SourceLanguage}")
+                : await _googleClient.TranslateTextsAsync(originalTexts, request.SourceLanguage, request.TargetLanguage);
 
             // ── DELETE OLD LAYERS FOR THIS CONFIG ──
             var existingLayers = await _context.PageTextLayers
@@ -281,7 +302,7 @@ namespace Application.Services.Translation
         // =====================================================================
         public async Task<List<OverlayTranslationResponse>> TranslatePageByAiVisionAsync(int pageId, string sourceLang, string targetLang)
         {
-            const string provider = "OpenAI_Vision";
+            const string provider = "Gemini_Vision";
             
             // ── STEP 1: DELETE OLD LAYERS ──
             var existingLayers = await _context.PageTextLayers
@@ -315,10 +336,10 @@ namespace Application.Services.Translation
                 layersToSave.Add(new Domain.Entities.PageTextLayer
                 {
                     PageId = pageId,
-                    X = (int)Math.Round(r.X), // API returns %, saving as rounded % initially 
-                    Y = (int)Math.Round(r.Y),
-                    Width = (int)Math.Round(r.Width),
-                    Height = (int)Math.Round(r.Height),
+                    X = Math.Round(r.X, 2),
+                    Y = Math.Round(r.Y, 2),
+                    Width = Math.Round(r.Width, 2),
+                    Height = Math.Round(r.Height, 2),
                     OriginalText = r.OriginalText,
                     TranslatedText = r.TranslatedText,
                     CreatedAt = DateTime.UtcNow,

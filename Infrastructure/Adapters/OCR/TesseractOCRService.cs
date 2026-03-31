@@ -207,6 +207,11 @@ namespace Infrastructure.Adapters.OCR
           // Lấy kích thước ảnh gốc thông qua OpenCV Decode siêu nhẹ
           int imageWidth = 0; int imageHeight = 0;
           using (var src = Cv2.ImDecode(imageBytes, ImreadModes.Color)) {
+              if (src.Empty())
+              {
+                  _logger.LogWarning("Failed to decode original image for dimension extraction. Returning empty regions.");
+                  return regions;
+              }
               imageWidth = src.Width;
               imageHeight = src.Height;
           }
