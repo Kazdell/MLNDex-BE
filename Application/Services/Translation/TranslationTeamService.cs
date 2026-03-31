@@ -123,6 +123,12 @@ namespace Application.Services.Translation
       if (updateDto.Website != null) team.Website = updateDto.Website;
       if (updateDto.Certificates != null) team.Certificates = updateDto.Certificates;
 
+      // ── Unlock Settings ──
+      if (updateDto.UnlockEnabled.HasValue) team.UnlockEnabled = updateDto.UnlockEnabled.Value;
+      if (updateDto.DefaultUnlockPriceCoins.HasValue) team.DefaultUnlockPriceCoins = updateDto.DefaultUnlockPriceCoins;
+      if (updateDto.FreeAfterEnabled.HasValue) team.FreeAfterEnabled = updateDto.FreeAfterEnabled.Value;
+      if (updateDto.DefaultFreeAfterDays.HasValue) team.DefaultFreeAfterDays = updateDto.DefaultFreeAfterDays;
+
       if (updateDto.GenreIds != null)
       {
         var currentGenres = await _context.TeamGenres.Where(tg => tg.TeamId == teamId).ToListAsync();
@@ -750,7 +756,13 @@ namespace Application.Services.Translation
         Discord = team.Discord,
         Website = team.Website,
         Certificates = team.Certificates,
-        Genres = team.TeamGenres?.Select(tg => tg.Genre?.Name ?? "Unknown").ToList()
+        Genres = team.TeamGenres?.Select(tg => tg.Genre?.Name ?? "Unknown").ToList(),
+
+        // ── Unlock Settings ──
+        UnlockEnabled = team.UnlockEnabled,
+        DefaultUnlockPriceCoins = team.DefaultUnlockPriceCoins,
+        FreeAfterEnabled = team.FreeAfterEnabled,
+        DefaultFreeAfterDays = team.DefaultFreeAfterDays
       };
     }
   }

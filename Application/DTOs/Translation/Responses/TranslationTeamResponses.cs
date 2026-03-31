@@ -26,6 +26,12 @@ namespace Application.DTOs.Translation.Responses
     public string? Certificates { get; set; }
     public int MemberCount { get; set; }
     public string Role { get; set; } = string.Empty;
+
+    // ── Unlock Settings ──
+    public bool? UnlockEnabled { get; set; }
+    public int? DefaultUnlockPriceCoins { get; set; }
+    public bool? FreeAfterEnabled { get; set; }
+    public int? DefaultFreeAfterDays { get; set; }
   }
 
   // Team member summary response

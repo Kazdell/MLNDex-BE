@@ -35,6 +35,12 @@ namespace Application.DTOs.Translation.Requests
     public string? Discord { get; set; }
     public string? Website { get; set; }
     public string? Certificates { get; set; }
+
+    // ── Unlock Settings ──
+    public bool? UnlockEnabled { get; set; }
+    public int? DefaultUnlockPriceCoins { get; set; }
+    public bool? FreeAfterEnabled { get; set; }
+    public int? DefaultFreeAfterDays { get; set; }
   }
 
   // Invite a member to the team
