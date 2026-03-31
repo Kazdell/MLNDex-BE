@@ -551,6 +551,12 @@ namespace Infrastructure.Persistence.Data
 						  .WithMany(l => l.Translations)
 						  .HasForeignKey(x => x.LanguageId)
 						  .OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.Team)
+						  .WithMany(t => t.Translations)
+						  .HasForeignKey(x => x.TeamId)
+						  .OnDelete(DeleteBehavior.Restrict)
+						  .IsRequired(false);
 			});
 
 			// ====================================================

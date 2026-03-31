@@ -104,6 +104,7 @@ namespace Application.DTOs.Creator
         public int PageCount { get; set; }
         public bool IsOfficialTranslation { get; set; } // If it's a translation and has official permission
         public bool IsUnlockedByUser { get; set; }
+        public int? TranslationId { get; set; }
     }
 
     public class SeriesSearchRequest

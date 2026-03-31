@@ -3,6 +3,7 @@ namespace Application.DTOs.Chapter
   public class ChapterListItemDto
   {
     public int ChapterId { get; set; }
+    public int? TranslationId { get; set; }
     public float ChapterNumber { get; set; }
     public string? Title { get; set; }
     public string Status { get; set; } = string.Empty;

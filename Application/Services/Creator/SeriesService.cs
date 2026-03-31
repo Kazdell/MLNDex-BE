@@ -518,7 +518,8 @@ namespace Application.Services.Creator
                       .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
                       .Select(t => new SeriesChapterDto
                       {
-                          ChapterId = t.TranslationId, // Use TranslationId as the identifier for reading
+                          ChapterId = c.ChapterId,
+                          TranslationId = t.TranslationId,
                           Title = c.Title ?? "Untitled",
                           ChapterNumber = (int)c.ChapterNumber,
                           Price = 0,

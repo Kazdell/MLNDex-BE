@@ -8,6 +8,10 @@ namespace Application.DTOs.Translation.Responses
   {
     public int TranslationId { get; set; }
     public int ChapterId { get; set; }
+    public int? SeriesId { get; set; }
+    public string? SeriesTitle { get; set; }
+    public string? Title { get; set; }
+    public float? ChapterNumber { get; set; }
     public int LanguageId { get; set; }
     public string LanguageName { get; set; } = string.Empty;
     public int? TeamId { get; set; }
