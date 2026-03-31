@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
 using Application.DTOs.Translation.Requests;
 using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Common;

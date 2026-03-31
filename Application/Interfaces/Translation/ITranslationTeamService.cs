@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
 using Application.DTOs.Translation.Requests;
 using Application.DTOs.Translation.Responses;
 
@@ -32,8 +31,8 @@ namespace Application.Interfaces.Translation
     Task<TeamMemberResponse> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleRequest roleDto);
 
     // Team stats and series
-    Task<IEnumerable<TeamSeriesDto>> GetTeamSeriesAsync(int teamId);
-    Task<TeamStatsDto> GetTeamStatsAsync(int teamId);
+    Task<IEnumerable<TeamSeriesResponse>> GetTeamSeriesAsync(int teamId);
+    Task<TeamStatsResponse> GetTeamStatsAsync(int teamId);
     Task<IEnumerable<TranslationTeamResponse>> GetUserTeamsAsync(int userId, int limit = 5);
   }
 }

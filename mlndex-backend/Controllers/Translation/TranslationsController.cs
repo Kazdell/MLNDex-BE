@@ -2,7 +2,8 @@ using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Data;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
@@ -62,7 +63,7 @@ namespace mlndex_backend.Controllers.Translation
           Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
 
-        var dto = new UploadTranslationDto
+        var dto = new UploadTranslationRequest
         {
           ChapterId = req.ChapterId,
           PermissionId = req.PermissionId,
@@ -77,7 +78,7 @@ namespace mlndex_backend.Controllers.Translation
             PageNumber = index + 1
           }).ToList(),
           Credits = !string.IsNullOrEmpty(req.CreditsJson)
-            ? System.Text.Json.JsonSerializer.Deserialize<List<TranslationCreditDto>>(req.CreditsJson, jsonOptions)
+            ? System.Text.Json.JsonSerializer.Deserialize<List<TranslationCreditItem>>(req.CreditsJson, jsonOptions)
             : null,
           JointTeamIds = !string.IsNullOrEmpty(req.JointTeamIdsJson)
             ? System.Text.Json.JsonSerializer.Deserialize<List<int>>(req.JointTeamIdsJson)
@@ -145,7 +146,7 @@ namespace mlndex_backend.Controllers.Translation
 
     // Edit translation metadata or content.
     [HttpPut("{id}")]
-    public async Task<IActionResult> EditTranslation(int id, [FromBody] EditTranslationDto dto)
+    public async Task<IActionResult> EditTranslation(int id, [FromBody] EditTranslationRequest dto)
     {
       try
       {

@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.User;
 using Application.Interfaces.Translation;
 using Application.DTOs.Common;
 using Microsoft.AspNetCore.Authorization;

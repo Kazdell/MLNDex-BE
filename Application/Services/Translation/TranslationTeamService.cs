@@ -1,7 +1,6 @@
 using Application.Interfaces.Notification;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
-using Application.DTOs.Translation;
 using Application.DTOs.Translation.Requests;
 using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
@@ -572,7 +571,7 @@ namespace Application.Services.Translation
       };
     }
 
-    public async Task<IEnumerable<TeamSeriesDto>> GetTeamSeriesAsync(int teamId)
+    public async Task<IEnumerable<TeamSeriesResponse>> GetTeamSeriesAsync(int teamId)
     {
       var permissions = await _context.TranslationPermissions
           .Include(p => p.Series)
@@ -580,7 +579,7 @@ namespace Application.Services.Translation
           .Where(p => p.TeamId == teamId)
           .ToListAsync();
 
-      return permissions.Select(p => new TeamSeriesDto
+      return permissions.Select(p => new TeamSeriesResponse
       {
         SeriesId = p.SeriesId,
         PermissionId = p.PermissionId,
@@ -600,7 +599,7 @@ namespace Application.Services.Translation
       });
     }
 
-    public async Task<TeamStatsDto> GetTeamStatsAsync(int teamId)
+    public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
     {
       var translatedChaptersCount = await _context.Translations
           .CountAsync(t => t.Permission.TeamId == teamId);
@@ -608,7 +607,7 @@ namespace Application.Services.Translation
       var activeSeriesCount = await _context.TranslationPermissions
           .CountAsync(p => p.TeamId == teamId && (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL));
 
-      return new TeamStatsDto
+      return new TeamStatsResponse
       {
         TotalViews = 0, // Translation views tracking not yet implemented
         TotalBookmarks = 0,

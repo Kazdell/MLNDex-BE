@@ -108,9 +108,9 @@ namespace Infrastructure.Adapters.Translation
       return fallbackList;
     }
 
-    public async Task<List<Application.DTOs.Translation.OverlayTranslationResponse>> TranslatePageByAiVisionAsync(string base64Image, string sourceLanguage, string targetLanguage)
+    public async Task<List<Application.DTOs.User.OverlayTranslationResponse>> TranslatePageByAiVisionAsync(string base64Image, string sourceLanguage, string targetLanguage)
     {
-      if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.Translation.OverlayTranslationResponse>();
+      if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.User.OverlayTranslationResponse>();
 
       var systemPrompt = $@"You are an expert manga/comic translator and layout analyzer. 
 Analyze the provided manga page image. 
@@ -171,7 +171,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
-      var resultRegions = new List<Application.DTOs.Translation.OverlayTranslationResponse>();
+      var resultRegions = new List<Application.DTOs.User.OverlayTranslationResponse>();
 
       try
       {
@@ -187,7 +187,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
             {
               foreach (var region in regionsArray.EnumerateArray())
               {
-                resultRegions.Add(new Application.DTOs.Translation.OverlayTranslationResponse
+                resultRegions.Add(new Application.DTOs.User.OverlayTranslationResponse
                 {
                    OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
                    TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",

@@ -9,7 +9,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
 using Application.Interfaces.Notification;
 using Domain.Entities;
@@ -42,7 +43,7 @@ namespace Application.Services.Translation
       _moderationService = moderationService;
     }
 
-    public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
+    public async Task<TranslationResponse> UploadTranslationAsync(UploadTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null) throw new UnauthorizedAccessException();
@@ -290,7 +291,7 @@ namespace Application.Services.Translation
       }
     } // end UploadTranslationAsync
 
-    public async Task<TranslationDto?> GetTranslationByIdAsync(int translationId)
+    public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
           .Include(t => t.TranslationPages)
@@ -302,7 +303,7 @@ namespace Application.Services.Translation
       return MapToDto(translation);
     }
 
-    public async Task<IEnumerable<TranslationDto>> GetTranslationsBySeriesAsync(int seriesId)
+    public async Task<IEnumerable<TranslationResponse>> GetTranslationsBySeriesAsync(int seriesId)
     {
       var translations = await _context.Translations
           .Include(t => t.Chapter)
@@ -312,13 +313,13 @@ namespace Application.Services.Translation
       return translations.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<TranslationDto>> GetAllTranslationsAsync()
+    public async Task<IEnumerable<TranslationResponse>> GetAllTranslationsAsync()
     {
       var translations = await _context.Translations.ToListAsync();
       return translations.Select(MapToDto);
     }
 
-    public async Task<TranslationDto> EditTranslationAsync(int translationId, EditTranslationDto dto)
+    public async Task<TranslationResponse> EditTranslationAsync(int translationId, EditTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null) throw new UnauthorizedAccessException();
@@ -372,9 +373,9 @@ namespace Application.Services.Translation
       return true;
     }
 
-    private TranslationDto MapToDto(Domain.Entities.Translation t)
+    private TranslationResponse MapToDto(Domain.Entities.Translation t)
     {
-      return new TranslationDto
+      return new TranslationResponse
       {
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,

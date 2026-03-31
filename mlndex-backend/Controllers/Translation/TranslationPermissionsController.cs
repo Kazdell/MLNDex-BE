@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -23,7 +23,7 @@ namespace mlndex_backend.Controllers.Translation
     // Request permission from series creator to translate a series.
     [Authorize]
     [HttpPost("request")]
-    public async Task<IActionResult> RequestPermission([FromBody] RequestPermissionDto dto)
+    public async Task<IActionResult> RequestPermission([FromBody] RequestPermissionRequest dto)
     {
       try
       {
@@ -43,7 +43,7 @@ namespace mlndex_backend.Controllers.Translation
     // Series creator reviews (Approve/Reject) a translation request.
     [Authorize]
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> ReviewPermission(int id, [FromBody] ReviewPermissionDto dto)
+    public async Task<IActionResult> ReviewPermission(int id, [FromBody] ReviewPermissionRequest dto)
     {
       try
       {
