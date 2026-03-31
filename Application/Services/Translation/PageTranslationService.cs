@@ -71,8 +71,13 @@ namespace Application.Services.Translation
                 throw new Exception("Chapter Page not found: " + pageId);
             }
 
-            // 2. Clear existing layers (if regenerating)
-            var existingLayers = await _context.PageTextLayers.Where(l => l.PageId == pageId).ToListAsync();
+            // 2. Clear existing layers for this specific config only (not all languages)
+            var existingLayers = await _context.PageTextLayers
+                .Where(l => l.PageId == pageId
+                         && l.SourceLanguage == "auto"
+                         && l.TargetLanguage == targetLanguage
+                         && l.TranslationProvider == "Gemini")
+                .ToListAsync();
             if (existingLayers.Any())
             {
                 _context.PageTextLayers.RemoveRange(existingLayers);
@@ -125,7 +130,7 @@ namespace Application.Services.Translation
                     IsVerified = false,
                     SourceLanguage = "auto",
                     TargetLanguage = targetLanguage,
-                    TranslationProvider = "OpenAI"
+                    TranslationProvider = "Gemini"  // Matches DI: IAiTranslationClient = GeminiTranslationClient
                 };
                 layersToSave.Add(layer);
             }

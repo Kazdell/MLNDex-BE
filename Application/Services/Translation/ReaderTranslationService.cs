@@ -298,7 +298,7 @@ namespace Application.Services.Translation
         }
 
         // =====================================================================
-        // VISION: GPT-4 Vision translation for whole page
+        // VISION: Gemini Vision translation for whole page
         // =====================================================================
         public async Task<List<OverlayTranslationResponse>> TranslatePageByAiVisionAsync(int pageId, string sourceLang, string targetLang)
         {

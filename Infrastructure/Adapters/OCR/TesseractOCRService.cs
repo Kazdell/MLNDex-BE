@@ -47,41 +47,55 @@ namespace Infrastructure.Adapters.OCR
       };
     }
 
-    private byte[] PreprocessImageWithOpenCV(byte[] imageBytes, bool invert = false)
+    /// <summary>
+    /// Create TesseractEngine with fallback to 'eng' on failure. Always logs the fallback.
+    /// </summary>
+    private TesseractEngine CreateTesseractEngine(string language)
+    {
+        try
+        {
+            return new TesseractEngine(_dataPath, language, EngineMode.LstmOnly);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize Tesseract with '{Lang}'. Falling back to 'eng'", language);
+            return new TesseractEngine(_dataPath, "eng", EngineMode.LstmOnly);
+        }
+    }
+
+    /// <summary>
+    /// Preprocess image with OpenCV: Otsu binarization + furigana removal.
+    /// Returns (processedPngBytes, originalWidth, originalHeight) to avoid double-decode.
+    /// </summary>
+    private (byte[] PngBytes, int OriginalWidth, int OriginalHeight) PreprocessImageWithOpenCV(byte[] imageBytes, bool invert = false)
     {
         using var src = Cv2.ImDecode(imageBytes, ImreadModes.Color);
-        if (src.Empty()) return imageBytes; // fallback
+        if (src.Empty()) return (imageBytes, 0, 0); // fallback
 
-        /* 
-         * THUẬT TOÁN KHỬ NHIỄU OPENCV (ĐỂ DÀNH NẾU CẦN THÊM ĐỘ CHÍNH XÁC CAO NHƯNG TỐN THỜI GIAN)
-         * - Cách dùng: Bỏ comment đoạn mã dưới. Nó sẽ tốn thêm ~1s CPU nhưng làm sạch hoàn toàn
-         * background manga nhiều sạn.
-         * 
-         * using var denoised = new Mat();
-         * Cv2.FastNlMeansDenoisingColored(src, denoised, 5.5f);
-         * var processImg = denoised;
-         */
-        var processImg = src;
+        // Capture original dimensions from this single decode
+        int originalWidth = src.Width;
+        int originalHeight = src.Height;
 
         using var gray = new Mat();
-        Cv2.CvtColor(processImg, gray, ColorConversionCodes.BGR2GRAY);
+        Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
         using var binarized = new Mat();
-        // Áp dụng Otsu Thresholding tự động tìm lằn ranh nền trắng chữ đen (chuẩn Manga)
+        // Otsu Thresholding: auto-find optimal threshold for white bg / black text (manga standard)
         Cv2.Threshold(gray, binarized, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
 
         // --- FURIGANA REMOVAL (OpenCV Sandpaper) ---
-        // 1. Invert image to find contours (Text -> White, Bg -> Black)
         using var invertedForContours = new Mat();
         Cv2.BitwiseNot(binarized, invertedForContours);
+
+        // Dynamic threshold: scale with image resolution instead of hardcoded 14px
+        // ~1.4% of image width, min 10px, max 30px
+        int furiganaThreshold = Math.Clamp(originalWidth * 14 / 1000, 10, 30);
 
         Cv2.FindContours(invertedForContours, out OpenCvSharp.Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
         foreach (var contour in contours)
         {
             var rect = Cv2.BoundingRect(contour);
-            // Nếu diện tích quá bé (Width và Height nhỏ), khả năng cao là Furigana hoặc nhiễu rác
-            // Xóa bằng cách tô trắng đè lên binarized (trả về nền trắng gốc)
-            if (rect.Width < 14 && rect.Height < 14) 
+            if (rect.Width < furiganaThreshold && rect.Height < furiganaThreshold) 
             {
                 Cv2.DrawContours(binarized, new[] { contour }, -1, Scalar.White, -1);
             }
@@ -94,7 +108,7 @@ namespace Infrastructure.Adapters.OCR
         }
 
         Cv2.ImEncode(".png", binarized, out byte[] pngBytes);
-        return pngBytes;
+        return (pngBytes, originalWidth, originalHeight);
     }
 
     public async Task<string> ExtractTextFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng")
@@ -104,7 +118,7 @@ namespace Infrastructure.Adapters.OCR
       {
         try
         {
-          byte[] pngBytes = PreprocessImageWithOpenCV(imageBytes);
+          var (pngBytes, _, _) = PreprocessImageWithOpenCV(imageBytes);
 
           using var engine = new TesseractEngine(_dataPath, languageCode, EngineMode.LstmOnly);
           using var img = Pix.LoadFromMemory(pngBytes);
@@ -135,7 +149,8 @@ namespace Infrastructure.Adapters.OCR
             using var gray = new Mat();
             Cv2.CvtColor(cropped, gray, ColorConversionCodes.BGR2GRAY);
             using var binarized = new Mat();
-            Cv2.Threshold(gray, binarized, 150, 255, ThresholdTypes.Binary);
+            // Use Otsu auto-threshold (same as PreprocessImageWithOpenCV) for consistent quality
+            Cv2.Threshold(gray, binarized, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
 
             Cv2.ImEncode(".png", binarized, out byte[] pngBytes);
 
@@ -201,26 +216,20 @@ namespace Infrastructure.Adapters.OCR
         var regions = new List<Application.Models.OCR.OCRRegion>();
         try
         {
-          // Tiền xử lý gốc bằng Otsu
-          byte[] pngBytes = PreprocessImageWithOpenCV(imageBytes);
+          // Preprocess + extract dimensions in single decode (no double-decode)
+          var (pngBytes, imageWidth, imageHeight) = PreprocessImageWithOpenCV(imageBytes);
 
-          // Lấy kích thước ảnh gốc thông qua OpenCV Decode siêu nhẹ
-          int imageWidth = 0; int imageHeight = 0;
-          using (var src = Cv2.ImDecode(imageBytes, ImreadModes.Color)) {
-              if (src.Empty())
-              {
-                  _logger.LogWarning("Failed to decode original image for dimension extraction. Returning empty regions.");
-                  return regions;
-              }
-              imageWidth = src.Width;
-              imageHeight = src.Height;
+          if (imageWidth == 0 || imageHeight == 0)
+          {
+              _logger.LogWarning("Failed to decode image (0x0 dimensions). Returning empty regions.");
+              return regions;
           }
 
           var actualLang = languageCode;
           if (languageCode.Contains("jpn"))
           {
               if (File.Exists(Path.Combine(_dataPath, "jpn_vert.traineddata")))
-                 actualLang = "jpn_vert+jpn"; // Ưu tiên chữ dọc (Vertical Japanese)
+                 actualLang = "jpn_vert+jpn";
               else
                  actualLang = "jpn"; 
           }
@@ -246,18 +255,8 @@ namespace Infrastructure.Adapters.OCR
                  actualLang = "chi_tra";
           }
           
-          TesseractEngine engine;
-          try 
-          {
-              engine = new TesseractEngine(_dataPath, actualLang, EngineMode.LstmOnly);
-          }
-          catch (Exception initEx)
-          {
-              _logger.LogWarning(initEx, "Failed to initialize Tesseract with {Lang}. Falling back to 'eng'", actualLang);
-              engine = new TesseractEngine(_dataPath, "eng", EngineMode.LstmOnly);
-          }
-
-          using (engine)
+          // Clean dispose pattern: using declaration ensures disposal in all paths
+          using var engine = CreateTesseractEngine(actualLang);
           {
               void ExtractBlocks(Pix imgPix, List<Application.Models.OCR.OCRRegion> targetRegions)
               {
@@ -407,13 +406,12 @@ namespace Infrastructure.Adapters.OCR
                   ExtractBlocks(img, regions);
               }
 
-              // Fallback: Nếu không tìm thấy chữ nền trắng chữ đen -> thử nền đen chữ trắng
               int totalChars = regions.Sum(r => r.Text.Length);
               if (totalChars < 25)
               {
                   _logger.LogInformation($"Normal OCR found only {totalChars} chars. Inverting colors... (Otsu Inverse)");
                   var invertedRegions = new List<Application.Models.OCR.OCRRegion>();
-                  byte[] invertedBytes = PreprocessImageWithOpenCV(imageBytes, invert: true);
+                  var (invertedBytes, _, _) = PreprocessImageWithOpenCV(imageBytes, invert: true);
                   
                   using (var invertedImgPix = Pix.LoadFromMemory(invertedBytes))
                   {
@@ -424,6 +422,10 @@ namespace Infrastructure.Adapters.OCR
                   if (invertedChars >= totalChars) 
                   {
                      regions = invertedRegions;
+                  }
+                  else
+                  {
+                     _logger.LogInformation("Inverted OCR did not improve results. Keeping original.");
                   }
               }
           }
@@ -462,15 +464,9 @@ namespace Infrastructure.Adapters.OCR
           else if (languageCode.Contains("kor") && File.Exists(Path.Combine(_dataPath, "kor_vert.traineddata"))) actualLang = "kor_vert+kor";
           else if (languageCode.Contains("chi_sim") && File.Exists(Path.Combine(_dataPath, "chi_sim_vert.traineddata"))) actualLang = "chi_sim_vert+chi_sim";
 
-          TesseractEngine engine;
-          try { engine = new TesseractEngine(_dataPath, actualLang, EngineMode.LstmOnly); }
-          catch { engine = new TesseractEngine(_dataPath, "eng", EngineMode.LstmOnly); }
-
-          using (engine)
-          {
-              var roi = new OpenCvSharp.Rect(cropX, cropY, cropW, cropH);
-              return ExtractBestTextFromCrop(src, roi, actualLang, engine);
-          }
+          using var engine = CreateTesseractEngine(actualLang);
+          var roi = new OpenCvSharp.Rect(cropX, cropY, cropW, cropH);
+          return ExtractBestTextFromCrop(src, roi, actualLang, engine);
         }
         catch (Exception ex)
         {
