@@ -31,7 +31,7 @@ namespace Domain.Entities
     // Translation cache metadata — ISO 639-1 codes
     public string SourceLanguage { get; set; } = "auto";        // auto, zh, ja, ko, en, vi
     public string TargetLanguage { get; set; } = "vi";           // vi, en, ja, ko, zh
-    public string TranslationProvider { get; set; } = "Google";  // "Google" or "OpenAI"
+    public string TranslationProvider { get; set; } = "Google";  // "Google", "Gemini", or "Gemini_Vision"
 
     // Navigation
     public ChapterPage Page { get; set; } = null!;

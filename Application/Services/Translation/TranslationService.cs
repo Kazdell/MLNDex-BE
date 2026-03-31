@@ -9,7 +9,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
 using Application.Interfaces.Notification;
 using Domain.Entities;
@@ -42,7 +43,7 @@ namespace Application.Services.Translation
       _moderationService = moderationService;
     }
 
-    public async Task<TranslationDto> UploadTranslationAsync(UploadTranslationDto dto)
+    public async Task<TranslationResponse> UploadTranslationAsync(UploadTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null) throw new UnauthorizedAccessException();
@@ -72,9 +73,11 @@ namespace Application.Services.Translation
             ?? throw new Exception("Chapter not found.");
         if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
 
-        // Verify uploader is in the team
-        if (!permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
-          throw new Exception("Uploader is not an active member of the translation team.");
+        // Verify uploader is in the team or is the leader
+        bool isUploaderValid = permission.Team.LeaderId == uploaderId || 
+                               permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+        if (!isUploaderValid)
+          throw new Exception("Uploader is not an active member or leader of the translation team.");
 
         isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
         resolvedTeamId = permission.TeamId;
@@ -95,8 +98,10 @@ namespace Application.Services.Translation
         if (team == null)
           throw new Exception("Translation team not found.");
 
-        if (!team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
-          throw new Exception("Uploader is not an active member of the translation team.");
+        bool isUploaderValid = team.LeaderId == uploaderId || 
+                               team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+        if (!isUploaderValid)
+          throw new Exception("Uploader is not an active member or leader of the translation team.");
 
         // Verify chapter exists
         chapter = await _context.Chapters
@@ -132,7 +137,7 @@ namespace Application.Services.Translation
                Origin = PermissionOrigin.REQUESTED_BY_TEAM,
                GrantedBy = creatorUserId,
                Status = TranslationPermissionStatus.UNOFFICIAL,
-               GrantedAt = DateTime.UtcNow
+               GrantedAt = null
             };
             _context.TranslationPermissions.Add(newPerm);
             await _context.SaveChangesAsync();
@@ -143,7 +148,7 @@ namespace Application.Services.Translation
       var translation = new Domain.Entities.Translation
       {
         ChapterId = dto.ChapterId,
-        PermissionId = dto.PermissionId, // null for unofficial
+        PermissionId = dto.PermissionId, // always set — populated by both official and unofficial paths above
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,
@@ -290,9 +295,12 @@ namespace Application.Services.Translation
       }
     } // end UploadTranslationAsync
 
-    public async Task<TranslationDto?> GetTranslationByIdAsync(int translationId)
+    public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
@@ -302,9 +310,12 @@ namespace Application.Services.Translation
       return MapToDto(translation);
     }
 
-    public async Task<IEnumerable<TranslationDto>> GetTranslationsBySeriesAsync(int seriesId)
+    public async Task<IEnumerable<TranslationResponse>> GetTranslationsBySeriesAsync(int seriesId)
     {
       var translations = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
           .Include(t => t.Chapter)
           .Where(t => t.Chapter.SeriesId == seriesId)
           .ToListAsync();
@@ -312,13 +323,17 @@ namespace Application.Services.Translation
       return translations.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<TranslationDto>> GetAllTranslationsAsync()
+    public async Task<IEnumerable<TranslationResponse>> GetAllTranslationsAsync()
     {
-      var translations = await _context.Translations.ToListAsync();
+      var translations = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+          .ToListAsync();
       return translations.Select(MapToDto);
     }
 
-    public async Task<TranslationDto> EditTranslationAsync(int translationId, EditTranslationDto dto)
+    public async Task<TranslationResponse> EditTranslationAsync(int translationId, EditTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null) throw new UnauthorizedAccessException();
@@ -333,7 +348,9 @@ namespace Application.Services.Translation
       
       if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
-      if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+      bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId || 
+                             translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+      if (!isUploaderValid)
       {
         throw new Exception("Unauthorized to edit.");
       }
@@ -362,23 +379,60 @@ namespace Application.Services.Translation
       
       if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
-      if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+      bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId || 
+                             translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+      if (!isUploaderValid)
       {
         throw new Exception("Unauthorized to delete.");
       }
 
+      var urlsToDelete = new List<string>();
+
+      var pages = await _context.TranslationPages.Where(p => p.TranslationId == translationId).ToListAsync();
+      urlsToDelete.AddRange(pages.Select(p => p.TranslationImageUrl));
+
+      var text = await _context.TranslationTexts.Where(t => t.TranslationId == translationId).FirstOrDefaultAsync();
+      if (text != null && !string.IsNullOrEmpty(text.ContentUrl))
+      {
+        urlsToDelete.Add(text.ContentUrl);
+      }
+
       _context.Translations.Remove(translation);
       await _context.SaveChangesAsync();
+
+      // Delete physical files from Storage Service
+      var semaphore = new SemaphoreSlim(5);
+      var deleteTasks = urlsToDelete.Where(url => !string.IsNullOrEmpty(url)).Select(async url =>
+      {
+          await semaphore.WaitAsync();
+          try
+          {
+              await _storage.DeleteAsync(url);
+          }
+          catch (Exception ex)
+          {
+              _logger.LogWarning(ex, "Failed to delete storage file {Url} for translation {TranslationId}", url, translationId);
+          }
+          finally
+          {
+              semaphore.Release();
+          }
+      });
+      await Task.WhenAll(deleteTasks);
+
       return true;
     }
 
-    private TranslationDto MapToDto(Domain.Entities.Translation t)
+    private TranslationResponse MapToDto(Domain.Entities.Translation t)
     {
-      return new TranslationDto
+      return new TranslationResponse
       {
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,
         LanguageId = t.LanguageId,
+        LanguageName = t.Language?.Name ?? string.Empty,
+        TeamId = t.Permission?.TeamId,
+        TeamName = t.Permission?.Team?.TeamName ?? string.Empty,
         ContentType = t.ContentType.ToString(),
         QualityStatus = t.QualityStatus.ToString(),
         ModerationStatus = t.ModerationStatus.ToString(),

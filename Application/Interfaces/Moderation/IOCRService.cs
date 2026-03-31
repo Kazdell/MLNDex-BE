@@ -19,8 +19,11 @@ namespace Application.Interfaces.Moderation
     // Trả về danh sách các vùng văn bản kèm tọa độ
     Task<List<Application.Models.OCR.OCRRegion>> ExtractTextRegionsFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng");
 
-    // Crop image to specific region (% coords) and OCR only that area
-    // Default implementation falls back to full image OCR for backward compatibility
+    /// <summary>
+    /// Crop image to specific region (% coords) and OCR only that area.
+    /// WARNING: Default implementation falls back to full image OCR, ignoring crop params!
+    /// New providers MUST override this method for correct behavior.
+    /// </summary>
     Task<string> ExtractTextFromCroppedRegionAsync(byte[] imageBytes, double xPct, double yPct, double wPct, double hPct, string languageCode = "auto")
       => ExtractTextFromImageAsync(imageBytes, languageCode);
   }

@@ -390,24 +390,42 @@ namespace Application.Services.Creator
             var chapter = translation.Chapter;
             if (chapter == null) return null;
 
-            // Build chapter list for the series (all published chapters + translations)
-            var chapters = await _db.Chapters
-                .Include(c => c.Team)
-                .Include(c => c.Language)
-                .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
-                .OrderByDescending(c => c.ChapterNumber)
-                .Select(c => new ChapterSummaryDto
+            // Build chapter list for the series (translations from the same team)
+            var chapters = await _db.Translations
+                .Include(t => t.Chapter)
+                .Include(t => t.Language)
+                .Include(t => t.Permission)
+                    .ThenInclude(p => p.Team)
+                .Where(t => t.Chapter.SeriesId == chapter.SeriesId 
+                         && t.Permission != null
+                         && t.Permission.TeamId == translation.Permission.TeamId 
+                         && t.Chapter.Status == ChapterStatus.PUBLISHED)
+                .OrderByDescending(t => t.Chapter.ChapterNumber)
+                .Select(t => new ChapterSummaryDto
                 {
-                    ChapterId = c.ChapterId,
-                    ChapterNumber = c.ChapterNumber,
-                    Title = c.Title,
-                    TeamId = c.TeamId,
-                    TeamName = c.Team != null ? c.Team.TeamName : null,
-                    LanguageCode = c.Language != null ? c.Language.Code : null,
-                    LanguageName = c.Language != null ? c.Language.Name : null,
-                    IsOriginal = c.TeamId == null
+                    ChapterId = t.Chapter.ChapterId,
+                    TranslationId = t.TranslationId,
+                    ChapterNumber = t.Chapter.ChapterNumber,
+                    Title = t.Chapter.Title,
+                    TeamId = t.Permission.TeamId,
+                    TeamName = t.Permission.Team != null ? t.Permission.Team.TeamName : null,
+                    LanguageCode = t.Language != null ? t.Language.Code : null,
+                    LanguageName = t.Language != null ? t.Language.Name : null,
+                    IsOriginal = false
                 })
                 .ToListAsync(ct);
+
+            var prevTranslationId = chapters
+                .Where(c => c.ChapterNumber < chapter.ChapterNumber)
+                .OrderByDescending(c => c.ChapterNumber)
+                .Select(c => c.TranslationId)
+                .FirstOrDefault();
+
+            var nextTranslationId = chapters
+                .Where(c => c.ChapterNumber > chapter.ChapterNumber)
+                .OrderBy(c => c.ChapterNumber)
+                .Select(c => c.TranslationId)
+                .FirstOrDefault();
 
             var dto = new ChapterDetailDto
             {
@@ -418,6 +436,8 @@ namespace Application.Services.Creator
                 TranslatorTeamName = translation.Permission?.Team?.TeamName,
                 ChapterNumber = chapter.ChapterNumber,
                 Title = chapter.Title,
+                PrevChapterId = prevTranslationId,
+                NextChapterId = nextTranslationId,
                 Chapters = chapters,
                 IsTranslation = true,
                 IsOfficial = translation.IsOfficial,

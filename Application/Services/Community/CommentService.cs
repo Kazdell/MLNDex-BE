@@ -23,12 +23,20 @@ namespace Application.Services.Community
     {
       if (request.ParentCommentId.HasValue)
       {
-        var parentExists = await _context.Comments.AnyAsync(
+        var parent = await _context.Comments.FirstOrDefaultAsync(
             c => c.CommentId == request.ParentCommentId.Value,
             cancellationToken
         );
-        if (!parentExists)
+
+        if (parent == null)
           throw new KeyNotFoundException("Parent comment không tồn tại.");
+
+        if (parent.ParentCommentId != null)
+          throw new InvalidOperationException("Không thể reply một comment đã là reply (chỉ hỗ trợ 2 cấp độ bình luận).");
+
+        // Inherit Target information from parent to prevent Target Hijacking
+        request.TargetId = parent.TargetId;
+        request.TargetType = parent.TargetType;
       }
 
       var now = DateTime.UtcNow;

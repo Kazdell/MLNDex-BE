@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.User;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Translation;
@@ -36,13 +36,13 @@ namespace Application.Services.Translation
             _httpClient = httpClient;
         }
 
-        public async Task<List<PageTextLayerDto>> GetPageTextLayerAsync(int pageId)
+        public async Task<List<PageTextLayerResponse>> GetPageTextLayerAsync(int pageId)
         {
             var layers = await _context.PageTextLayers
                 .Where(l => l.PageId == pageId)
                 .ToListAsync();
 
-            return layers.Select(l => new PageTextLayerDto
+            return layers.Select(l => new PageTextLayerResponse
             {
                 LayerId = l.LayerId,
                 PageId = l.PageId,
@@ -59,7 +59,7 @@ namespace Application.Services.Translation
             }).ToList();
         }
 
-        public async Task<List<PageTextLayerDto>> GeneratePageTextLayerAsync(int pageId, string targetLanguage = "Vietnamese")
+        public async Task<List<PageTextLayerResponse>> GeneratePageTextLayerAsync(int pageId, string targetLanguage = "Vietnamese")
         {
             // 1. Get the page from DB
             var page = await _context.ChapterPages
@@ -71,8 +71,34 @@ namespace Application.Services.Translation
                 throw new Exception("Chapter Page not found: " + pageId);
             }
 
-            // 2. Clear existing layers (if regenerating)
-            var existingLayers = await _context.PageTextLayers.Where(l => l.PageId == pageId).ToListAsync();
+            // 2. Clear existing layers for this specific config only (not all languages)
+            var existingLayers = await _context.PageTextLayers
+                .Where(l => l.PageId == pageId
+                         && l.SourceLanguage == "auto"
+                         && l.TargetLanguage == targetLanguage
+                         && l.TranslationProvider == "Gemini")
+                .ToListAsync();
+
+            if (existingLayers.Any(l => l.IsUserAdjusted))
+            {
+                // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay (Bảo vệ dữ liệu)
+                return existingLayers.Select(l => new PageTextLayerResponse
+                {
+                    LayerId = l.LayerId,
+                    PageId = l.PageId,
+                    X = l.X,
+                    Y = l.Y,
+                    Width = l.Width,
+                    Height = l.Height,
+                    OriginalText = l.OriginalText,
+                    TranslatedText = l.TranslatedText,
+                    IsVerified = l.IsVerified,
+                    SourceLanguage = l.SourceLanguage,
+                    TargetLanguage = l.TargetLanguage,
+                    TranslationProvider = l.TranslationProvider
+                }).ToList();
+            }
+
             if (existingLayers.Any())
             {
                 _context.PageTextLayers.RemoveRange(existingLayers);
@@ -96,7 +122,7 @@ namespace Application.Services.Translation
 
             if (regions == null || regions.Count == 0)
             {
-                return new List<PageTextLayerDto>();
+                return new List<PageTextLayerResponse>();
             }
 
             // 5. Build context for AI translation
@@ -125,7 +151,7 @@ namespace Application.Services.Translation
                     IsVerified = false,
                     SourceLanguage = "auto",
                     TargetLanguage = targetLanguage,
-                    TranslationProvider = "OpenAI"
+                    TranslationProvider = "Gemini"  // Matches DI: IAiTranslationClient = GeminiTranslationClient
                 };
                 layersToSave.Add(layer);
             }
@@ -133,7 +159,7 @@ namespace Application.Services.Translation
             _context.PageTextLayers.AddRange(layersToSave);
             await _context.SaveChangesAsync();
 
-            return layersToSave.Select(l => new PageTextLayerDto
+            return layersToSave.Select(l => new PageTextLayerResponse
             {
                 LayerId = l.LayerId,
                 PageId = l.PageId,

@@ -5,7 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Application.DTOs.Chapter;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Common;
 using Application.Interfaces.Creator;
@@ -108,7 +109,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(111);
       var teamId = await SeedBaseData(db);
 
-      var dto = new UploadTranslationDto { PermissionId = 999, ChapterId = 100, LanguageId = 1 };
+      var dto = new UploadTranslationRequest { PermissionId = 999, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Be("Translation permission record not found.");
     }
@@ -122,7 +123,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = teamId, SeriesId = 10, LanguageId = 1, GrantedBy = 456 });
       await db.SaveChangesAsync();
 
-      var dto = new UploadTranslationDto { PermissionId = 1, ChapterId = 100, LanguageId = 2 }; // Wrong language
+      var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 2 }; // Wrong language
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Contain("Language mismatch");
     }
@@ -137,7 +138,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = teamId, SeriesId = 99, LanguageId = 1, GrantedBy = 456 });
       await db.SaveChangesAsync();
 
-      var dto = new UploadTranslationDto { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
+      var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Be("Permission not valid for this series.");
     }
@@ -151,7 +152,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = teamId, SeriesId = 10, LanguageId = 1, GrantedBy = 456 });
       await db.SaveChangesAsync();
 
-      var dto = new UploadTranslationDto { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
+      var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Be("Uploader is not an active member of the translation team.");
     }
@@ -168,7 +169,7 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync("https://cdn.mlndex.com/test-text.txt");
 
-      var dto = new UploadTranslationDto 
+      var dto = new UploadTranslationRequest 
       { 
         PermissionId = 1, ChapterId = 100, LanguageId = 1, ContentType = ContentType.TEXT,
         ContentText = "Hello World! This is a test."
@@ -198,7 +199,7 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync("https://cdn.mlndex.com/img1.png");
 
-      var dto = new UploadTranslationDto 
+      var dto = new UploadTranslationRequest 
       { 
         TeamId = teamId, ChapterId = 100, LanguageId = 1, ContentType = ContentType.IMAGE,
         Pages = new List<UploadPageDto> { new UploadPageDto { FileName = "p1.png", FileStream = new MemoryStream() } }
@@ -228,7 +229,7 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ThrowsAsync(new Exception("Upload API Error"));
 
-      var dto = new UploadTranslationDto 
+      var dto = new UploadTranslationRequest 
       { 
         TeamId = teamId, ChapterId = 100, LanguageId = 1, ContentType = ContentType.TEXT,
         ContentText = "Will fail"
@@ -255,7 +256,7 @@ namespace Application.Tests.Services.Translation
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = 5, ChapterId = 100 });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationDto { LanguageId = 2 }));
+      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 }));
       ex.Message.Should().Be("Unauthorized to edit.");
     }
 
@@ -270,7 +271,7 @@ namespace Application.Tests.Services.Translation
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = 5, ChapterId = 100, LanguageId = 1 });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).EditTranslationAsync(55, new EditTranslationDto { LanguageId = 2 });
+      var result = await CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 });
       result.LanguageId.Should().Be(2);
 
       var trans = await db.Translations.FindAsync(55);

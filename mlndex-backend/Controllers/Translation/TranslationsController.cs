@@ -2,7 +2,8 @@ using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Data;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Mvc;
@@ -46,7 +47,6 @@ namespace mlndex_backend.Controllers.Translation
     {
       try
       {
-        Console.WriteLine($"[DEBUG-UPLOAD] chapterId={req.ChapterId}, permissionId={req.PermissionId}, languageId={req.LanguageId}, contentType={req.ContentType}");
 
         // Guard: block upload if user trust score is depleted
         var currentUser = await _db.Users.FindAsync(GetUserId());
@@ -63,7 +63,7 @@ namespace mlndex_backend.Controllers.Translation
           Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
 
-        var dto = new UploadTranslationDto
+        var dto = new UploadTranslationRequest
         {
           ChapterId = req.ChapterId,
           PermissionId = req.PermissionId,
@@ -78,7 +78,7 @@ namespace mlndex_backend.Controllers.Translation
             PageNumber = index + 1
           }).ToList(),
           Credits = !string.IsNullOrEmpty(req.CreditsJson)
-            ? System.Text.Json.JsonSerializer.Deserialize<List<TranslationCreditDto>>(req.CreditsJson, jsonOptions)
+            ? System.Text.Json.JsonSerializer.Deserialize<List<TranslationCreditItem>>(req.CreditsJson, jsonOptions)
             : null,
           JointTeamIds = !string.IsNullOrEmpty(req.JointTeamIdsJson)
             ? System.Text.Json.JsonSerializer.Deserialize<List<int>>(req.JointTeamIdsJson)
@@ -135,6 +135,15 @@ namespace mlndex_backend.Controllers.Translation
       }
     }
 
+    // Get all translations by series ID.
+    [HttpGet("series/{seriesId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTranslationsBySeries(int seriesId)
+    {
+      var translations = await _service.GetTranslationsBySeriesAsync(seriesId);
+      return OkResponse(translations);
+    }
+
     // Get all translations (Admin/Mod only in future).
     [HttpGet]
     [AllowAnonymous]
@@ -146,7 +155,7 @@ namespace mlndex_backend.Controllers.Translation
 
     // Edit translation metadata or content.
     [HttpPut("{id}")]
-    public async Task<IActionResult> EditTranslation(int id, [FromBody] EditTranslationDto dto)
+    public async Task<IActionResult> EditTranslation(int id, [FromBody] EditTranslationRequest dto)
     {
       try
       {
@@ -227,7 +236,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{id}/debug-moderate")]
-    [AllowAnonymous]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugModerate(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
       try
@@ -242,7 +251,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{id}/debug-enqueue")]
-    [AllowAnonymous]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugEnqueue(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
       try

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.User;
 
 namespace Application.Interfaces.Translation
 {

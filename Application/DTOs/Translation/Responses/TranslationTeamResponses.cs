@@ -1,60 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Domain.Entities;
 
-namespace Application.DTOs.Translation
+namespace Application.DTOs.Translation.Responses
 {
-  // Request Models
-  public class CreateTranslationTeamDto
-  {
-    public string TeamName { get; set; } = string.Empty;
-    public string Slug { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int LanguageId { get; set; } = 1;
-    public bool RequireApproval { get; set; } = true;
-    public string? AvatarUrl { get; set; }
-    public string? BannerUrl { get; set; }
-    public List<int>? GenreIds { get; set; } = new();
-    public string? Facebook { get; set; }
-    public string? Discord { get; set; }
-    public string? Website { get; set; }
-    public string? Certificates { get; set; }
-  }
-
-  public class InviteTeamMemberDto
-  {
-    public int UserId { get; set; }
-    public TeamMemberRole Role { get; set; } = TeamMemberRole.TRANSLATOR;
-  }
-
-  public class UpdateTranslationTeamDto
-  {
-    public string? TeamName { get; set; }
-    public string? Slug { get; set; }
-    public string? Description { get; set; }
-    public int? LanguageId { get; set; }
-    public bool? RequireApproval { get; set; }
-    public string? AvatarUrl { get; set; }
-    public string? BannerUrl { get; set; }
-    public List<int>? GenreIds { get; set; }
-    public string? Facebook { get; set; }
-    public string? Discord { get; set; }
-    public string? Website { get; set; }
-    public string? Certificates { get; set; }
-  }
-
-  public class AssignTeamMemberRoleDto
-  {
-    public TeamMemberRole Role { get; set; }
-  }
-
-  public class JoinTeamRequestDto
-  {
-    public string Message { get; set; } = string.Empty;
-  }
-
-  // Response Models
-  public class TranslationTeamDto
+  // Full team details response
+  public class TranslationTeamResponse
   {
     public int TeamId { get; set; }
     public int LeaderId { get; set; }
@@ -70,17 +20,22 @@ namespace Application.DTOs.Translation
     public string? AvatarUrl { get; set; }
     public string? BannerUrl { get; set; }
     public List<string>? Genres { get; set; }
-
     public string? Facebook { get; set; }
     public string? Discord { get; set; }
     public string? Website { get; set; }
     public string? Certificates { get; set; }
-
     public int MemberCount { get; set; }
     public string Role { get; set; } = string.Empty;
+
+    // ── Unlock Settings ──
+    public bool? UnlockEnabled { get; set; }
+    public int? DefaultUnlockPriceCoins { get; set; }
+    public bool? FreeAfterEnabled { get; set; }
+    public int? DefaultFreeAfterDays { get; set; }
   }
 
-  public class TeamMemberDto
+  // Team member summary response
+  public class TeamMemberResponse
   {
     public int MembershipId { get; set; }
     public int TeamId { get; set; }
@@ -90,7 +45,8 @@ namespace Application.DTOs.Translation
     public bool IsActive { get; set; }
   }
 
-  public class TeamMemberDetailDto
+  // Detailed member info (includes user display data)
+  public class TeamMemberDetailResponse
   {
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
@@ -99,7 +55,8 @@ namespace Application.DTOs.Translation
     public DateTime JoinedAt { get; set; }
   }
 
-  public class TeamInvitationDto
+  // Invitation response
+  public class TeamInvitationResponse
   {
     public int InvitationId { get; set; }
     public int TeamId { get; set; }
@@ -111,7 +68,8 @@ namespace Application.DTOs.Translation
     public DateTime? ExpiresAt { get; set; }
   }
 
-  public class TeamJoinRequestDtoResponse
+  // Join request response
+  public class TeamJoinRequestResponse
   {
     public int RequestId { get; set; }
     public int TeamId { get; set; }

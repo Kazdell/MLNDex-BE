@@ -1,7 +1,8 @@
 using Application.Interfaces.Notification;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,7 @@ namespace Application.Services.Translation
       _notificationService = notificationService;
     }
 
-    public async Task<TranslationTeamDto> CreateTeamAsync(CreateTranslationTeamDto createDto)
+    public async Task<TranslationTeamResponse> CreateTeamAsync(CreateTranslationTeamRequest createDto)
     {
       var userId = _userContext.UserId;
       if (userId == null) throw new UnauthorizedAccessException();
@@ -69,7 +70,6 @@ namespace Application.Services.Translation
             GenreId = genreId
           });
         }
-        await _context.SaveChangesAsync();
       }
 
       var member = new TeamMember
@@ -87,7 +87,7 @@ namespace Application.Services.Translation
       return await GetTeamByIdAsync(team.TeamId) ?? MapToDto(team);
     }
 
-    public async Task<TranslationTeamDto> UpdateTeamAsync(int teamId, UpdateTranslationTeamDto updateDto)
+    public async Task<TranslationTeamResponse> UpdateTeamAsync(int teamId, UpdateTranslationTeamRequest updateDto)
     {
       var userId = _userContext.UserId;
       var team = await _context.TranslationTeams
@@ -123,6 +123,12 @@ namespace Application.Services.Translation
       if (updateDto.Website != null) team.Website = updateDto.Website;
       if (updateDto.Certificates != null) team.Certificates = updateDto.Certificates;
 
+      // ── Unlock Settings ──
+      if (updateDto.UnlockEnabled.HasValue) team.UnlockEnabled = updateDto.UnlockEnabled.Value;
+      if (updateDto.DefaultUnlockPriceCoins.HasValue) team.DefaultUnlockPriceCoins = updateDto.DefaultUnlockPriceCoins;
+      if (updateDto.FreeAfterEnabled.HasValue) team.FreeAfterEnabled = updateDto.FreeAfterEnabled.Value;
+      if (updateDto.DefaultFreeAfterDays.HasValue) team.DefaultFreeAfterDays = updateDto.DefaultFreeAfterDays;
+
       if (updateDto.GenreIds != null)
       {
         var currentGenres = await _context.TeamGenres.Where(tg => tg.TeamId == teamId).ToListAsync();
@@ -151,14 +157,20 @@ namespace Application.Services.Translation
       if (team == null) return false;
 
       var members = await _context.TeamMembers.Where(m => m.TeamId == teamId).ToListAsync();
-      _context.TeamMembers.RemoveRange(members);
+      foreach (var m in members)
+      {
+        m.IsActive = false;
+        m.LeftAt = DateTime.UtcNow;
+      }
 
-      _context.TranslationTeams.Remove(team);
+      team.LockStatus = TeamLockStatus.DISBANDED;
+      team.UpdatedAt = DateTime.UtcNow;
+      
       await _context.SaveChangesAsync();
       return true;
     }
 
-    public async Task<TranslationTeamDto?> GetTeamByIdAsync(int teamId)
+    public async Task<TranslationTeamResponse?> GetTeamByIdAsync(int teamId)
     {
       var team = await _context.TranslationTeams
           .Include(t => t.TeamGenres)
@@ -170,12 +182,12 @@ namespace Application.Services.Translation
       return MapToDto(team);
     }
 
-    public async Task<IEnumerable<TeamMemberDetailDto>> GetTeamMembersAsync(int teamId)
+    public async Task<IEnumerable<TeamMemberDetailResponse>> GetTeamMembersAsync(int teamId)
     {
       return await _context.TeamMembers
           .Include(m => m.User)
           .Where(m => m.TeamId == teamId)
-          .Select(m => new TeamMemberDetailDto
+          .Select(m => new TeamMemberDetailResponse
           {
             UserId = m.UserId,
             Username = m.User.Username,
@@ -186,7 +198,7 @@ namespace Application.Services.Translation
           .ToListAsync();
     }
 
-    public async Task<IEnumerable<TranslationTeamDto>> GetAllTeamsAsync()
+    public async Task<IEnumerable<TranslationTeamResponse>> GetAllTeamsAsync()
     {
       var teams = await _context.TranslationTeams
           .Include(t => t.TeamGenres)
@@ -196,15 +208,17 @@ namespace Application.Services.Translation
       return teams.Select(MapToDto);
     }
 
-    public async Task<int> InviteMemberAsync(int teamId, InviteTeamMemberDto inviteDto)
+    public async Task<int> InviteMemberAsync(int teamId, InviteTeamMemberRequest inviteDto)
     {
       var leaderId = _userContext.UserId;
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
-      if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == inviteDto.UserId))
+      var existingMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == inviteDto.UserId && m.IsActive);
+      if (existingMember != null)
       {
-        throw new Exception("User is already a team member.");
+        if (inviteDto.Role != TeamMemberRole.LEADER)
+            throw new Exception("User is already a team member.");
       }
 
       if (await _context.TeamInvitations.AnyAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING))
@@ -249,26 +263,52 @@ namespace Application.Services.Translation
       invitation.Status = TeamInvitationStatus.ACCEPTED;
       invitation.RespondedAt = DateTime.UtcNow;
 
-      var member = new TeamMember
-      {
-        TeamId = invitation.TeamId,
-        UserId = invitation.InviteeId,
-        Role = Enum.Parse<TeamMemberRole>(invitation.Role),
-        JoinedAt = DateTime.UtcNow,
-        IsActive = true
-      };
+      var teamRole = Enum.Parse<TeamMemberRole>(invitation.Role);
+      var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
+      if (team == null) return false;
 
-      _context.TeamMembers.Add(member);
+      var existingMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == userId.Value);
+
+      bool isLeadershipTransfer = teamRole == TeamMemberRole.LEADER;
+      if (isLeadershipTransfer)
+      {
+          var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
+          if (oldLeaderMember != null)
+          {
+              oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
+          }
+          team.LeaderId = userId.Value;
+      }
+
+      if (existingMember != null)
+      {
+          existingMember.Role = teamRole;
+          existingMember.JoinedAt = DateTime.UtcNow;
+          existingMember.IsActive = true;
+          existingMember.LeftAt = null;
+      }
+      else
+      {
+          var member = new TeamMember
+          {
+            TeamId = invitation.TeamId,
+            UserId = invitation.InviteeId,
+            Role = teamRole,
+            JoinedAt = DateTime.UtcNow,
+            IsActive = true
+          };
+          _context.TeamMembers.Add(member);
+      }
+      
       await _context.SaveChangesAsync();
 
       var invitee = await _context.Users.FindAsync(userId);
-      var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
-      if (invitee != null && team != null)
+      if (invitee != null)
       {
         await _notificationService.CreateNotificationAsync(
-            team.LeaderId,
+            isLeadershipTransfer ? invitation.InviterId : team.LeaderId,
             invitee.DisplayName ?? invitee.Username,
-            $"Đã chấp nhận lời mời gia nhập nhóm {team.TeamName}",
+            isLeadershipTransfer ? $"Đã chấp nhận lời mời làm Trưởng Nhóm cho {team.TeamName}" : $"Đã gia nhập nhóm {team.TeamName}",
             $"/teams/{team.TeamId}/members",
             NotificationType.TEAM_INVITATION_ACCEPTED
         );
@@ -304,7 +344,7 @@ namespace Application.Services.Translation
       return true;
     }
 
-    public async Task<int> RequestToJoinAsync(int teamId, JoinTeamRequestDto joinDto)
+    public async Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto)
     {
       var userId = _userContext.UserId;
       if (userId == null) throw new UnauthorizedAccessException();
@@ -413,7 +453,7 @@ namespace Application.Services.Translation
       return true;
     }
 
-    public async Task<IEnumerable<TeamInvitationDto>> GetTeamInvitationsAsync(int teamId)
+    public async Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
       if (leaderId == null) throw new UnauthorizedAccessException();
@@ -424,7 +464,7 @@ namespace Application.Services.Translation
       return await _context.TeamInvitations
           .Include(i => i.Invitee)
           .Where(i => i.TeamId == teamId && i.Status == TeamInvitationStatus.PENDING)
-          .Select(i => new TeamInvitationDto
+          .Select(i => new TeamInvitationResponse
           {
             InvitationId = i.InvitationId,
             TeamId = i.TeamId,
@@ -438,7 +478,7 @@ namespace Application.Services.Translation
           .ToListAsync();
     }
 
-    public async Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId)
+    public async Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
       if (leaderId == null) throw new UnauthorizedAccessException();
@@ -449,7 +489,7 @@ namespace Application.Services.Translation
       return await _context.TeamJoinRequests
           .Include(r => r.User)
           .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.PENDING)
-          .Select(r => new TeamJoinRequestDtoResponse
+          .Select(r => new TeamJoinRequestResponse
           {
             RequestId = r.RequestId,
             TeamId = r.TeamId,
@@ -465,15 +505,18 @@ namespace Application.Services.Translation
     public async Task<bool> RemoveMemberAsync(int teamId, int targetUserId)
     {
       var leaderId = _userContext.UserId;
+      if (leaderId == null) throw new UnauthorizedAccessException();
+
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
-      if (leaderId == targetUserId) throw new Exception("Leader cannot be removed.");
+      if (leaderId.Value == targetUserId) throw new Exception("Leader cannot be removed.");
 
-      var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
+      var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId && m.IsActive);
       if (member == null) return false;
 
-      _context.TeamMembers.Remove(member);
+      member.IsActive = false;
+      member.LeftAt = DateTime.UtcNow;
       await _context.SaveChangesAsync();
 
       await _notificationService.CreateNotificationAsync(
@@ -536,13 +579,14 @@ namespace Application.Services.Translation
       return true;
     }
 
-    public async Task<TeamMemberDto> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleDto roleDto)
+    public async Task<TeamMemberResponse> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleRequest roleDto)
     {
       var leaderId = _userContext.UserId;
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
       if (leaderId == targetUserId) throw new Exception("Leader role cannot be changed manually.");
+      if (roleDto.Role == TeamMemberRole.LEADER) throw new Exception("Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên.");
 
       var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
       if (member == null) throw new Exception("Member not found.");
@@ -558,7 +602,7 @@ namespace Application.Services.Translation
           NotificationType.TEAM_ROLE_CHANGED
       );
 
-      return new TeamMemberDto
+      return new TeamMemberResponse
       {
         MembershipId = member.MembershipId,
         TeamId = member.TeamId,
@@ -569,7 +613,7 @@ namespace Application.Services.Translation
       };
     }
 
-    public async Task<IEnumerable<TeamSeriesDto>> GetTeamSeriesAsync(int teamId)
+    public async Task<IEnumerable<TeamSeriesResponse>> GetTeamSeriesAsync(int teamId)
     {
       var permissions = await _context.TranslationPermissions
           .Include(p => p.Series)
@@ -577,7 +621,7 @@ namespace Application.Services.Translation
           .Where(p => p.TeamId == teamId)
           .ToListAsync();
 
-      return permissions.Select(p => new TeamSeriesDto
+      return permissions.Select(p => new TeamSeriesResponse
       {
         SeriesId = p.SeriesId,
         PermissionId = p.PermissionId,
@@ -597,7 +641,7 @@ namespace Application.Services.Translation
       });
     }
 
-    public async Task<TeamStatsDto> GetTeamStatsAsync(int teamId)
+    public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
     {
       var translatedChaptersCount = await _context.Translations
           .CountAsync(t => t.Permission.TeamId == teamId);
@@ -605,7 +649,7 @@ namespace Application.Services.Translation
       var activeSeriesCount = await _context.TranslationPermissions
           .CountAsync(p => p.TeamId == teamId && (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL));
 
-      return new TeamStatsDto
+      return new TeamStatsResponse
       {
         TotalViews = 0, // Translation views tracking not yet implemented
         TotalBookmarks = 0,
@@ -615,7 +659,7 @@ namespace Application.Services.Translation
       };
     }
 
-    public async Task<IEnumerable<TranslationTeamDto>> GetUserTeamsAsync(int userId, int limit = 5)
+    public async Task<IEnumerable<TranslationTeamResponse>> GetUserTeamsAsync(int userId, int limit = 5)
     {
       var userMembers = await _context.TeamMembers
           .Include(tm => tm.TranslationTeam)
@@ -625,7 +669,7 @@ namespace Application.Services.Translation
           .Take(limit)
           .ToListAsync();
 
-      var userTeams = userMembers.Select(tm => new TranslationTeamDto
+      var userTeams = userMembers.Select(tm => new TranslationTeamResponse
       {
         TeamId = tm.TranslationTeam.TeamId,
         LeaderId = tm.TranslationTeam.LeaderId,
@@ -635,7 +679,7 @@ namespace Application.Services.Translation
         LockStatus = tm.TranslationTeam.LockStatus.ToString(),
         IsMonetizationEnabled = tm.TranslationTeam.IsMonetizationEnabled,
         ModerationStatus = tm.TranslationTeam.ModerationStatus.ToString(),
-        MemberCount = tm.TranslationTeam.TeamMembers?.Count ?? 0,
+        MemberCount = tm.TranslationTeam.TeamMembers?.Count(m => m.IsActive) ?? 0,
         Role = tm.Role.ToString(),
         AvatarUrl = tm.TranslationTeam.AvatarUrl,
         BannerUrl = tm.TranslationTeam.BannerUrl
@@ -652,7 +696,7 @@ namespace Application.Services.Translation
       {
         if (!userTeams.Any(ut => ut.TeamId == t.TeamId))
         {
-          userTeams.Add(new TranslationTeamDto
+          userTeams.Add(new TranslationTeamResponse
           {
             TeamId = t.TeamId,
             LeaderId = t.LeaderId,
@@ -662,7 +706,7 @@ namespace Application.Services.Translation
             LockStatus = t.LockStatus.ToString(),
             IsMonetizationEnabled = t.IsMonetizationEnabled,
             ModerationStatus = t.ModerationStatus.ToString(),
-            MemberCount = t.TeamMembers?.Count ?? 0,
+            MemberCount = t.TeamMembers?.Count(m => m.IsActive) ?? 0,
             Role = "LEADER",
             AvatarUrl = t.AvatarUrl,
             BannerUrl = t.BannerUrl
@@ -690,9 +734,9 @@ namespace Application.Services.Translation
       }
     }
 
-    private TranslationTeamDto MapToDto(TranslationTeam team)
+    private TranslationTeamResponse MapToDto(TranslationTeam team)
     {
-      return new TranslationTeamDto
+      return new TranslationTeamResponse
       {
         TeamId = team.TeamId,
         LeaderId = team.LeaderId,
@@ -705,14 +749,20 @@ namespace Application.Services.Translation
         LockStatus = team.LockStatus.ToString(),
         IsMonetizationEnabled = team.IsMonetizationEnabled,
         ModerationStatus = team.ModerationStatus.ToString(),
-        MemberCount = team.TeamMembers?.Count ?? 0,
+        MemberCount = team.TeamMembers?.Count(m => m.IsActive) ?? 0,
         AvatarUrl = team.AvatarUrl,
         BannerUrl = team.BannerUrl,
         Facebook = team.Facebook,
         Discord = team.Discord,
         Website = team.Website,
         Certificates = team.Certificates,
-        Genres = team.TeamGenres?.Select(tg => tg.Genre.Name).ToList()
+        Genres = team.TeamGenres?.Select(tg => tg.Genre?.Name ?? "Unknown").ToList(),
+
+        // ── Unlock Settings ──
+        UnlockEnabled = team.UnlockEnabled,
+        DefaultUnlockPriceCoins = team.DefaultUnlockPriceCoins,
+        FreeAfterEnabled = team.FreeAfterEnabled,
+        DefaultFreeAfterDays = team.DefaultFreeAfterDays
       };
     }
   }

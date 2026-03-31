@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Common;
 using Application.Interfaces.Notification;
 using Application.Services.Translation;
@@ -84,7 +85,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(999);
       var (t1, _) = await SeedBaseData(db);
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1 };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
@@ -98,7 +99,7 @@ namespace Application.Tests.Services.Translation
       db.TeamMembers.Add(new TeamMember { TeamId = t1, UserId = 123, IsActive = false, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1 };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
@@ -112,7 +113,7 @@ namespace Application.Tests.Services.Translation
       db.TeamMembers.Add(new TeamMember { TeamId = t1, UserId = 123, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Series not found.");
     }
@@ -131,7 +132,7 @@ namespace Application.Tests.Services.Translation
       var (t1, _) = await SeedBaseData(db);
       db.TeamMembers.Add(new TeamMember { TeamId = t1, UserId = 123, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 99 };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 99 };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Language not found.");
     }
@@ -146,7 +147,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
     }
@@ -161,7 +162,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.GRANTED });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
       var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Nhóm đã có quyền dịch Official cho bộ truyện này.");
     }
@@ -176,7 +177,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 55, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.DENIED, RevokedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var result = await CreateService(db).RequestPermissionAsync(dto);
 
       result.Status.Should().Be("PENDING");
@@ -196,7 +197,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 55, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.DENIED });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
       var result = await CreateService(db).RequestPermissionAsync(dto);
 
       result.Status.Should().Be("UNOFFICIAL");
@@ -212,7 +213,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 56, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.REVOKED });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var result = await CreateService(db).RequestPermissionAsync(dto);
 
       result.Status.Should().Be("PENDING");
@@ -228,7 +229,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 57, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.UNOFFICIAL });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var result = await CreateService(db).RequestPermissionAsync(dto);
 
       result.Status.Should().Be("PENDING");
@@ -244,7 +245,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 57, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.UNOFFICIAL, Note = "Old Note" });
       await db.SaveChangesAsync();
 
-      var dto = new RequestPermissionDto { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true, Note = "New Note" };
+      var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true, Note = "New Note" };
       var result = await CreateService(db).RequestPermissionAsync(dto);
 
       result.Status.Should().Be("UNOFFICIAL");
@@ -260,7 +261,7 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(456);
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionDto { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Be("Permission request not found.");
     }
 
@@ -273,7 +274,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Contain("Unauthorized");
     }
 
@@ -286,7 +287,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true });
+      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
       result.Status.Should().Be("GRANTED");
     }
 
@@ -299,7 +300,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.DENIED });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true });
+      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
       result.Status.Should().Be("GRANTED");
     }
 
@@ -312,7 +313,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.UNOFFICIAL });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true });
+      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
       result.Status.Should().Be("GRANTED");
     }
 
@@ -325,7 +326,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = false });
+      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = false });
       result.Status.Should().Be("DENIED");
 
       var p = await db.TranslationPermissions.FindAsync(99);
@@ -341,7 +342,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.GRANTED });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = false });
+      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = false });
       result.Status.Should().Be("DENIED");
     }
 
@@ -359,7 +360,7 @@ namespace Application.Tests.Services.Translation
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 3, PermissionId = 88, ChapterId = 100, IsOfficial = false });
       await db.SaveChangesAsync();
 
-      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true });
+      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
 
       var tr1 = await db.Translations.FindAsync(1);
       var tr2 = await db.Translations.FindAsync(2);
@@ -383,7 +384,7 @@ namespace Application.Tests.Services.Translation
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, PermissionId = 99, ChapterId = 101, IsOfficial = true });
       await db.SaveChangesAsync();
 
-      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = false });
+      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = false });
 
       var tr1 = await db.Translations.FindAsync(1);
       var tr2 = await db.Translations.FindAsync(2);
@@ -404,7 +405,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionDto { IsApproved = true });
+      await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
 
       _mockNotificationService.Verify(n => n.CreateNotificationAsync(
           It.IsAny<int>(), "Yêu cầu dịch truyện được chấp thuận", It.IsAny<string>(),

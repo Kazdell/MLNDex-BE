@@ -28,7 +28,7 @@ using Application.Services.User;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Infrastructure.Adapters.OCR;
+using Infrastructure.Services.OCR;
 using Infrastructure.Adapters.Translation;
 using Infrastructure.Common;
 using Infrastructure.DI;
