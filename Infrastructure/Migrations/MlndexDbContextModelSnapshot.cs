@@ -361,12 +361,15 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHidden")
                         .HasColumnType("bit");
 
                     b.Property<int?>("ParentCommentId")
@@ -703,6 +706,84 @@ namespace Infrastructure.Migrations
                     b.ToTable("Notification", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.Property<int>("LayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LayerId"));
+
+                    b.Property<int?>("AdjustedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AdjustmentCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Height")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsUserAdjusted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OriginalText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("auto");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("vi");
+
+                    b.Property<string>("TranslatedText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TranslationProvider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Google");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Width")
+                        .HasColumnType("float");
+
+                    b.Property<double>("X")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("float");
+
+                    b.HasKey("LayerId");
+
+                    b.HasIndex("PageId", "SourceLanguage", "TargetLanguage", "TranslationProvider")
+                        .HasDatabaseName("IX_PageTextLayer_Cache");
+
+                    b.ToTable("PageTextLayer", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Rating", b =>
                 {
                     b.Property<int>("RatingId")
@@ -863,7 +944,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("CoverImageUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -872,7 +953,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("LanguageScore")
                         .HasColumnType("int");
@@ -958,15 +1039,13 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("BlacklistWordsJson")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("ExchangeRateCoinToVnd")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<decimal>("WithdrawalFeePercent")
                         .HasColumnType("decimal(18,2)");
@@ -1213,7 +1292,7 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("PermissionId")
+                    b.Property<int?>("PermissionId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("PublishedAt")
@@ -1348,10 +1427,10 @@ namespace Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeamId"));
 
                     b.Property<string>("AvatarUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BannerUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Certificates")
                         .HasColumnType("nvarchar(max)");
@@ -1548,10 +1627,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BannerUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Bio")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("CannotUpload")
                         .ValueGeneratedOnAdd()
@@ -1562,7 +1641,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DisplayAvatar")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -1839,13 +1918,13 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("BankAccountInfo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime2");
@@ -2091,6 +2170,17 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.HasOne("Domain.Entities.ChapterPage", "Page")
+                        .WithMany("TextLayers")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
             modelBuilder.Entity("Domain.Entities.Rating", b =>
                 {
                     b.HasOne("Domain.Entities.Series", "Series")
@@ -2312,8 +2402,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.TranslationPermission", "Permission")
                         .WithMany("Translations")
                         .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Chapter");
 
@@ -2570,6 +2659,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("ReadingHistories");
 
                     b.Navigation("Translations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.ChapterPage", b =>
+                {
+                    b.Navigation("TextLayers");
                 });
 
             modelBuilder.Entity("Domain.Entities.Comment", b =>

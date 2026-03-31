@@ -52,6 +52,16 @@ namespace mlndex_backend.Controllers.User
       return Ok(new ApiResponse<List<ReadingHistoryDto>>(true, "Lấy lịch sử đọc thành công", history));
     }
 
+    [HttpGet("stats")]
+    [Authorize(Roles = "MODERATOR,ADMIN")] // Only admins/mods should see this
+    public async Task<IActionResult> GetUserStats(
+        [FromQuery] int days = 7, 
+        CancellationToken cancellationToken = default)
+    {
+        var stats = await _userService.GetUserStatsAsync(days, cancellationToken);
+        return Ok(new ApiResponse<UserStatsDto>(true, "Lấy thống kê thành công", stats));
+    }
+
     [HttpGet("membership/plans")]
     [AllowAnonymous] // Cho phép khách xem các gói cước
     public async Task<IActionResult> GetVipPlans(CancellationToken cancellationToken)
@@ -61,10 +71,16 @@ namespace mlndex_backend.Controllers.User
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> SearchUsers([FromQuery] string? q, CancellationToken cancellationToken)
+    public async Task<IActionResult> SearchUsers(
+        [FromQuery] string? q,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] string? role = null,
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
     {
-      var users = await _userService.SearchUsersAsync(q ?? "", cancellationToken);
-      return Ok(new ApiResponse<List<UserSearchDto>>(true, "Tìm kiếm người dùng thành công", users));
+      var result = await _userService.SearchUsersAsync(q ?? "", page, pageSize, role, status, cancellationToken);
+      return Ok(new ApiResponse<object>(true, "Tìm kiếm người dùng thành công", result));
     }
 
     [HttpGet("profile/{username}")]

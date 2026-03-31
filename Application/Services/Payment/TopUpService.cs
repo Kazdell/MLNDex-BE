@@ -1,11 +1,14 @@
-﻿using Application.DTOs.Payment;
+using Application.DTOs.Payment;
 using Application.DTOs.Request;
+using Application.DTOs.System;
 using Application.Interfaces;
 using Application.Interfaces.Data;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Threading;
 
 namespace Application.Services;
 
@@ -26,22 +29,22 @@ public class TopUpService : ITopUpService
 		_logger = logger;
 	}
 
-	// ────────────────────────────────────────────────
-	// Queries
-	// ────────────────────────────────────────────────
 
-	public async Task<CoinRateResponseDto> GetCoinRateAsync()
+
+	public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
 	{
-		var rate = await _context.CoinRateSettings
-			.Where(r => r.IsActive)
-			.FirstOrDefaultAsync()
-			?? throw new InvalidOperationException("Chưa có tỷ giá coin nào được cấu hình.");
+		var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
+			?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
 
-		return new CoinRateResponseDto
+		return new SystemConfigDto
 		{
-			CoinsPerVnd = rate.CoinsPerVnd,
-			MinTopUpVnd = rate.MinTopUpVnd,
-			MaxTopUpVnd = rate.MaxTopUpVnd
+			ExchangeRateCoinToVnd = config.ExchangeRateCoinToVnd,
+			WithdrawalFeePercent = config.WithdrawalFeePercent,
+			WithdrawalMinCoins = config.WithdrawalMinCoins,
+			WithdrawalMaxCoins = config.WithdrawalMaxCoins,
+			BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
+				? new List<string>()
+				: JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
 		};
 	}
 
@@ -61,17 +64,14 @@ public class TopUpService : ITopUpService
 			})
 			.ToListAsync();
 	}
-
+	// Thêm ví mới nếu người dùng chưa có ví.
     public async Task<WalletResponseDto> GetWalletAsync(int userId)
     {
-        // Sử dụng tên chuẩn trong DbContext của bạn (Wallet không có 's')
         var wallet = await _context.Wallets
             .FirstOrDefaultAsync(w => w.UserId == userId);
 
-        // Nếu không tìm thấy dữ liệu trong DB
         if (wallet == null)
         {
-            // Khởi tạo ví mới để tránh lỗi KeyNotFoundException
             wallet = new Wallet
             {
                 UserId = userId,
@@ -124,42 +124,33 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	// ────────────────────────────────────────────────
-	// Initiate top-up
-	// ────────────────────────────────────────────────
+
 
 	public async Task<TopUpInitResponseDto> InitiateAsync(int userId, CreateTopUpRequestDto request)
 	{
 		var method = request.PaymentMethod.ToUpper();
 
-		var rate = await _context.CoinRateSettings
-			.Where(r => r.IsActive)
-			.FirstOrDefaultAsync()
-			?? throw new InvalidOperationException("Chưa có tỷ giá coin nào được cấu hình.");
+		var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
+			?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
 
-		// Tính amountVnd và coins
 		long amountVnd;
 		long coinsWillReceive;
-
 		if (request.PackageId.HasValue)
 		{
 			var package = await _context.CoinPackages
 				.FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
 				?? throw new KeyNotFoundException("Gói coin không tồn tại hoặc đã ngừng bán.");
-
 			amountVnd = (long)package.PriceVnd;
 			coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
 		}
 		else
 		{
 			amountVnd = request.CustomAmountVnd!.Value;
-
-			if (amountVnd < rate.MinTopUpVnd)
-				throw new ArgumentException($"Số tiền tối thiểu là {rate.MinTopUpVnd:N0} VND.");
-			if (amountVnd > rate.MaxTopUpVnd)
-				throw new ArgumentException($"Số tiền tối đa là {rate.MaxTopUpVnd:N0} VND.");
-
-			coinsWillReceive = (long)Math.Floor(amountVnd * rate.CoinsPerVnd);
+			if (amountVnd < (long)rate.WithdrawalMinCoins)
+				throw new ArgumentException($"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
+			if (amountVnd > (long)rate.WithdrawalMaxCoins)
+				throw new ArgumentException($"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
+			coinsWillReceive = (long)Math.Floor(amountVnd / rate.ExchangeRateCoinToVnd);
 		}
 
 		var wallet = await _context.Wallets
@@ -169,7 +160,6 @@ public class TopUpService : ITopUpService
 		var txnRef = GenerateOrderCode().ToString();
 		var expiredAt = DateTime.UtcNow.AddMinutes(15);
 
-		// Tạo Transaction PENDING
 		var transaction = new Transaction
 		{
 			UserId = userId,
@@ -180,14 +170,11 @@ public class TopUpService : ITopUpService
 			Note = $"{method}|{txnRef}",
 			CreatedAt = DateTime.UtcNow
 		};
-
 		_context.Transactions.Add(transaction);
 		await _context.SaveChangesAsync();
 
-		// PAYOS / VNPAY / MOMO: gọi gateway tạo link
 		var user = await _context.Users.FindAsync(userId);
 		var gateway = _gatewayFactory.GetGateway(method);
-
 		var gatewayResult = await gateway.CreatePaymentAsync(new GatewayCreateRequest
 		{
 			TxnRef = txnRef,
@@ -214,9 +201,7 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	// ────────────────────────────────────────────────
-	// Callbacks
-	// ────────────────────────────────────────────────
+
 
 	public async Task<TopUpCallbackResponseDto> HandlePayOsWebhookAsync(PayOsWebhookData webhookData)
 	{
@@ -239,14 +224,8 @@ public class TopUpService : ITopUpService
 		return await ProcessCallbackAsync(callback);
 	}
 
-	// ────────────────────────────────────────────────
-	// Private helpers
-	// ────────────────────────────────────────────────
 
-	/// <summary>
-	/// Xử lý callback đã chuẩn hoá — dùng chung cho mọi cổng.
-	/// Idempotent: gọi nhiều lần cùng TxnRef vẫn an toàn.
-	/// </summary>
+
 	private async Task<TopUpCallbackResponseDto> ProcessCallbackAsync(PaymentCallbackDto callback)
 	{
 		if (!callback.IsSignatureValid)
@@ -261,22 +240,55 @@ public class TopUpService : ITopUpService
 			};
 		}
 
-		var transaction = await FindPendingTransactionAsync(callback.Gateway, callback.TxnRef);
+		var transaction = await FindTransactionAsync(callback.Gateway, callback.TxnRef);
 		if (transaction == null)
 		{
-			_logger.LogWarning("[TopUp] Không tìm thấy PENDING transaction. TxnRef={TxnRef}", callback.TxnRef);
+			_logger.LogWarning("[TopUp] Không tìm thấy transaction. TxnRef={TxnRef}", callback.TxnRef);
 			return new TopUpCallbackResponseDto
 			{
 				TxnRef = callback.TxnRef,
 				Status = "failed",
-				Message = "Transaction không tồn tại hoặc đã xử lý."
+				Message = "Transaction không tồn tại."
 			};
 		}
 
+		// Nếu webhook đã xử lý thành công trước (ví dụ PayOS vừa gọi server-to-server xong user mới redirect về)
+		if (transaction.Status == TransactionStatus.COMPLETED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "success",
+				CoinsAdded = (long)transaction.AmountCoins,
+				Message = $"Giao dịch đã được ghi nhận thành công từ trước."
+			};
+		}
+
+		if (transaction.Status == TransactionStatus.FAILED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "failed",
+				Message = "Giao dịch đã bị huỷ hoặc thất bại trước đó."
+			};
+		}
+
+		if (transaction.Status == TransactionStatus.REFUNDED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "refunded",
+				Message = "Giao dịch đã được hoàn tiền trước đó."
+			};
+		}
+
+		// Đang PENDING thì ta tiếp tục xử lý
 		if (callback.Status == "PAID")
 			return await CompleteTopUpAsync(transaction, callback.TxnRef);
 
-		// CANCELLED hoặc FAILED
+		// Người dùng cancel hoặc error
 		transaction.Status = TransactionStatus.FAILED;
 		await _context.SaveChangesAsync();
 
@@ -312,14 +324,13 @@ public class TopUpService : ITopUpService
 		};
 	}
 
-	private async Task<Transaction?> FindPendingTransactionAsync(string gateway, string txnRef)
+	private async Task<Transaction?> FindTransactionAsync(string gateway, string txnRef)
 	{
 		var notePrefix = $"{gateway.ToUpper()}|{txnRef}";
 		_logger.LogInformation("[TopUp] Tìm transaction. NotePrefix={NotePrefix}", notePrefix);
 		return await _context.Transactions
 			.FirstOrDefaultAsync(t =>
 				t.Type == TransactionType.PURCHASE_COIN &&
-				t.Status == TransactionStatus.PENDING &&
 				t.Note != null && t.Note.StartsWith(notePrefix));
 	}
 

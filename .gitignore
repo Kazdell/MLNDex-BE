@@ -224,3 +224,6 @@ response.json
 build_output*.txt
 server_log.txt
 WebAPI/
+
+# ONNX AI Model binary files (large, each dev downloads manually)
+Infrastructure/Adapters/OCR/models/*.onnx

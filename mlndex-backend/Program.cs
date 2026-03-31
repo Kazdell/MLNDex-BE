@@ -28,7 +28,8 @@ using Application.Services.User;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Infrastructure.Adapters.Tesseract;
+using Infrastructure.Adapters.OCR;
+using Infrastructure.Adapters.Translation;
 using Infrastructure.Common;
 using Infrastructure.DI;
 using Infrastructure.Hubs;
@@ -102,6 +103,7 @@ namespace mlndex_backend
 
 			// Creator Services
 			builder.Services.AddScoped<ISeriesService, SeriesService>();
+			builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 			builder.Services.AddScoped<IChapterService, ChapterService>();
 			builder.Services.AddScoped<IGenreService, GenreService>();
 			builder.Services.AddScoped<ICreatorService, CreatorService>();
@@ -113,6 +115,7 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IReportService, ReportService>();
 			builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
 			builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+			builder.Services.AddScoped<ICommentModerationService, CommentModerationService>();
 
 			// Isolated Report & TrustScore Services
 			builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
@@ -127,15 +130,26 @@ namespace mlndex_backend
 			builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
             builder.Services.AddHostedService<ChapterUnlockWorker>();
 
+            builder.Services.AddHttpClient();
             builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
+			builder.Services.AddScoped<IPageTranslationService, PageTranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-			// OCR Services
-			builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+			// OCR Services — Tesseract fallback (Scoped)
+			// For single IOCRService injection (PageTranslationService, ModerationService):
+			//   → last registration wins = Tesseract
+			builder.Services.AddScoped<TesseractOCRService>();
+			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
+			builder.Services.AddHttpClient<IAiTranslationClient, GeminiTranslationClient>(client =>
+			{
+				client.Timeout = TimeSpan.FromSeconds(60);
+			});
+			builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
+			builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 
 			// Community Services
 			builder.Services.AddScoped<ICommentService, CommentService>();
@@ -158,7 +172,6 @@ namespace mlndex_backend
 			builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 			builder.Services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
 			builder.Services.AddScoped<ITopUpService, TopUpService>();
-			builder.Services.AddScoped<ICoinRateService, CoinRateService>();
 			builder.Services.AddScoped<IPaymentGatewayService, PayOsGatewayService>();
 			builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
 	
@@ -255,13 +268,6 @@ namespace mlndex_backend
 			app.MapHub<ModerationHub>("/hubs/moderation");
 
 			app.MapControllers();
-			/*
-			using (var scope = app.Services.CreateScope())
-			{
-				var db = scope.ServiceProvider.GetRequiredService<MlndexDbContext>();
-				db.Database.Migrate();
-			}
-			*/
 			app.Run();
 		}
 	}

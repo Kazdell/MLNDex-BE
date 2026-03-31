@@ -47,40 +47,103 @@ namespace Application.Services.Translation
       var uploaderId = _userContext.UserId;
       if (uploaderId == null) throw new UnauthorizedAccessException();
 
-      // Verify permission
-      var permission = await _context.TranslationPermissions
-          .Include(p => p.Team)
-          .ThenInclude(t => t.TeamMembers)
-          .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
+      bool isOfficial = false;
+      int resolvedTeamId;
+      Chapter chapter; // Hoisted for notification access below
 
-      if (permission == null)
+      // ── OFFICIAL PATH: PermissionId provided ──
+      if (dto.PermissionId != null)
       {
-        throw new Exception("Translation permission record not found.");
-      }
+        var permission = await _context.TranslationPermissions
+            .Include(p => p.Team)
+            .ThenInclude(t => t.TeamMembers)
+            .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
 
-      if (permission.LanguageId != dto.LanguageId)
+        if (permission == null)
+          throw new Exception("Translation permission record not found.");
+
+        if (permission.LanguageId != dto.LanguageId)
+          throw new Exception("Language mismatch with the requested permission language.");
+
+        // Verify the chapter belongs to the series for which permission was granted
+        chapter = await _context.Chapters
+            .Include(c => c.Series)
+            .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
+            ?? throw new Exception("Chapter not found.");
+        if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
+
+        // Verify uploader is in the team
+        if (!permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+          throw new Exception("Uploader is not an active member of the translation team.");
+
+        isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
+        resolvedTeamId = permission.TeamId;
+      }
+      // ── UNOFFICIAL PATH: No permission, TeamId required ──
+      else
       {
-        throw new Exception("Language mismatch with the requested permission language.");
+        if (dto.TeamId == null)
+          throw new Exception("TeamId is required for unofficial translations.");
+
+        resolvedTeamId = dto.TeamId.Value;
+
+        // Verify team exists and uploader is an active member
+        var team = await _context.TranslationTeams
+            .Include(t => t.TeamMembers)
+            .FirstOrDefaultAsync(t => t.TeamId == resolvedTeamId);
+
+        if (team == null)
+          throw new Exception("Translation team not found.");
+
+        if (!team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+          throw new Exception("Uploader is not an active member of the translation team.");
+
+        // Verify chapter exists
+        chapter = await _context.Chapters
+            .Include(c => c.Series)
+            .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
+            ?? throw new Exception("Chapter not found.");
+
+        // NOTE: Lock check (COIN_LOCK / TIMED_LOCK) will be added here
+        // once the Creator team implements chapter locking feature.
+
+        isOfficial = false;
+
+        // ---- AUTO-RESOLVE OR CREATE UNOFFICIAL PERMISSION ----
+        var existingPerm = await _context.TranslationPermissions
+            .FirstOrDefaultAsync(p => p.TeamId == resolvedTeamId && p.SeriesId == chapter.SeriesId && p.LanguageId == dto.LanguageId);
+            
+        if (existingPerm != null)
+        {
+            dto.PermissionId = existingPerm.PermissionId;
+        }
+        else
+        {
+            var creatorUserId = await _context.CreatorProfiles
+                .Where(c => c.CreatorId == chapter.Series.CreatorId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+                
+            var newPerm = new TranslationPermission
+            {
+               SeriesId = chapter.SeriesId,
+               TeamId = resolvedTeamId,
+               LanguageId = dto.LanguageId,
+               Origin = PermissionOrigin.REQUESTED_BY_TEAM,
+               GrantedBy = creatorUserId,
+               Status = TranslationPermissionStatus.UNOFFICIAL,
+               GrantedAt = DateTime.UtcNow
+            };
+            _context.TranslationPermissions.Add(newPerm);
+            await _context.SaveChangesAsync();
+            dto.PermissionId = newPerm.PermissionId;
+        }
       }
-
-      // Verify the chapter belongs to the series for which permission was granted
-      var chapter = await _context.Chapters.FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId);
-      if (chapter == null) throw new Exception("Chapter not found.");
-      if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
-
-      // Verify uploader is in the team
-      if (!permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
-      {
-        throw new Exception("Uploader is not an active member of the translation team.");
-      }
-
-      // Flag as official if permission is GRANTED
-      bool isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
 
       var translation = new Domain.Entities.Translation
       {
         ChapterId = dto.ChapterId,
-        PermissionId = dto.PermissionId,
+        PermissionId = dto.PermissionId, // null for unofficial
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,
@@ -185,6 +248,18 @@ namespace Application.Services.Translation
           foreach (var url in uploadedUrls)
             await _storage.DeleteAsync(url);
         }
+        
+        // Rollback DB Entity
+        try 
+        {
+           _context.Translations.Remove(translation);
+           await _context.SaveChangesAsync();
+        } 
+        catch (Exception rollbackEx)
+        {
+           _logger.LogError(rollbackEx, "Failed to rollback translation record {Id}", translation.TranslationId);
+        }
+        
         throw;
       }
 
@@ -255,6 +330,8 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
       if (translation == null) throw new Exception("Translation not found.");
+      
+      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
       if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
       {
@@ -282,6 +359,8 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
       if (translation == null) return false;
+      
+      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
       if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
       {
