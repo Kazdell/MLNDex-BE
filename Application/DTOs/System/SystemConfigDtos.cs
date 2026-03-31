@@ -16,6 +16,9 @@ namespace Application.DTOs.System
         [Range(0, double.MaxValue)]
         public decimal WithdrawalMaxCoins { get; set; }
 
+        [Range(0, 100)]
+        public decimal TranslationAuthorCommissionPercent { get; set; } = 70; // % hoa hồng trả cho tác giả khi mua bản dịch
+
         public List<string> BlacklistWords { get; set; } = new();
     }
 }
