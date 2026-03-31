@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Tesseract;
 using OpenCvSharp;
 
-namespace Infrastructure.Adapters.OCR
+namespace Infrastructure.Services.OCR
 {
   public class TesseractOCRService : IOCRService
   {
@@ -25,10 +25,7 @@ namespace Infrastructure.Adapters.OCR
       _dataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata");
     }
 
-    /// <summary>
-    /// Map ISO 639-1 standard codes to Tesseract language codes.
-    /// Backward compatible: existing Tesseract codes pass through unchanged.
-    /// </summary>
+    // Map ISO 639-1 codes to Tesseract codes. Existing Tesseract codes pass through unchanged.
     private static string MapToTesseractCode(string isoCode)
     {
       if (string.IsNullOrWhiteSpace(isoCode)) return "eng";
@@ -47,9 +44,7 @@ namespace Infrastructure.Adapters.OCR
       };
     }
 
-    /// <summary>
-    /// Create TesseractEngine with fallback to 'eng' on failure. Always logs the fallback.
-    /// </summary>
+    // Create TesseractEngine with fallback to 'eng' on failure. Always logs the fallback.
     private TesseractEngine CreateTesseractEngine(string language)
     {
         try
@@ -63,10 +58,44 @@ namespace Infrastructure.Adapters.OCR
         }
     }
 
-    /// <summary>
-    /// Preprocess image with OpenCV: Otsu binarization + furigana removal.
-    /// Returns (processedPngBytes, originalWidth, originalHeight) to avoid double-decode.
-    /// </summary>
+    // Resolve vertical traineddata for CJK languages (jpn→jpn_vert+jpn, etc.)
+    private string ResolveVerticalLanguage(string languageCode)
+    {
+        // Handle multi-lang strings like "eng+jpn+chi_sim" — resolve each part independently
+        if (languageCode.Contains('+'))
+        {
+            var parts = languageCode.Split('+');
+            var resolved = parts.Select(p => ResolveSingleVerticalLanguage(p));
+            return string.Join("+", resolved.Distinct());
+        }
+
+        return ResolveSingleVerticalLanguage(languageCode);
+    }
+
+    private string ResolveSingleVerticalLanguage(string singleLang)
+    {
+        var mappings = new[]
+        {
+            ("jpn", "jpn_vert"),
+            ("kor", "kor_vert"),
+            ("chi_sim", "chi_sim_vert"),
+            ("chi_tra", "chi_tra_vert")
+        };
+
+        foreach (var (baseCode, vertCode) in mappings)
+        {
+            if (singleLang.Contains(baseCode))
+            {
+                return File.Exists(Path.Combine(_dataPath, $"{vertCode}.traineddata"))
+                    ? $"{vertCode}+{baseCode}"
+                    : baseCode;
+            }
+        }
+
+        return singleLang;
+    }
+
+    // Preprocess image: Otsu binarization + furigana removal. Returns (pngBytes, width, height) in single decode.
     private (byte[] PngBytes, int OriginalWidth, int OriginalHeight) PreprocessImageWithOpenCV(byte[] imageBytes, bool invert = false)
     {
         using var src = Cv2.ImDecode(imageBytes, ImreadModes.Color);
@@ -114,13 +143,14 @@ namespace Infrastructure.Adapters.OCR
     public async Task<string> ExtractTextFromImageAsync(byte[] imageBytes, string languageCode = "vie+eng")
     {
       languageCode = MapToTesseractCode(languageCode);
+      languageCode = ResolveVerticalLanguage(languageCode);
       return await Task.Run(() =>
       {
         try
         {
           var (pngBytes, _, _) = PreprocessImageWithOpenCV(imageBytes);
 
-          using var engine = new TesseractEngine(_dataPath, languageCode, EngineMode.LstmOnly);
+          using var engine = CreateTesseractEngine(languageCode);
           using var img = Pix.LoadFromMemory(pngBytes);
           using var page = engine.Process(img, PageSegMode.SparseText);
 
@@ -143,7 +173,7 @@ namespace Infrastructure.Adapters.OCR
                 : new[] { PageSegMode.SingleBlock, PageSegMode.SparseText, PageSegMode.Auto, PageSegMode.SingleLine };
 
             string bestText = string.Empty;
-            Func<string, int> getCjkCount = (str) => System.Text.RegularExpressions.Regex.Matches(str ?? "", @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}").Count;
+            Func<string, int> getCjkCount = (str) => System.Text.RegularExpressions.Regex.Matches(str ?? "", @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}|\p{IsHangulSyllables}").Count;
 
             using var cropped = new Mat(src, roi);
             using var gray = new Mat();
@@ -225,39 +255,11 @@ namespace Infrastructure.Adapters.OCR
               return regions;
           }
 
-          var actualLang = languageCode;
-          if (languageCode.Contains("jpn"))
-          {
-              if (File.Exists(Path.Combine(_dataPath, "jpn_vert.traineddata")))
-                 actualLang = "jpn_vert+jpn";
-              else
-                 actualLang = "jpn"; 
-          }
-          else if (languageCode.Contains("kor"))
-          {
-              if (File.Exists(Path.Combine(_dataPath, "kor_vert.traineddata")))
-                 actualLang = "kor_vert+kor";
-              else
-                 actualLang = "kor";
-          }
-          else if (languageCode.Contains("chi_sim"))
-          {
-              if (File.Exists(Path.Combine(_dataPath, "chi_sim_vert.traineddata")))
-                 actualLang = "chi_sim_vert+chi_sim";
-              else
-                 actualLang = "chi_sim";
-          }
-          else if (languageCode.Contains("chi_tra"))
-          {
-              if (File.Exists(Path.Combine(_dataPath, "chi_tra_vert.traineddata")))
-                 actualLang = "chi_tra_vert+chi_tra";
-              else
-                 actualLang = "chi_tra";
-          }
+          var actualLang = ResolveVerticalLanguage(languageCode);
           
           // Clean dispose pattern: using declaration ensures disposal in all paths
           using var engine = CreateTesseractEngine(actualLang);
-          {
+
               void ExtractBlocks(Pix imgPix, List<Application.Models.OCR.OCRRegion> targetRegions)
               {
                   // Sử dụng chế độ SparseText để tìm kiếm tốt nhất text rải rác trong manga
@@ -277,7 +279,7 @@ namespace Infrastructure.Adapters.OCR
                           if (!string.IsNullOrWhiteSpace(text) && confidence >= 40.0f)
                           {
                               string cleanedText = text.Trim();
-                              bool hasCJK = System.Text.RegularExpressions.Regex.IsMatch(cleanedText, @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}");
+                              bool hasCJK = System.Text.RegularExpressions.Regex.IsMatch(cleanedText, @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}|\p{IsHangulSyllables}");
                               
                               // Lọc rỗng và nhiễu (1-2 ký tự đặc biệt, không phải chữ cái/số)
                               if (cleanedText.Length <= 2 && !cleanedText.Any(char.IsLetterOrDigit) && !hasCJK)
@@ -365,7 +367,7 @@ namespace Infrastructure.Adapters.OCR
                       }
 
                       string combinedText = string.Join(" ", sortedGroup.Select(i => i.Text));
-                      bool hasCJK = System.Text.RegularExpressions.Regex.IsMatch(combinedText, @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}");
+                      bool hasCJK = System.Text.RegularExpressions.Regex.IsMatch(combinedText, @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}|\p{IsHangulSyllables}");
                       
                       if (hasCJK) combinedText = combinedText.Replace(" ", ""); // Không dùng dấu cách cho CJK
 
@@ -428,7 +430,6 @@ namespace Infrastructure.Adapters.OCR
                      _logger.LogInformation("Inverted OCR did not improve results. Keeping original.");
                   }
               }
-          }
 
           return regions;
         }
@@ -459,10 +460,7 @@ namespace Infrastructure.Adapters.OCR
 
           if (cropW < 10 || cropH < 10) return string.Empty;
 
-          var actualLang = languageCode;
-          if (languageCode.Contains("jpn") && File.Exists(Path.Combine(_dataPath, "jpn_vert.traineddata"))) actualLang = "jpn_vert+jpn";
-          else if (languageCode.Contains("kor") && File.Exists(Path.Combine(_dataPath, "kor_vert.traineddata"))) actualLang = "kor_vert+kor";
-          else if (languageCode.Contains("chi_sim") && File.Exists(Path.Combine(_dataPath, "chi_sim_vert.traineddata"))) actualLang = "chi_sim_vert+chi_sim";
+          var actualLang = ResolveVerticalLanguage(languageCode);
 
           using var engine = CreateTesseractEngine(actualLang);
           var roi = new OpenCvSharp.Rect(cropX, cropY, cropW, cropH);
