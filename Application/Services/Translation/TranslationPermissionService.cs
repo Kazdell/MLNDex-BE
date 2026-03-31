@@ -190,6 +190,18 @@ namespace Application.Services.Translation
 
     public async Task<IEnumerable<TranslationPermissionResponse>> GetTeamPermissionsAsync(int teamId)
     {
+      var userId = _userContext.UserId;
+      if (userId == null) throw new UnauthorizedAccessException();
+
+      var isMember = await _context.TeamMembers
+          .AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive);
+
+      var isLeader = await _context.TranslationTeams
+          .AnyAsync(t => t.TeamId == teamId && t.LeaderId == userId);
+
+      if (!isMember && !isLeader)
+        throw new Exception("Unauthorized. Only active team members can view permissions.");
+
       var permissions = await _context.TranslationPermissions
           .Where(p => p.TeamId == teamId)
           .OrderByDescending(p => p.PermissionId)

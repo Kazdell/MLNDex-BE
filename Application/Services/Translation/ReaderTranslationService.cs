@@ -158,6 +158,23 @@ namespace Application.Services.Translation
                           && l.TranslationProvider == provider)
                 .ToListAsync();
 
+            int maxPrevAdjustment = existingLayers.Any() ? existingLayers.Max(l => l.AdjustmentCount) : 0;
+            bool hasPrevUserAdjustment = existingLayers.Any(l => l.IsUserAdjusted);
+
+            if (hasPrevUserAdjustment && !request.IsUserAdjusted)
+            {
+                // Bỏ qua việc ghi đè: Bảo vệ chất xám cộng đồng bằng việc giữ nguyên Box chỉnh tay
+                return existingLayers.Select(l => new OverlayTranslationResponse
+                {
+                    LayerId = l.LayerId,
+                    X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
+                    OriginalText = l.OriginalText,
+                    TranslatedText = l.TranslatedText,
+                    IsUserAdjusted = l.IsUserAdjusted,
+                    Provider = l.TranslationProvider
+                }).ToList();
+            }
+
             if (existingLayers.Any())
             {
                 _context.PageTextLayers.RemoveRange(existingLayers);
@@ -182,9 +199,9 @@ namespace Application.Services.Translation
                     TargetLanguage = request.TargetLanguage,
                     TranslationProvider = provider,
                     // Learning Cache fields
-                    IsUserAdjusted = true,   // User explicitly adjusted these boxes
+                    IsUserAdjusted = request.IsUserAdjusted || hasPrevUserAdjustment,   // Keep true if ever adjusted
                     AdjustedByUserId = userId,
-                    AdjustmentCount = 1
+                    AdjustmentCount = request.IsUserAdjusted ? maxPrevAdjustment + 1 : maxPrevAdjustment
                 });
             }
 
@@ -219,6 +236,20 @@ namespace Application.Services.Translation
                           && l.TargetLanguage == request.TargetLanguage
                           && l.TranslationProvider == provider)
                 .ToListAsync();
+
+            if (existingLayers.Any(l => l.IsUserAdjusted))
+            {
+                // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay
+                return existingLayers.Select(l => new OverlayTranslationResponse
+                {
+                    LayerId = l.LayerId,
+                    X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
+                    OriginalText = l.OriginalText,
+                    TranslatedText = l.TranslatedText,
+                    IsUserAdjusted = l.IsUserAdjusted,
+                    Provider = l.TranslationProvider
+                }).ToList();
+            }
 
             if (existingLayers.Any())
             {
@@ -312,6 +343,20 @@ namespace Application.Services.Translation
                           && l.TargetLanguage == targetLang
                           && l.TranslationProvider == provider)
                 .ToListAsync();
+
+            if (existingLayers.Any(l => l.IsUserAdjusted))
+            {
+                // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay
+                return existingLayers.Select(l => new OverlayTranslationResponse
+                {
+                    LayerId = l.LayerId,
+                    X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
+                    OriginalText = l.OriginalText,
+                    TranslatedText = l.TranslatedText,
+                    IsUserAdjusted = l.IsUserAdjusted,
+                    Provider = l.TranslationProvider
+                }).ToList();
+            }
 
             if (existingLayers.Any())
             {

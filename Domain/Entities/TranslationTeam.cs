@@ -44,6 +44,7 @@ namespace Domain.Entities
   {
     ACTIVE,
     LOCKED,
-    BANNED
+    BANNED,
+    DISBANDED
   }
 }

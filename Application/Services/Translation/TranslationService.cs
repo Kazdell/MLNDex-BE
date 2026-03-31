@@ -73,9 +73,11 @@ namespace Application.Services.Translation
             ?? throw new Exception("Chapter not found.");
         if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
 
-        // Verify uploader is in the team
-        if (!permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
-          throw new Exception("Uploader is not an active member of the translation team.");
+        // Verify uploader is in the team or is the leader
+        bool isUploaderValid = permission.Team.LeaderId == uploaderId || 
+                               permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+        if (!isUploaderValid)
+          throw new Exception("Uploader is not an active member or leader of the translation team.");
 
         isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
         resolvedTeamId = permission.TeamId;
@@ -96,8 +98,10 @@ namespace Application.Services.Translation
         if (team == null)
           throw new Exception("Translation team not found.");
 
-        if (!team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
-          throw new Exception("Uploader is not an active member of the translation team.");
+        bool isUploaderValid = team.LeaderId == uploaderId || 
+                               team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+        if (!isUploaderValid)
+          throw new Exception("Uploader is not an active member or leader of the translation team.");
 
         // Verify chapter exists
         chapter = await _context.Chapters
@@ -131,9 +135,9 @@ namespace Application.Services.Translation
                TeamId = resolvedTeamId,
                LanguageId = dto.LanguageId,
                Origin = PermissionOrigin.REQUESTED_BY_TEAM,
-               GrantedBy = creatorUserId,
+               GrantedBy = null,
                Status = TranslationPermissionStatus.UNOFFICIAL,
-               GrantedAt = DateTime.UtcNow
+               GrantedAt = null
             };
             _context.TranslationPermissions.Add(newPerm);
             await _context.SaveChangesAsync();
@@ -334,7 +338,9 @@ namespace Application.Services.Translation
       
       if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
-      if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+      bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId || 
+                             translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+      if (!isUploaderValid)
       {
         throw new Exception("Unauthorized to edit.");
       }
@@ -363,13 +369,47 @@ namespace Application.Services.Translation
       
       if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
 
-      if (!translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive))
+      bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId || 
+                             translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
+      if (!isUploaderValid)
       {
         throw new Exception("Unauthorized to delete.");
       }
 
+      var urlsToDelete = new List<string>();
+
+      var pages = await _context.TranslationPages.Where(p => p.TranslationId == translationId).ToListAsync();
+      urlsToDelete.AddRange(pages.Select(p => p.TranslationImageUrl));
+
+      var text = await _context.TranslationTexts.Where(t => t.TranslationId == translationId).FirstOrDefaultAsync();
+      if (text != null && !string.IsNullOrEmpty(text.ContentUrl))
+      {
+        urlsToDelete.Add(text.ContentUrl);
+      }
+
       _context.Translations.Remove(translation);
       await _context.SaveChangesAsync();
+
+      // Delete physical files from Storage Service
+      var semaphore = new SemaphoreSlim(5);
+      var deleteTasks = urlsToDelete.Where(url => !string.IsNullOrEmpty(url)).Select(async url =>
+      {
+          await semaphore.WaitAsync();
+          try
+          {
+              await _storage.DeleteAsync(url);
+          }
+          catch (Exception ex)
+          {
+              _logger.LogWarning(ex, "Failed to delete storage file {Url} for translation {TranslationId}", url, translationId);
+          }
+          finally
+          {
+              semaphore.Release();
+          }
+      });
+      await Task.WhenAll(deleteTasks);
+
       return true;
     }
 

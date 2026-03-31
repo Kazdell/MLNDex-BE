@@ -78,6 +78,27 @@ namespace Application.Services.Translation
                          && l.TargetLanguage == targetLanguage
                          && l.TranslationProvider == "Gemini")
                 .ToListAsync();
+
+            if (existingLayers.Any(l => l.IsUserAdjusted))
+            {
+                // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay (Bảo vệ dữ liệu)
+                return existingLayers.Select(l => new PageTextLayerResponse
+                {
+                    LayerId = l.LayerId,
+                    PageId = l.PageId,
+                    X = l.X,
+                    Y = l.Y,
+                    Width = l.Width,
+                    Height = l.Height,
+                    OriginalText = l.OriginalText,
+                    TranslatedText = l.TranslatedText,
+                    IsVerified = l.IsVerified,
+                    SourceLanguage = l.SourceLanguage,
+                    TargetLanguage = l.TargetLanguage,
+                    TranslationProvider = l.TranslationProvider
+                }).ToList();
+            }
+
             if (existingLayers.Any())
             {
                 _context.PageTextLayers.RemoveRange(existingLayers);

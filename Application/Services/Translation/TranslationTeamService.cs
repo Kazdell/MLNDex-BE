@@ -151,9 +151,15 @@ namespace Application.Services.Translation
       if (team == null) return false;
 
       var members = await _context.TeamMembers.Where(m => m.TeamId == teamId).ToListAsync();
-      _context.TeamMembers.RemoveRange(members);
+      foreach (var m in members)
+      {
+        m.IsActive = false;
+        m.LeftAt = DateTime.UtcNow;
+      }
 
-      _context.TranslationTeams.Remove(team);
+      team.LockStatus = TeamLockStatus.DISBANDED;
+      team.UpdatedAt = DateTime.UtcNow;
+      
       await _context.SaveChangesAsync();
       return true;
     }
