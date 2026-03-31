@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Common;
 using Application.Interfaces.Notification;
 using Application.Services.Translation;
@@ -103,7 +105,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
-      var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
+      var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
         TeamName = "Hero Team", Slug = "hero-team",
         Description = "Best team", LanguageId = 1
@@ -122,7 +124,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
-      await CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
+      await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
         TeamName = "Genre Team", Slug = "genre-team", LanguageId = 1,
         GenreIds = new List<int> { 1 }
@@ -141,7 +143,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto { TeamName = "Hero Team", Slug = "new-slug" }));
+          CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team", Slug = "new-slug" }));
       ex.Message.Should().Be("Team name already exists.");
     }
 
@@ -154,7 +156,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto { TeamName = "Hero Team 2", Slug = "hero-team" }));
+          CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team 2", Slug = "hero-team" }));
       ex.Message.Should().Be("Slug already exists.");
     }
 
@@ -165,7 +167,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns((int?)null);
 
       await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-          CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
+          CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
           {
             TeamName = "Team X", Slug = "team-x", LanguageId = 1
           }));
@@ -177,7 +179,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
-      var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
+      var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
         TeamName = "No-Desc Team", Slug = "no-desc", LanguageId = 1, Description = null
       });
@@ -191,7 +193,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
-      await CreateService(db).CreateTeamAsync(new CreateTranslationTeamDto
+      await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
         TeamName = "Approval Team", Slug = "approval-team", LanguageId = 1, RequireApproval = true
       });
@@ -212,7 +214,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
 
-      var id = await CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberDto
+      var id = await CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest
       {
         UserId = 99, Role = TeamMemberRole.TRANSLATOR
       });
@@ -233,7 +235,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberDto { UserId = 55, Role = TeamMemberRole.TRANSLATOR }));
+          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 55, Role = TeamMemberRole.TRANSLATOR }));
       ex.Message.Should().Be("Team not found or unauthorized.");
     }
 
@@ -247,7 +249,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberDto { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
+          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
       ex.Message.Should().Be("User is already a team member.");
     }
 
@@ -265,7 +267,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberDto { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
+          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
       ex.Message.Should().Be("Invitation already pending.");
     }
 
@@ -546,7 +548,7 @@ namespace Application.Tests.Services.Translation
       });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).AssignRoleAsync(teamId, 55, new AssignTeamMemberRoleDto { Role = TeamMemberRole.EDITOR });
+      var result = await CreateService(db).AssignRoleAsync(teamId, 55, new AssignTeamMemberRoleRequest { Role = TeamMemberRole.EDITOR });
 
       result.Role.Should().Be("EDITOR");
       (await db.TeamMembers.FirstAsync(m => m.UserId == 55)).Role.Should().Be(TeamMemberRole.EDITOR);
@@ -563,7 +565,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Exception>(() =>
-          CreateService(db).AssignRoleAsync(teamId, 1, new AssignTeamMemberRoleDto { Role = TeamMemberRole.EDITOR }));
+          CreateService(db).AssignRoleAsync(teamId, 1, new AssignTeamMemberRoleRequest { Role = TeamMemberRole.EDITOR }));
       ex.Message.Should().Be("Leader role cannot be changed manually.");
     }
 
@@ -661,7 +663,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationTeams.Add(team);
       await db.SaveChangesAsync();
 
-      await CreateService(db).RequestToJoinAsync(team.TeamId, new JoinTeamRequestDto { Message = "I want to join" });
+      await CreateService(db).RequestToJoinAsync(team.TeamId, new JoinTeamRequest { Message = "I want to join" });
 
       var req = await db.TeamJoinRequests.FirstOrDefaultAsync(r => r.UserId == 55 && r.TeamId == team.TeamId);
       req.Should().NotBeNull();
@@ -687,7 +689,7 @@ namespace Application.Tests.Services.Translation
       });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestToJoinAsync(team.TeamId, new JoinTeamRequestDto { Message = "again" }));
+      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestToJoinAsync(team.TeamId, new JoinTeamRequest { Message = "again" }));
       ex.Message.Should().Be("Join request already pending.");
     }
 

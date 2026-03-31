@@ -46,7 +46,6 @@ namespace mlndex_backend.Controllers.Translation
     {
       try
       {
-        Console.WriteLine($"[DEBUG-UPLOAD] chapterId={req.ChapterId}, permissionId={req.PermissionId}, languageId={req.LanguageId}, contentType={req.ContentType}");
 
         // Guard: block upload if user trust score is depleted
         var currentUser = await _db.Users.FindAsync(GetUserId());
@@ -227,7 +226,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{id}/debug-moderate")]
-    [AllowAnonymous]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugModerate(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
       try
@@ -242,7 +241,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{id}/debug-enqueue")]
-    [AllowAnonymous]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugEnqueue(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
       try

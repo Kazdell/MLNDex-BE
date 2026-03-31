@@ -143,7 +143,7 @@ namespace Application.Services.Translation
       var translation = new Domain.Entities.Translation
       {
         ChapterId = dto.ChapterId,
-        PermissionId = dto.PermissionId, // null for unofficial
+        PermissionId = dto.PermissionId, // always set — populated by both official and unofficial paths above
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,

@@ -211,8 +211,13 @@ namespace Application.Services.Translation
 
       if (creatorId == 0) return new List<TranslationPermissionDto>();
 
+      var seriesIds = await _context.Series
+          .Where(s => s.CreatorId == creatorId)
+          .Select(s => s.SeriesId)
+          .ToListAsync();
+
       var permissions = await _context.TranslationPermissions
-          .Where(p => p.GrantedBy == userId || p.GrantedBy == creatorId)
+          .Where(p => seriesIds.Contains(p.SeriesId))
           .OrderByDescending(p => p.PermissionId)
           .ToListAsync();
 
