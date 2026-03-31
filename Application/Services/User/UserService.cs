@@ -138,10 +138,10 @@ namespace Application.Services.User
       }
 
       // Role filter
-      if (!string.IsNullOrWhiteSpace(roleFilter))
+      if (!string.IsNullOrWhiteSpace(roleFilter) && Enum.TryParse<RoleName>(roleFilter, true, out var roleEnum))
       {
         usersQuery = usersQuery.Where(u =>
-            u.UserRoles.Any(ur => ur.Role.RoleName.ToString() == roleFilter));
+            u.UserRoles.Any(ur => ur.Role.RoleName == roleEnum));
       }
 
       // Status filter
