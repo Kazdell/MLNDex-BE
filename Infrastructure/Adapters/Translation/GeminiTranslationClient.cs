@@ -17,15 +17,12 @@ namespace Infrastructure.Adapters.Translation
         private readonly ILogger<GeminiTranslationClient> _logger;
         private readonly string _apiKey;
 
-        public GeminiTranslationClient(IConfiguration configuration, ILogger<GeminiTranslationClient> logger)
+        public GeminiTranslationClient(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiTranslationClient> logger)
         {
             _apiKey = configuration["Gemini:ApiKey"]
                 ?? throw new InvalidOperationException("Chưa cấu hình Gemini:ApiKey trong appsettings");
 
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(60)
-            };
+            _httpClient = httpClient;
             _logger = logger;
         }
 

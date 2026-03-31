@@ -274,6 +274,16 @@ public class TopUpService : ITopUpService
 			};
 		}
 
+		if (transaction.Status == TransactionStatus.REFUNDED)
+		{
+			return new TopUpCallbackResponseDto
+			{
+				TxnRef = callback.TxnRef,
+				Status = "refunded",
+				Message = "Giao dịch đã được hoàn tiền trước đó."
+			};
+		}
+
 		// Đang PENDING thì ta tiếp tục xử lý
 		if (callback.Status == "PAID")
 			return await CompleteTopUpAsync(transaction, callback.TxnRef);
