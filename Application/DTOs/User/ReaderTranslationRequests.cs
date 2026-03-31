@@ -25,6 +25,7 @@ namespace Application.DTOs.User
     public string SourceLanguage { get; set; } = "auto";
     public string TargetLanguage { get; set; } = "vi";
     public string Provider { get; set; } = "Google";
+    public bool IsUserAdjusted { get; set; } = true;
     public List<AdjustedBox> Boxes { get; set; } = new();
   }
 

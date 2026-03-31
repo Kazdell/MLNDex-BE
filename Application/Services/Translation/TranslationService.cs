@@ -135,7 +135,7 @@ namespace Application.Services.Translation
                TeamId = resolvedTeamId,
                LanguageId = dto.LanguageId,
                Origin = PermissionOrigin.REQUESTED_BY_TEAM,
-               GrantedBy = null,
+               GrantedBy = creatorUserId,
                Status = TranslationPermissionStatus.UNOFFICIAL,
                GrantedAt = null
             };
@@ -298,6 +298,9 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
@@ -310,6 +313,9 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TranslationResponse>> GetTranslationsBySeriesAsync(int seriesId)
     {
       var translations = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
           .Include(t => t.Chapter)
           .Where(t => t.Chapter.SeriesId == seriesId)
           .ToListAsync();
@@ -319,7 +325,11 @@ namespace Application.Services.Translation
 
     public async Task<IEnumerable<TranslationResponse>> GetAllTranslationsAsync()
     {
-      var translations = await _context.Translations.ToListAsync();
+      var translations = await _context.Translations
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+          .ToListAsync();
       return translations.Select(MapToDto);
     }
 
@@ -420,6 +430,9 @@ namespace Application.Services.Translation
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,
         LanguageId = t.LanguageId,
+        LanguageName = t.Language?.Name ?? string.Empty,
+        TeamId = t.Permission?.TeamId,
+        TeamName = t.Permission?.Team?.TeamName ?? string.Empty,
         ContentType = t.ContentType.ToString(),
         QualityStatus = t.QualityStatus.ToString(),
         ModerationStatus = t.ModerationStatus.ToString(),

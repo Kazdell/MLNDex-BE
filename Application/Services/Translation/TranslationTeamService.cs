@@ -208,9 +208,11 @@ namespace Application.Services.Translation
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
-      if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == inviteDto.UserId))
+      var existingMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == inviteDto.UserId && m.IsActive);
+      if (existingMember != null)
       {
-        throw new Exception("User is already a team member.");
+        if (inviteDto.Role != TeamMemberRole.LEADER)
+            throw new Exception("User is already a team member.");
       }
 
       if (await _context.TeamInvitations.AnyAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING))
@@ -255,26 +257,52 @@ namespace Application.Services.Translation
       invitation.Status = TeamInvitationStatus.ACCEPTED;
       invitation.RespondedAt = DateTime.UtcNow;
 
-      var member = new TeamMember
-      {
-        TeamId = invitation.TeamId,
-        UserId = invitation.InviteeId,
-        Role = Enum.Parse<TeamMemberRole>(invitation.Role),
-        JoinedAt = DateTime.UtcNow,
-        IsActive = true
-      };
+      var teamRole = Enum.Parse<TeamMemberRole>(invitation.Role);
+      var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
+      if (team == null) return false;
 
-      _context.TeamMembers.Add(member);
+      var existingMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == userId.Value);
+
+      bool isLeadershipTransfer = teamRole == TeamMemberRole.LEADER;
+      if (isLeadershipTransfer)
+      {
+          var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
+          if (oldLeaderMember != null)
+          {
+              oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
+          }
+          team.LeaderId = userId.Value;
+      }
+
+      if (existingMember != null)
+      {
+          existingMember.Role = teamRole;
+          existingMember.JoinedAt = DateTime.UtcNow;
+          existingMember.IsActive = true;
+          existingMember.LeftAt = null;
+      }
+      else
+      {
+          var member = new TeamMember
+          {
+            TeamId = invitation.TeamId,
+            UserId = invitation.InviteeId,
+            Role = teamRole,
+            JoinedAt = DateTime.UtcNow,
+            IsActive = true
+          };
+          _context.TeamMembers.Add(member);
+      }
+      
       await _context.SaveChangesAsync();
 
       var invitee = await _context.Users.FindAsync(userId);
-      var team = await _context.TranslationTeams.FindAsync(invitation.TeamId);
-      if (invitee != null && team != null)
+      if (invitee != null)
       {
         await _notificationService.CreateNotificationAsync(
-            team.LeaderId,
+            isLeadershipTransfer ? invitation.InviterId : team.LeaderId,
             invitee.DisplayName ?? invitee.Username,
-            $"Đã chấp nhận lời mời gia nhập nhóm {team.TeamName}",
+            isLeadershipTransfer ? $"Đã chấp nhận lời mời làm Trưởng Nhóm cho {team.TeamName}" : $"Đã gia nhập nhóm {team.TeamName}",
             $"/teams/{team.TeamId}/members",
             NotificationType.TEAM_INVITATION_ACCEPTED
         );
@@ -478,10 +506,11 @@ namespace Application.Services.Translation
 
       if (leaderId.Value == targetUserId) throw new Exception("Leader cannot be removed.");
 
-      var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
+      var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId && m.IsActive);
       if (member == null) return false;
 
-      _context.TeamMembers.Remove(member);
+      member.IsActive = false;
+      member.LeftAt = DateTime.UtcNow;
       await _context.SaveChangesAsync();
 
       await _notificationService.CreateNotificationAsync(
@@ -551,6 +580,7 @@ namespace Application.Services.Translation
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
       if (leaderId == targetUserId) throw new Exception("Leader role cannot be changed manually.");
+      if (roleDto.Role == TeamMemberRole.LEADER) throw new Exception("Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên.");
 
       var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
       if (member == null) throw new Exception("Member not found.");

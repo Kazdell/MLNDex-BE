@@ -9,6 +9,9 @@ namespace Application.DTOs.Translation.Responses
     public int TranslationId { get; set; }
     public int ChapterId { get; set; }
     public int LanguageId { get; set; }
+    public string LanguageName { get; set; } = string.Empty;
+    public int? TeamId { get; set; }
+    public string TeamName { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public string QualityStatus { get; set; } = string.Empty;
     public string ModerationStatus { get; set; } = string.Empty;

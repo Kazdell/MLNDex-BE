@@ -135,6 +135,15 @@ namespace mlndex_backend.Controllers.Translation
       }
     }
 
+    // Get all translations by series ID.
+    [HttpGet("series/{seriesId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTranslationsBySeries(int seriesId)
+    {
+      var translations = await _service.GetTranslationsBySeriesAsync(seriesId);
+      return OkResponse(translations);
+    }
+
     // Get all translations (Admin/Mod only in future).
     [HttpGet]
     [AllowAnonymous]
