@@ -113,7 +113,8 @@ namespace Application.Services.Translation
         // =====================================================================
         public async Task<List<OverlayTranslationResponse>> TranslateAdjustedBoxesAsync(BoxTranslateRequest request, int? userId = null)
         {
-            string provider = request.Provider ?? "Google";
+            // Normalize provider to canonical casing to avoid duplicate cache groups
+            string provider = NormalizeProvider(request.Provider);
             _logger.LogInformation("TranslateAdjustedBoxes: PageId={PageId}, {Count} boxes, {Src}→{Tgt} ({Provider})",
                 request.PageId, request.Boxes?.Count ?? 0, request.SourceLanguage, request.TargetLanguage, provider);
 
@@ -298,7 +299,7 @@ namespace Application.Services.Translation
         }
 
         // =====================================================================
-        // VISION: GPT-4 Vision translation for whole page
+        // VISION: Gemini Vision translation for whole page
         // =====================================================================
         public async Task<List<OverlayTranslationResponse>> TranslatePageByAiVisionAsync(int pageId, string sourceLang, string targetLang)
         {
@@ -368,6 +369,18 @@ namespace Application.Services.Translation
                 IsUserAdjusted = l.IsUserAdjusted,
                 Provider = l.TranslationProvider
             }).ToList();
+        }
+
+        // =====================================================================
+        // HELPER: Normalize provider string to canonical casing
+        // =====================================================================
+        private static string NormalizeProvider(string? raw)
+        {
+            var trimmed = raw?.Trim();
+            if (string.IsNullOrEmpty(trimmed)) return "Google";
+            if (trimmed.Equals("Google", StringComparison.OrdinalIgnoreCase)) return "Google";
+            if (trimmed.Equals("Gemini", StringComparison.OrdinalIgnoreCase)) return "Gemini";
+            return trimmed; // unknown values pass through and will be rejected by SupportedProviders check
         }
 
         // =====================================================================
