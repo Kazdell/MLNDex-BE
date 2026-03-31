@@ -21,8 +21,10 @@ namespace Domain.Entities
     public bool IsOutdated { get; set; } = false;
     public bool IsOrphan { get; set; } = false;
     public string? AiScoresJson { get; set; }
+    public int? TeamId { get; set; }
 
     // Navigation
+    public TranslationTeam? Team { get; set; }
     public Language Language { get; set; } = null!;
     public Chapter Chapter { get; set; } = null!;
     public TranslationPermission? Permission { get; set; }

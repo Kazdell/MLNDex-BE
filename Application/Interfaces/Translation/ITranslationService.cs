@@ -13,5 +13,7 @@ namespace Application.Interfaces.Translation
     Task<IEnumerable<TranslationResponse>> GetAllTranslationsAsync();
     Task<TranslationResponse> EditTranslationAsync(int translationId, EditTranslationRequest dto);
     Task<bool> DeleteTranslationAsync(int translationId);
+    Task<List<Application.DTOs.Chapter.ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(int teamId, int seriesId, int userId, global::System.Threading.CancellationToken ct = default);
+    Task<bool> DeleteTeamTranslationAsync(int translationId, int teamId, int userId, global::System.Threading.CancellationToken ct = default);
   }
 }

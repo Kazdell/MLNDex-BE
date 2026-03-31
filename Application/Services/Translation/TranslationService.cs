@@ -149,6 +149,7 @@ namespace Application.Services.Translation
       {
         ChapterId = dto.ChapterId,
         PermissionId = dto.PermissionId, // always set — populated by both official and unofficial paths above
+        TeamId = resolvedTeamId,
         LanguageId = dto.LanguageId,
         ContentType = dto.ContentType,
         QualityStatus = TranslationQualityStatus.DRAFT,
@@ -298,9 +299,14 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
+          .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
           .Include(t => t.Language)
+          .Include(t => t.Team)
           .Include(t => t.Permission)
               .ThenInclude(p => p.Team)
+          .Include(t => t.TeamJoins)
+              .ThenInclude(tj => tj.Team)
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
@@ -314,8 +320,11 @@ namespace Application.Services.Translation
     {
       var translations = await _context.Translations
           .Include(t => t.Language)
+          .Include(t => t.Team)
           .Include(t => t.Permission)
               .ThenInclude(p => p.Team)
+          .Include(t => t.TeamJoins)
+              .ThenInclude(tj => tj.Team)
           .Include(t => t.Chapter)
           .Where(t => t.Chapter.SeriesId == seriesId)
           .ToListAsync();
@@ -423,16 +432,82 @@ namespace Application.Services.Translation
       return true;
     }
 
+    public async Task<List<Application.DTOs.Chapter.ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
+    {
+      // Verify team membership
+      var isMember = await _context.TeamMembers
+          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+
+      if (!isMember)
+          throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+      // Fetch translations mapped to ChapterListItemDto for UI compatibility
+      return await _context.Translations
+          .Include(t => t.Chapter)
+          .Include(t => t.Permission)
+          .Include(t => t.TeamJoins)
+          .Include(t => t.TranslationPages)
+          .Include(t => t.TranslationText)
+          .Where(t => t.Chapter.SeriesId == seriesId && 
+                      (t.Permission.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)))
+          .OrderByDescending(t => t.Chapter.ChapterNumber)
+          .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
+          {
+              ChapterId = t.ChapterId, // ID gốc của truyện 
+              TranslationId = t.TranslationId, // ID bản dịch
+              ChapterNumber = t.Chapter.ChapterNumber,
+              Title = t.Chapter.Title, 
+              Status = t.QualityStatus.ToString(),
+              ModerationStatus = t.ModerationStatus.ToString(),
+              PageCount = (t.ContentType == Domain.Entities.ContentType.IMAGE) ? t.TranslationPages.Count : (t.TranslationText != null ? t.TranslationText.WordCount : 0),
+              Views = 0, 
+              PublishedAt = t.PublishedAt,
+              CreatedAt = t.Chapter.CreatedAt
+          })
+          .ToListAsync(ct);
+    }
+
+    public async Task<bool> DeleteTeamTranslationAsync(int translationId, int teamId, int userId, CancellationToken ct = default)
+    {
+      var isMember = await _context.TeamMembers
+          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+
+      if (!isMember)
+          throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+      var translation = await _context.Translations
+          .Include(t => t.Permission)
+          .Include(t => t.TeamJoins)
+          .FirstOrDefaultAsync(t => t.TranslationId == translationId && 
+                                   (t.Permission.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)), ct);
+
+      if (translation == null)
+          throw new KeyNotFoundException("Không tìm thấy bản dịch hoặc bản dịch không thuộc về nhóm của bạn.");
+
+      return await DeleteTranslationAsync(translationId);
+    }
+
     private TranslationResponse MapToDto(Domain.Entities.Translation t)
     {
+      // Resolve TeamId/TeamName: primary source is Translation.TeamId, fallback to Permission, fallback to TeamJoins
+      var resolvedTeamId = t.TeamId
+                           ?? t.Permission?.TeamId
+                           ?? t.TeamJoins?.FirstOrDefault(tj => tj.IsPrimary)?.TeamId
+                           ?? t.TeamJoins?.FirstOrDefault()?.TeamId;
+      var resolvedTeamName = t.Team?.TeamName
+                             ?? t.Permission?.Team?.TeamName
+                             ?? t.TeamJoins?.FirstOrDefault(tj => tj.IsPrimary)?.Team?.TeamName
+                             ?? t.TeamJoins?.FirstOrDefault()?.Team?.TeamName
+                             ?? string.Empty;
+
       return new TranslationResponse
       {
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,
         LanguageId = t.LanguageId,
         LanguageName = t.Language?.Name ?? string.Empty,
-        TeamId = t.Permission?.TeamId,
-        TeamName = t.Permission?.Team?.TeamName ?? string.Empty,
+        TeamId = resolvedTeamId,
+        TeamName = resolvedTeamName,
         ContentType = t.ContentType.ToString(),
         QualityStatus = t.QualityStatus.ToString(),
         ModerationStatus = t.ModerationStatus.ToString(),
@@ -441,7 +516,11 @@ namespace Application.Services.Translation
         IsOutdated = t.IsOutdated,
         IsOrphan = t.IsOrphan,
         Pages = t.TranslationPages?.OrderBy(p => p.PageNumber).Select(p => p.TranslationImageUrl).ToList(),
-        TextContent = t.TranslationText?.ContentUrl
+        TextContent = t.TranslationText?.ContentUrl,
+        SeriesId = t.Chapter?.SeriesId,
+        SeriesTitle = t.Chapter?.Series?.Title,
+        ChapterNumber = (float?)t.Chapter?.ChapterNumber,
+        Title = t.Chapter?.Title
       };
     }
   }

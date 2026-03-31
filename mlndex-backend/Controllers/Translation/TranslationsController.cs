@@ -24,7 +24,7 @@ namespace mlndex_backend.Controllers.Translation
     public string ContentType { get; set; } = "IMAGE";
     public string? CreditsJson { get; set; }
     public string? JointTeamIdsJson { get; set; }
-    public List<IFormFile>? Pages { get; set; }
+    // Note: 'Pages' removed from form model to prevent ASP.NET Core binding overriding matching keys and returning only 1 file.
     public string? ContentText { get; set; }
   }
 
@@ -43,7 +43,9 @@ namespace mlndex_backend.Controllers.Translation
 
     [HttpPost]
     [RequestSizeLimit(300 * 1024 * 1024)]
-    public async Task<IActionResult> UploadTranslation([FromForm] UploadTranslationFormRequest req)
+    public async Task<IActionResult> UploadTranslation(
+        [FromForm] UploadTranslationFormRequest req,
+        [FromForm] IFormFileCollection? pages)
     {
       try
       {
@@ -71,7 +73,7 @@ namespace mlndex_backend.Controllers.Translation
           LanguageId = req.LanguageId,
           ContentType = contentTypeEnum,
           ContentText = req.ContentText,
-          Pages = req.Pages?.Select((file, index) => new Application.DTOs.Chapter.UploadPageDto
+          Pages = pages?.Select((file, index) => new Application.DTOs.Chapter.UploadPageDto
           {
             FileStream = file.OpenReadStream(),
             FileName = file.FileName,
