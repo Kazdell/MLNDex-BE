@@ -13,6 +13,7 @@ using Application.Interfaces.Services;
 using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
+using Application.Interfaces.OCR;
 using Application.Services;
 using Application.Services.AIModeration;
 using Application.Services.Auth;
@@ -140,6 +141,9 @@ namespace mlndex_backend
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			// OCR Services — Tesseract fallback (Scoped)
+			builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
+			builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
+			
 			// For single IOCRService injection (PageTranslationService, ModerationService):
 			//   → last registration wins = Tesseract
 			builder.Services.AddScoped<TesseractOCRService>();

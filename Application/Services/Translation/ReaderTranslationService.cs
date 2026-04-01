@@ -237,18 +237,11 @@ namespace Application.Services.Translation
                           && l.TranslationProvider == provider)
                 .ToListAsync();
 
+            // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay
+            // (Tuy nhiên, do nút "Dịch lại" được thiết kế để ép làm mới, ta cho phép qua luôn)
             if (existingLayers.Any(l => l.IsUserAdjusted))
             {
-                // Bỏ qua tạo mới nếu đã có Box cộng đồng chỉnh tay
-                return existingLayers.Select(l => new OverlayTranslationResponse
-                {
-                    LayerId = l.LayerId,
-                    X = l.X, Y = l.Y, Width = l.Width, Height = l.Height,
-                    OriginalText = l.OriginalText,
-                    TranslatedText = l.TranslatedText,
-                    IsUserAdjusted = l.IsUserAdjusted,
-                    Provider = l.TranslationProvider
-                }).ToList();
+                _logger.LogInformation("GenerateOverlayTranslationsAsync: Đang đè lên các Box do người dùng chỉnh tay (PageId={PageId})", request.PageId);
             }
 
             if (existingLayers.Any())

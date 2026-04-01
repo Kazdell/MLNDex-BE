@@ -35,7 +35,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>ModerationConfig\%(Filename)%(Extension)</Link>
     </Content>
-
+    <None Update="Resources\**\*.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
