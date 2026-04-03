@@ -53,10 +53,25 @@ namespace Application.Services.Moderation
           if (currentUserRolesCount.Contains(RoleName.ADMIN) || currentUserRolesCount.Contains(RoleName.MODERATOR))
               throw new UnauthorizedAccessException("Bạn không có quyền thực thi hành động này lên Hệ thống Quản trị (Moderator/Admin).");
       }
-      else if (isAdminLevel && userId != moderatorId)
+      else if (isAdminLevel)
       {
-          if (currentUserRolesCount.Contains(RoleName.ADMIN))
-              throw new UnauthorizedAccessException("Admin không thể thực thi hành động này lên một Admin khác.");
+          // Admin can act on other Admins, but not themselves (for deactivation)
+          if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
+              throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+
+          // If deactivating another Admin, ensure at least one OTHER active Admin remains
+          if (request.Action == AccountActionType.DEACTIVATE && currentUserRolesCount.Contains(RoleName.ADMIN))
+          {
+              var activeAdminsCount = await _context.UserRoles
+                  .Include(ur => ur.Role)
+                  .Include(ur => ur.User)
+                  .CountAsync(ur => ur.Role.RoleName == RoleName.ADMIN && ur.User.IsActive && ur.UserId != userId, cancellationToken);
+
+              if (activeAdminsCount == 0)
+              {
+                  throw new InvalidOperationException("Không thể vô hiệu hóa Admin này vì đây là Admin hoạt động cuối cùng của hệ thống.");
+              }
+          }
       }
 
       switch (request.Action)
@@ -183,11 +198,8 @@ namespace Application.Services.Moderation
                 if (newRoles.Contains(RoleName.ADMIN) || newRoles.Contains(RoleName.MODERATOR))
                     throw new UnauthorizedAccessException("Bạn không có quyền cấp quyền Hệ thống Quản trị (Moderator/Admin).");
             }
-            else if (isAdminLevel && userId != moderatorId)
-            {
-                if (currentRoles.Contains(RoleName.ADMIN))
-                    throw new UnauthorizedAccessException("Admin không thể thay đổi vai trò của một Admin khác.");
-            }
+            // Admin level can edit anyone's roles (including other Admins)
+            // Safety checks for minimum admin count were handled above
 
             // Remove existing roles
             _context.UserRoles.RemoveRange(user.UserRoles);

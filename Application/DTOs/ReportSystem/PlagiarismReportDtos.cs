@@ -14,8 +14,7 @@ namespace Application.DTOs.ReportSystem
     public int TargetId { get; set; }
 
     [Required]
-    public ReportReason Reason { get; set; } // Plagiarism, MTL_Abuse...
-
+    public ReportReason Reason { get; set; }
     [Required]
     [MaxLength(1000)]
     public string Description { get; set; } = string.Empty;
@@ -31,8 +30,7 @@ namespace Application.DTOs.ReportSystem
 
     public ReportTargetType TargetType { get; set; }
     public int TargetId { get; set; }
-    public string TargetName { get; set; } = string.Empty; // Tên truyện hoặc tên chương
-
+    public string TargetName { get; set; } = string.Empty; 
     public ReportReason Reason { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<string> EvidenceUrls { get; set; } = new List<string>();
@@ -44,16 +42,18 @@ namespace Application.DTOs.ReportSystem
   public class ResolvePlagiarismReportRequest
   {
     [Required]
-    public ReportStatus NewStatus { get; set; } // Resolved, Rejected
-
+    public ReportStatus NewStatus { get; set; } 
     public string? ResolutionNotes { get; set; }
 
-    public bool StrikeContent { get; set; } // Nếu true, ẩn nội dung bị báo cáo
+    public bool StrikeContent { get; set; } 
 
-    public int? PenaltyScore { get; set; } // Trừ bao nhiêu điểm trust score
+    public int? PenaltyScore { get; set; } 
+
+    public bool BanCreator { get; set; } 
+
+    public bool SendWarning { get; set; } 
   }
 
-  // DTO cho chức năng Side-by-Side Compare
   public class CompareTranslationResponse
   {
     public CompareTranslationDetail Reported { get; set; } = new();
@@ -68,5 +68,12 @@ namespace Application.DTOs.ReportSystem
     public string TeamName { get; set; } = string.Empty;
     public int? TeamId { get; set; }
     public List<string> ImageUrls { get; set; } = new List<string>();
+  }
+  public class PlagiarismReportStatsDto
+  {
+    public int Total { get; set; }
+    public int Pending { get; set; }
+    public int Severe { get; set; }
+    public int Resolved { get; set; }
   }
 }

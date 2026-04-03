@@ -299,6 +299,7 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
+<<<<<<< HEAD
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
           .Include(t => t.Language)
@@ -307,6 +308,11 @@ namespace Application.Services.Translation
               .ThenInclude(p => p.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
+=======
+          .Include(t => t.Language)
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+>>>>>>> origin/main
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
@@ -320,11 +326,16 @@ namespace Application.Services.Translation
     {
       var translations = await _context.Translations
           .Include(t => t.Language)
+<<<<<<< HEAD
           .Include(t => t.Team)
           .Include(t => t.Permission)
               .ThenInclude(p => p.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
+=======
+          .Include(t => t.Permission)
+              .ThenInclude(p => p.Team)
+>>>>>>> origin/main
           .Include(t => t.Chapter)
           .Where(t => t.Chapter.SeriesId == seriesId)
           .ToListAsync();
@@ -432,6 +443,7 @@ namespace Application.Services.Translation
       return true;
     }
 
+<<<<<<< HEAD
     public async Task<List<Application.DTOs.Chapter.ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
     {
       // Verify team membership
@@ -500,14 +512,23 @@ namespace Application.Services.Translation
                              ?? t.TeamJoins?.FirstOrDefault()?.Team?.TeamName
                              ?? string.Empty;
 
+=======
+    private TranslationResponse MapToDto(Domain.Entities.Translation t)
+    {
+>>>>>>> origin/main
       return new TranslationResponse
       {
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,
         LanguageId = t.LanguageId,
         LanguageName = t.Language?.Name ?? string.Empty,
+<<<<<<< HEAD
         TeamId = resolvedTeamId,
         TeamName = resolvedTeamName,
+=======
+        TeamId = t.Permission?.TeamId,
+        TeamName = t.Permission?.Team?.TeamName ?? string.Empty,
+>>>>>>> origin/main
         ContentType = t.ContentType.ToString(),
         QualityStatus = t.QualityStatus.ToString(),
         ModerationStatus = t.ModerationStatus.ToString(),
