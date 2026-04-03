@@ -141,13 +141,21 @@ namespace mlndex_backend
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			// OCR Services — Tesseract fallback (Scoped)
+			builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
 			builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
 			builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
 			
-			// For single IOCRService injection (PageTranslationService, ModerationService):
-			//   → last registration wins = Tesseract
-			builder.Services.AddScoped<TesseractOCRService>();
-			builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
+			// Register multiple IOCRService implementations (Strategy Pattern)
+			// ReaderTranslationService consumes IEnumerable<IOCRService>
+			builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
+			builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+			
+			// For backward compatibility (PageTranslationService, ModerationService) which expect single IOCRService,
+			// the last one registered wins (TesseractOCRService). Or we can leave it as is if they just pick Tesseract.
+
+			// Thêm Keyed Services cho tách biệt ITextRecognitionService
+			builder.Services.AddKeyedScoped<ITextRecognitionService>("tesseract", (sp, key) => sp.GetRequiredService<TesseractOCRService>());
+			builder.Services.AddKeyedSingleton<ITextRecognitionService, PaddleOcrService>("paddle");
 			builder.Services.AddHttpClient<IAiTranslationClient, GeminiTranslationClient>(client =>
 			{
 				client.Timeout = TimeSpan.FromSeconds(60);

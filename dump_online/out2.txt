@@ -1,0 +1,34 @@
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\dump_online\dump_online.csproj : warning NU1603: Sdcb.PaddleOCR.Models.Online 3.0.0 depends on Sdcb.PaddleOCR (>= 3.0.0-preview.2) but Sdcb.PaddleOCR 3.0.0-preview.2 was not found. An approximate best match of Sdcb.PaddleOCR 3.0.0 was resolved.
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\dump_online\dump_online.csproj : warning NU1603: Sdcb.PaddleOCR.Models.Online 3.0.0 depends on Sdcb.PaddleOCR (>= 3.0.0-preview.2) but Sdcb.PaddleOCR 3.0.0-preview.2 was not found. An approximate best match of Sdcb.PaddleOCR 3.0.0 was resolved.
+Properties:
+Fields:
+ChineseV5
+ChineseServerV5
+ChineseV4
+ChineseServerV4
+EnglishV4
+KoreanV4
+JapanV4
+TeluguV4
+KannadaV4
+TamilV4
+ArabicV4
+DevanagariV4
+ChineseServerV2
+ChineseV2
+ChineseV3
+ChineseV3Slim
+EnglishV3
+EnglishV3Slim
+KoreanV3
+JapanV3
+TraditionalChineseV3
+TeluguV3
+KannadaV3
+TamilV3
+LatinV3
+ArabicV3
+CyrillicV3
+DevanagariV3
+Nested Types:
+<DownloadAsync>d__15

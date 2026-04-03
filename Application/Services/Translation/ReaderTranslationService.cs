@@ -16,7 +16,7 @@ namespace Application.Services.Translation
     public class ReaderTranslationService : IReaderTranslationService
     {
         private readonly IMlndexDbContext _context;
-        private readonly IOCRService _ocrService;
+        private readonly IEnumerable<IOCRService> _ocrServices;
         private readonly IAiTranslationClient _aiClient;
         private readonly IGoogleTranslationClient _googleClient;
         private readonly ILogger<ReaderTranslationService> _logger;
@@ -24,14 +24,14 @@ namespace Application.Services.Translation
 
         public ReaderTranslationService(
             IMlndexDbContext context,
-            IOCRService ocrService,
+            IEnumerable<IOCRService> ocrServices,
             IAiTranslationClient aiClient,
             IGoogleTranslationClient googleClient,
             ILogger<ReaderTranslationService> logger,
             HttpClient httpClient)
         {
             _context = context;
-            _ocrService = ocrService;
+            _ocrServices = ocrServices;
             _aiClient = aiClient;
             _googleClient = googleClient;
             _logger = logger;
@@ -44,13 +44,32 @@ namespace Application.Services.Translation
             "Google", "Gemini"
         };
 
+        private IOCRService GetOcrService(string provider)
+        {
+            // Resolve safe fallback provider
+            var p = string.Equals(provider, "server_paddle", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(provider, "paddle", StringComparison.OrdinalIgnoreCase)
+                    ? "paddle"
+                    : "tesseract";
+
+            var service = _ocrServices.FirstOrDefault(s => string.Equals(s.ProviderName, p, StringComparison.OrdinalIgnoreCase));
+            
+            if (service == null)
+            {
+                _logger.LogWarning("GetOcrService: Provider {Provider} not found. Fallbacking to first available.", p);
+                return _ocrServices.First();
+            }
+
+            return service;
+        }
+
         // =====================================================================
         // PHASE 1: SCAN BOXES ONLY (no translation)
         // Learning Cache: returns user-adjusted boxes if they exist
         // =====================================================================
         public async Task<List<BoxScanResponse>> ScanBoxesAsync(BoxScanRequest request)
         {
-            _logger.LogInformation("ScanBoxes: PageId={PageId}, Lang={Lang}", request.PageId, request.SourceLanguage);
+            _logger.LogInformation("ScanBoxes: PageId={PageId}, Lang={Lang}, OcrProvider={OcrProvider}", request.PageId, request.SourceLanguage, request.OcrProvider);
 
             // ── LEARNING CACHE CHECK ──
             // Priority: user-adjusted boxes > auto-detected boxes > fresh scan
@@ -89,7 +108,9 @@ namespace Application.Services.Translation
 
             // ── FRESH SCAN ──
             var imageBytes = await DownloadPageImageAsync(request.PageId);
-            var regions = await _ocrService.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
+
+            var ocrEngine = GetOcrService(request.OcrProvider);
+            var regions = await ocrEngine.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
 
             if (regions == null || regions.Count == 0)
                 return new List<BoxScanResponse>();
@@ -115,8 +136,9 @@ namespace Application.Services.Translation
         {
             // Normalize provider to canonical casing to avoid duplicate cache groups
             string provider = NormalizeProvider(request.Provider);
-            _logger.LogInformation("TranslateAdjustedBoxes: PageId={PageId}, {Count} boxes, {Src}→{Tgt} ({Provider})",
-                request.PageId, request.Boxes?.Count ?? 0, request.SourceLanguage, request.TargetLanguage, provider);
+
+            _logger.LogInformation("TranslateAdjustedBoxes: PageId={PageId}, {Count} boxes, {Src}→{Tgt} (TransProvider={Provider}, OcrProvider={OcrProvider})",
+                request.PageId, request.Boxes?.Count ?? 0, request.SourceLanguage, request.TargetLanguage, provider, request.OcrProvider);
 
             if (request.Boxes == null || request.Boxes.Count == 0)
                 return new List<OverlayTranslationResponse>();
@@ -125,11 +147,12 @@ namespace Application.Services.Translation
             var imageBytes = await DownloadPageImageAsync(request.PageId);
 
             // ── CROP + OCR EACH BOX ──
+            var ocrEngine = GetOcrService(request.OcrProvider);
             var ocrResults = new List<(AdjustedBox Box, string Text)>();
 
             foreach (var box in request.Boxes)
             {
-                string text = await _ocrService.ExtractTextFromCroppedRegionAsync(
+                string text = await ocrEngine.ExtractTextFromCroppedRegionAsync(
                     imageBytes, box.X, box.Y, box.Width, box.Height, request.SourceLanguage);
 
                 if (!string.IsNullOrWhiteSpace(text))
@@ -256,13 +279,14 @@ namespace Application.Services.Translation
             var imageBytes = await DownloadPageImageAsync(request.PageId);
 
             // ── STEP 3: OCR EXTRACT ──
+            var ocrEngine = GetOcrService(request.OcrProvider ?? "server_tesseract");
             _logger.LogInformation("Using OCR: {Provider} ({Type}) for PageId {PageId}",
-                _ocrService.ProviderName, _ocrService.GetType().Name, request.PageId);
+                ocrEngine.ProviderName, ocrEngine.GetType().Name, request.PageId);
 
             List<Application.Models.OCR.OCRRegion> regions;
             try
             {
-                regions = await _ocrService.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
+                regions = await ocrEngine.ExtractTextRegionsFromImageAsync(imageBytes, request.SourceLanguage);
             }
             catch (Exception ex)
             {

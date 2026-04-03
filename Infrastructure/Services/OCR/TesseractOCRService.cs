@@ -12,7 +12,7 @@ using Application.Interfaces.OCR;
 
 namespace Infrastructure.Services.OCR
 {
-  public class TesseractOCRService : IOCRService
+  public class TesseractOCRService : IOCRService, ITextRecognitionService
   {
     private readonly string _dataPath; // Path to tessdata directory
     private readonly ILogger<TesseractOCRService> _logger;
@@ -177,8 +177,8 @@ namespace Infrastructure.Services.OCR
         {
             var isCJK = actualLang.Contains("jpn") || actualLang.Contains("kor") || actualLang.Contains("chi");
             var psmsToTry = isCJK 
-                ? new[] { PageSegMode.SingleBlockVertText, PageSegMode.SingleBlock, PageSegMode.SparseText, PageSegMode.Auto, PageSegMode.SingleLine }
-                : new[] { PageSegMode.SingleBlock, PageSegMode.SparseText, PageSegMode.Auto, PageSegMode.SingleLine };
+                ? new[] { PageSegMode.SingleBlockVertText, PageSegMode.SingleBlock, PageSegMode.SingleLine }
+                : new[] { PageSegMode.SingleBlock, PageSegMode.SingleLine };
 
             string bestText = string.Empty;
             Func<string, int> getCjkCount = (str) => System.Text.RegularExpressions.Regex.Matches(str ?? "", @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}|\p{IsHangulSyllables}").Count;
@@ -264,6 +264,8 @@ namespace Infrastructure.Services.OCR
               return new List<Application.Models.OCR.OCRRegion>();
           }
 
+          ms.Position = 0; // IMPORTANT: Reset stream position after it was read by TextDetector
+
           // Bước 2: Gọi OpenCV để cắt từng box rời rạc, tẩy trắng, và tăng cường tương phản
           var croppedStreams = await _imagePreprocessor.CutAndCleanBoxesAsync(ms, boxes);
 
@@ -285,8 +287,8 @@ namespace Infrastructure.Services.OCR
               var psmBestText = string.Empty;
               bool isCJK = actualLang.Contains("jpn") || actualLang.Contains("kor") || actualLang.Contains("chi");
               var psmsToTry = isCJK 
-                  ? new[] { PageSegMode.SingleBlockVertText, PageSegMode.SingleBlock, PageSegMode.Auto, PageSegMode.SparseText }
-                  : new[] { PageSegMode.SingleBlock, PageSegMode.Auto, PageSegMode.SparseText };
+                  ? new[] { PageSegMode.SingleBlockVertText, PageSegMode.SingleBlock }
+                  : new[] { PageSegMode.SingleBlock };
 
               Func<string, int> getCjkCount = (str) => System.Text.RegularExpressions.Regex.Matches(str ?? "", @"\p{IsCJKUnifiedIdeographs}|\p{IsHiragana}|\p{IsKatakana}|\p{IsHangulSyllables}").Count;
 
@@ -397,6 +399,11 @@ namespace Infrastructure.Services.OCR
           return string.Empty;
         }
       });
+    }
+
+    public Task<string> RecognizeTextAsync(byte[] croppedImageBytes, string languageCode = "auto")
+    {
+        return ExtractTextFromCroppedRegionAsync(croppedImageBytes, 0, 0, 100, 100, languageCode);
     }
   }
 }

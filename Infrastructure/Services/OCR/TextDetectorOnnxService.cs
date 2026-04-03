@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Application.Interfaces.OCR;
+using Application.Models.OCR;
+using Microsoft.Extensions.Options;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenCvSharp;
@@ -15,9 +17,18 @@ namespace Infrastructure.Services.OCR
     {
         private readonly InferenceSession _session;
         private readonly SemaphoreSlim _semaphore;
+        private readonly OcrSettings _settings;
 
-        public TextDetectorOnnxService()
+        public TextDetectorOnnxService(IOptionsMonitor<OcrSettings> optionsMonitor)
         {
+            _settings = optionsMonitor.CurrentValue;
+            optionsMonitor.OnChange(newSettings =>
+            {
+                // Thay đổi tham số realtime khi config cập nhật
+                _settings.TextThreshold = newSettings.TextThreshold;
+                _settings.LinkKernelSize = newSettings.LinkKernelSize;
+            });
+
             int maxConcurrency = Math.Max(1, Environment.ProcessorCount - 1);
             _semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
@@ -165,12 +176,13 @@ namespace Infrastructure.Services.OCR
             using var scoreMat8U = new Mat();
             scoreMat.ConvertTo(scoreMat8U, MatType.CV_8UC1, 255.0);
 
-            // Apply threshold (Text score > 0.45)
-            Cv2.Threshold(scoreMat8U, scoreMat8U, 255 * 0.45, 255, ThresholdTypes.Binary);
+            // Apply threshold (Text score > settings.TextThreshold)
+            float txtThresh = _settings?.TextThreshold ?? 0.45f;
+            Cv2.Threshold(scoreMat8U, scoreMat8U, 255 * txtThresh, 255, ThresholdTypes.Binary);
 
             // GIAI ĐOẠN MỚI: Dilation & Morph Close để gộp các chữ cái rời rạc (character bounding boxes) thành cụm (paragraph/bubble)
-            // Kích thước Kernel phụ thuộc vào độ phân giải. Output map khoảng 640px, nên kernel 15x15 hoặc 20x20 là hợp lý để lấp khoảng trống manga.
-            using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(15, 15));
+            int kernelSize = _settings?.LinkKernelSize ?? 15;
+            using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(kernelSize, kernelSize));
             Cv2.MorphologyEx(scoreMat8U, scoreMat8U, MorphTypes.Close, kernel);
             Cv2.Dilate(scoreMat8U, scoreMat8U, kernel);
 
