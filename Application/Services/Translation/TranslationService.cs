@@ -512,23 +512,15 @@ namespace Application.Services.Translation
                              ?? t.TeamJoins?.FirstOrDefault()?.Team?.TeamName
                              ?? string.Empty;
 
-=======
-    private TranslationResponse MapToDto(Domain.Entities.Translation t)
-    {
->>>>>>> origin/main
+
       return new TranslationResponse
       {
         TranslationId = t.TranslationId,
         ChapterId = t.ChapterId,
         LanguageId = t.LanguageId,
         LanguageName = t.Language?.Name ?? string.Empty,
-<<<<<<< HEAD
         TeamId = resolvedTeamId,
         TeamName = resolvedTeamName,
-=======
-        TeamId = t.Permission?.TeamId,
-        TeamName = t.Permission?.Team?.TeamName ?? string.Empty,
->>>>>>> origin/main
         ContentType = t.ContentType.ToString(),
         QualityStatus = t.QualityStatus.ToString(),
         ModerationStatus = t.ModerationStatus.ToString(),
