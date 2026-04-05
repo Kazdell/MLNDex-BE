@@ -1149,6 +1149,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.WithdrawalFeePercent).HasColumnType("decimal(18,2)");
 				e.Property(x => x.WithdrawalMinCoins).HasColumnType("decimal(18,2)");
 				e.Property(x => x.WithdrawalMaxCoins).HasColumnType("decimal(18,2)");
+				e.Property(x => x.TranslationAuthorCommissionPercent).HasColumnType("decimal(18,2)");
 				e.Property(x => x.BlacklistWordsJson).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 				e.Property(x => x.UpdatedByUserId).IsRequired(false);
