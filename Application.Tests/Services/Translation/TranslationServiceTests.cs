@@ -241,6 +241,32 @@ namespace Application.Tests.Services.Translation
       count.Should().Be(0); 
     }
 
+    [Fact]
+    public async Task Upload_Unofficial_ShouldThrow_WhenDuplicateLanguageForTeam()
+    {
+      var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(111);
+      var teamId = await SeedBaseData(db);
+
+      // Add existing translation
+      db.Translations.Add(new Domain.Entities.Translation 
+      { 
+          TranslationId = 999, 
+          TeamId = teamId, 
+          ChapterId = 100, 
+          LanguageId = 1 
+      });
+      await db.SaveChangesAsync();
+
+      var dto = new UploadTranslationRequest 
+      { 
+        TeamId = teamId, ChapterId = 100, LanguageId = 1, ContentType = ContentType.TEXT, ContentText = "Hi"
+      };
+
+      var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).UploadTranslationAsync(dto));
+      ex.Message.Should().Contain("Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc");
+    }
+
     // ═══════════════════════════════════════════════════════════
     // T-TRANS-EDIT / DEL: EDIT AND DELETE TRANSLATION
     // ═══════════════════════════════════════════════════════════

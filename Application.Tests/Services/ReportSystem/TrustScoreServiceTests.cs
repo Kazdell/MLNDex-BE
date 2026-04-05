@@ -11,7 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using Application.Tests.Shared;
-
+using Application.Interfaces.Moderation;
+using Application.Interfaces.Notification;
+using Moq;
 namespace Application.Tests.Services.ReportSystem
 {
   [Collection("Database collection")]
@@ -217,7 +219,9 @@ namespace Application.Tests.Services.ReportSystem
       });
       await db.SaveChangesAsync();
 
-      var reportService = new PlagiarismReportService(db);
+      var mockAM = new Mock<IAccountModerationService>();
+      var mockNotif = new Mock<INotificationService>();
+      var reportService = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
       await reportService.ResolveReportAsync(1, 99, new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,

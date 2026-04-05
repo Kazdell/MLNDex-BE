@@ -41,7 +41,7 @@ namespace mlndex_backend.Controllers.Creator
             {
                 return BadRequest(new { success = false, message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, message = "Đã có lỗi xảy ra khi xử lý yêu cầu." });
             }

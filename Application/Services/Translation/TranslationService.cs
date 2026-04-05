@@ -145,6 +145,17 @@ namespace Application.Services.Translation
         }
       }
 
+      // ── VALIDATION: Prevent duplicate translation per team and language ──
+      bool translationExists = await _context.Translations
+          .AnyAsync(t => t.ChapterId == dto.ChapterId && 
+                         t.LanguageId == dto.LanguageId && 
+                         (t.TeamId == resolvedTeamId || (t.PermissionId != null && t.Permission.TeamId == resolvedTeamId)));
+
+      if (translationExists)
+      {
+          throw new InvalidOperationException($"Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc.");
+      }
+
       var translation = new Domain.Entities.Translation
       {
         ChapterId = dto.ChapterId,
@@ -364,8 +375,19 @@ namespace Application.Services.Translation
         throw new Exception("Unauthorized to edit.");
       }
 
-      if (dto.LanguageId > 0)
+      if (dto.LanguageId > 0 && dto.LanguageId != translation.LanguageId)
       {
+        bool translationExists = await _context.Translations
+            .AnyAsync(t => t.ChapterId == translation.ChapterId && 
+                           t.LanguageId == dto.LanguageId && 
+                           t.TranslationId != translationId &&
+                           (t.TeamId == translation.Permission.TeamId || (t.PermissionId != null && t.Permission.TeamId == translation.Permission.TeamId)));
+
+        if (translationExists)
+        {
+          throw new InvalidOperationException($"Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc.");
+        }
+
         translation.LanguageId = dto.LanguageId;
       }
 

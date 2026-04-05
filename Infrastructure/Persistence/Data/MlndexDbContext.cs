@@ -1145,11 +1145,11 @@ namespace Infrastructure.Persistence.Data
 				e.ToTable("SystemConfigs");
 				e.HasKey(x => x.Id);
 				e.Property(x => x.Id).UseIdentityColumn();
-				e.Property(x => x.ExchangeRateCoinToVnd).HasColumnType("decimal(18,2)");
-				e.Property(x => x.WithdrawalFeePercent).HasColumnType("decimal(18,2)");
-				e.Property(x => x.WithdrawalMinCoins).HasColumnType("decimal(18,2)");
-				e.Property(x => x.WithdrawalMaxCoins).HasColumnType("decimal(18,2)");
-				e.Property(x => x.TranslationAuthorCommissionPercent).HasColumnType("decimal(18,2)");
+				e.Property(x => x.ExchangeRateCoinToVnd).HasPrecision(18, 2);
+				e.Property(x => x.WithdrawalFeePercent).HasPrecision(18, 2);
+				e.Property(x => x.WithdrawalMinCoins).HasPrecision(18, 2);
+				e.Property(x => x.WithdrawalMaxCoins).HasPrecision(18, 2);
+				e.Property(x => x.TranslationAuthorCommissionPercent).HasPrecision(18, 2);
 				e.Property(x => x.BlacklistWordsJson).HasColumnType("nvarchar(MAX)");
 				e.Property(x => x.UpdatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 				e.Property(x => x.UpdatedByUserId).IsRequired(false);

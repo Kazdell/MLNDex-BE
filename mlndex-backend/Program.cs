@@ -137,7 +137,7 @@ namespace mlndex_backend
 			// Translation Team Services
 			builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
 			builder.Services.AddScoped<ITranslationService, TranslationService>();
-			builder.Services.AddScoped<IPageTranslationService, PageTranslationService>();
+			builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 			builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
 			// OCR Services — Tesseract fallback (Scoped)
