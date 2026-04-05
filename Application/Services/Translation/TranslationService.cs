@@ -443,7 +443,6 @@ namespace Application.Services.Translation
       return true;
     }
 
-<<<<<<< HEAD
     public async Task<List<Application.DTOs.Chapter.ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
     {
       // Verify team membership

@@ -42,7 +42,7 @@ namespace Application.Services.Translation
         private static readonly HashSet<string> SupportedProviders = new(StringComparer.OrdinalIgnoreCase)
         {
             "Google", "Gemini"
-        }
+        };
 
         private IOCRService GetOcrService(string provider)
         {
