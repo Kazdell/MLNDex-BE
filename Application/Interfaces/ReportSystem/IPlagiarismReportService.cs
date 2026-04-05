@@ -9,6 +9,7 @@ namespace Application.Interfaces.ReportSystem
   {
     Task<PlagiarismReportDto> CreateReportAsync(int reporterId, CreatePlagiarismReportRequest request, CancellationToken cancellationToken = default);
     Task<List<PlagiarismReportDto>> GetPendingReportsAsync(int page = 1, int limit = 20, CancellationToken cancellationToken = default);
+    Task<PlagiarismReportStatsDto> GetReportStatsAsync(CancellationToken cancellationToken = default);
     Task<PlagiarismReportDto> ResolveReportAsync(int reportId, int moderatorId, ResolvePlagiarismReportRequest request, CancellationToken cancellationToken = default);
     Task<CompareTranslationResponse> GetCompareDataAsync(int reportId, int referenceTranslationId, CancellationToken cancellationToken = default);
   }
