@@ -30,13 +30,13 @@ namespace Application.Services.Creator
       var existing = await _db.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, ct);
       if (existing != null)
-        throw new InvalidOperationException("Người dùng đã có hồ sơ nhà sáng tạo.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Người dùng đã có hồ sơ nhà sáng tạo.");
 
       // 2. Kiểm tra bút danh trùng
       var penNameTaken = await _db.CreatorProfiles
           .AnyAsync(c => c.PenName == dto.PenName.Trim(), ct);
       if (penNameTaken)
-        throw new InvalidOperationException("Bút danh này đã được sử dụng. Vui lòng chọn tên khác.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bút danh này đã được sử dụng. Vui lòng chọn tên khác.");
 
       // 3. Tạo CreatorProfile
       var profile = new CreatorProfile
@@ -55,7 +55,7 @@ namespace Application.Services.Creator
       var creatorRole = await _db.Roles
           .FirstOrDefaultAsync(r => r.RoleName == RoleName.CREATOR, ct);
       if (creatorRole == null)
-        throw new InvalidOperationException("Role 'Creator' không tồn tại trong hệ thống.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Role 'Creator' không tồn tại trong hệ thống.");
 
       var alreadyHasRole = await _db.UserRoles
           .AnyAsync(ur => ur.UserId == userId && ur.RoleId == creatorRole.RoleId, ct);
@@ -141,3 +141,4 @@ namespace Application.Services.Creator
     }
   }
 }
+

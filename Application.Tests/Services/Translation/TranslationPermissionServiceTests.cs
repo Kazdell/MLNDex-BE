@@ -86,7 +86,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(999);
       var (t1, _) = await SeedBaseData(db);
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
 
@@ -100,7 +100,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
 
@@ -114,7 +114,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Series not found.");
     }
 
@@ -133,7 +133,7 @@ namespace Application.Tests.Services.Translation
       db.TeamMembers.Add(new TeamMember { TeamId = t1, UserId = 123, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 99 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Language not found.");
     }
 
@@ -148,7 +148,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
     }
 
@@ -163,7 +163,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Nhóm đã có quyền dịch Official cho bộ truyện này.");
     }
 
@@ -261,7 +261,7 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(456);
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Be("Permission request not found.");
     }
 
@@ -274,7 +274,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Contain("Unauthorized");
     }
 
