@@ -31,6 +31,7 @@ namespace Application.Services.System
                     WithdrawalFeePercent = 10,
                     WithdrawalMinCoins = 50,
                     WithdrawalMaxCoins = 1000,
+                    TranslationAuthorCommissionPercent = 70,
                     BlacklistWords = new List<string>()
                 };
             }
@@ -41,6 +42,7 @@ namespace Application.Services.System
                 WithdrawalFeePercent = config.WithdrawalFeePercent,
                 WithdrawalMinCoins = config.WithdrawalMinCoins,
                 WithdrawalMaxCoins = config.WithdrawalMaxCoins,
+                TranslationAuthorCommissionPercent = config.TranslationAuthorCommissionPercent,
                 BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson) 
                     ? new List<string>() 
                     : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
@@ -67,6 +69,7 @@ namespace Application.Services.System
             config.WithdrawalFeePercent = dto.WithdrawalFeePercent;
             config.WithdrawalMinCoins = dto.WithdrawalMinCoins;
             config.WithdrawalMaxCoins = dto.WithdrawalMaxCoins;
+            config.TranslationAuthorCommissionPercent = dto.TranslationAuthorCommissionPercent;
             config.BlacklistWordsJson = JsonSerializer.Serialize(dto.BlacklistWords);
             config.UpdatedAt = DateTime.UtcNow;
             config.UpdatedByUserId = updatedByUserId;
