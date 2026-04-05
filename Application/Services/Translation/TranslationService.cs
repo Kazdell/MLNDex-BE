@@ -299,7 +299,6 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse?> GetTranslationByIdAsync(int translationId)
     {
       var translation = await _context.Translations
-<<<<<<< HEAD
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
           .Include(t => t.Language)
@@ -308,11 +307,6 @@ namespace Application.Services.Translation
               .ThenInclude(p => p.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
-=======
-          .Include(t => t.Language)
-          .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
->>>>>>> origin/main
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
@@ -326,16 +320,11 @@ namespace Application.Services.Translation
     {
       var translations = await _context.Translations
           .Include(t => t.Language)
-<<<<<<< HEAD
           .Include(t => t.Team)
           .Include(t => t.Permission)
               .ThenInclude(p => p.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
-=======
-          .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
->>>>>>> origin/main
           .Include(t => t.Chapter)
           .Where(t => t.Chapter.SeriesId == seriesId)
           .ToListAsync();
