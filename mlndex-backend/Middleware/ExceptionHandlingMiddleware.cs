@@ -37,6 +37,11 @@ namespace mlndex_backend.Middleware
 
       switch (exception)
       {
+        case Application.Exceptions.AppException appEx:
+          statusCode = appEx.StatusCode;
+          response = new ApiResponse<object?>(false, appEx.Message, null, appEx.ErrorCode);
+          break;
+
         case UnauthorizedAccessException:
           statusCode = (int)HttpStatusCode.Unauthorized;
           response = new ApiResponse<object?>(false, "Unauthorized", null, ErrorCodes.UNAUTHORIZED);

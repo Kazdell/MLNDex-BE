@@ -38,5 +38,11 @@ namespace Application.DTOs.Common
     // 🔹 Business logic
     public const string INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE";
     public const string OPERATION_NOT_ALLOWED = "OPERATION_NOT_ALLOWED";
+
+    // 🔹 Translation & Unlock
+    public const string DUPLICATE_TRANSLATION_TEAM = "DUPLICATE_TRANSLATION_TEAM";
+    public const string TRANSLATION_NOT_FOUND = "TRANSLATION_NOT_FOUND";
+    public const string CHAPTER_ALREADY_UNLOCKED = "CHAPTER_ALREADY_UNLOCKED";
+    public const string CHAPTER_LOCKED = "CHAPTER_LOCKED";
   }
 }

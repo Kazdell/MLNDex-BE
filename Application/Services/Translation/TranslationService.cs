@@ -153,7 +153,7 @@ namespace Application.Services.Translation
 
       if (translationExists)
       {
-        throw new InvalidOperationException($"Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
       }
 
       var translation = new Domain.Entities.Translation
@@ -385,7 +385,7 @@ namespace Application.Services.Translation
 
         if (translationExists)
         {
-          throw new InvalidOperationException($"Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
         }
 
         translation.LanguageId = dto.LanguageId;
