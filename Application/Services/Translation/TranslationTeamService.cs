@@ -165,7 +165,7 @@ namespace Application.Services.Translation
 
       team.LockStatus = TeamLockStatus.DISBANDED;
       team.UpdatedAt = DateTime.UtcNow;
-      
+
       await _context.SaveChangesAsync();
       return true;
     }
@@ -220,7 +220,7 @@ namespace Application.Services.Translation
       if (existingMember != null)
       {
         if (inviteDto.Role != TeamMemberRole.LEADER)
-            throw new Exception("User is already a team member.");
+          throw new Exception("User is already a team member.");
       }
 
       if (await _context.TeamInvitations.AnyAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING))
@@ -275,34 +275,34 @@ namespace Application.Services.Translation
       bool isLeadershipTransfer = teamRole == TeamMemberRole.LEADER;
       if (isLeadershipTransfer)
       {
-          var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
-          if (oldLeaderMember != null)
-          {
-              oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
-          }
-          team.LeaderId = userId.Value;
+        var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
+        if (oldLeaderMember != null)
+        {
+          oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
+        }
+        team.LeaderId = userId.Value;
       }
 
       if (existingMember != null)
       {
-          existingMember.Role = teamRole;
-          existingMember.JoinedAt = DateTime.UtcNow;
-          existingMember.IsActive = true;
-          existingMember.LeftAt = null;
+        existingMember.Role = teamRole;
+        existingMember.JoinedAt = DateTime.UtcNow;
+        existingMember.IsActive = true;
+        existingMember.LeftAt = null;
       }
       else
       {
-          var member = new TeamMember
-          {
-            TeamId = invitation.TeamId,
-            UserId = invitation.InviteeId,
-            Role = teamRole,
-            JoinedAt = DateTime.UtcNow,
-            IsActive = true
-          };
-          _context.TeamMembers.Add(member);
+        var member = new TeamMember
+        {
+          TeamId = invitation.TeamId,
+          UserId = invitation.InviteeId,
+          Role = teamRole,
+          JoinedAt = DateTime.UtcNow,
+          IsActive = true
+        };
+        _context.TeamMembers.Add(member);
       }
-      
+
       await _context.SaveChangesAsync();
 
       var invitee = await _context.Users.FindAsync(userId);

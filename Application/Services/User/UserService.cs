@@ -248,42 +248,42 @@ namespace Application.Services.User
 
     public async Task<UserStatsDto> GetUserStatsAsync(int days, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var startDateCurrent = now.AddDays(-days);
-        var startDate7Days = now.AddDays(-7);
+      var now = DateTime.UtcNow;
+      var startDateCurrent = now.AddDays(-days);
+      var startDate7Days = now.AddDays(-7);
 
-        // Fetch basic counts
-        var totalUsers = await _context.Users.CountAsync(cancellationToken);
-        var activeUsers = await _context.Users.CountAsync(u => u.IsActive == true, cancellationToken);
-        var bannedUsers = await _context.Users.CountAsync(u => u.IsActive == false, cancellationToken);
-        var newMembersLast7Days = await _context.Users.CountAsync(u => u.CreatedAt >= startDate7Days, cancellationToken);
+      // Fetch basic counts
+      var totalUsers = await _context.Users.CountAsync(cancellationToken);
+      var activeUsers = await _context.Users.CountAsync(u => u.IsActive == true, cancellationToken);
+      var bannedUsers = await _context.Users.CountAsync(u => u.IsActive == false, cancellationToken);
+      var newMembersLast7Days = await _context.Users.CountAsync(u => u.CreatedAt >= startDate7Days, cancellationToken);
 
-        // Chart Data (Group by Date)
-        var recentUsers = await _context.Users
-            .Where(u => u.CreatedAt >= startDateCurrent)
-            .Select(u => new { u.CreatedAt })
-            .ToListAsync(cancellationToken);
+      // Chart Data (Group by Date)
+      var recentUsers = await _context.Users
+          .Where(u => u.CreatedAt >= startDateCurrent)
+          .Select(u => new { u.CreatedAt })
+          .ToListAsync(cancellationToken);
 
-        // Let's do a better grouping via memory
-        var isLongPeriod = days > 31;
-        var groupedList = recentUsers
-            .GroupBy(u => isLongPeriod ? new DateTime(u.CreatedAt.Year, u.CreatedAt.Month, 1) : u.CreatedAt.Date)
-            .OrderBy(g => g.Key)
-            .Select(g => new UserChartDataDto
-            {
-                Date = isLongPeriod ? g.Key.ToString("MM/yyyy") : g.Key.ToString("dd/MM"),
-                Count = g.Count()
-            })
-            .ToList();
+      // Let's do a better grouping via memory
+      var isLongPeriod = days > 31;
+      var groupedList = recentUsers
+          .GroupBy(u => isLongPeriod ? new DateTime(u.CreatedAt.Year, u.CreatedAt.Month, 1) : u.CreatedAt.Date)
+          .OrderBy(g => g.Key)
+          .Select(g => new UserChartDataDto
+          {
+            Date = isLongPeriod ? g.Key.ToString("MM/yyyy") : g.Key.ToString("dd/MM"),
+            Count = g.Count()
+          })
+          .ToList();
 
-        return new UserStatsDto
-        {
-            TotalUsers = totalUsers,
-            ActiveUsers = activeUsers,
-            BannedUsers = bannedUsers,
-            NewMembersLast7Days = newMembersLast7Days,
-            ChartData = groupedList
-        };
+      return new UserStatsDto
+      {
+        TotalUsers = totalUsers,
+        ActiveUsers = activeUsers,
+        BannedUsers = bannedUsers,
+        NewMembersLast7Days = newMembersLast7Days,
+        ChartData = groupedList
+      };
     }
   }
 }

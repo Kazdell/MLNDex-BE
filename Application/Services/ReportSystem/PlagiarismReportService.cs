@@ -101,15 +101,15 @@ namespace Application.Services.ReportSystem
       var report = await _context.Reports
           .Include(r => r.Reporter)
           .FirstOrDefaultAsync(r => r.ReportId == reportId, cancellationToken);
- 
+
       if (report == null)
         throw new KeyNotFoundException("Report không tồn tại.");
- 
+
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
         throw new InvalidOperationException("Report đã được xử lý.");
- 
+
       report.Status = request.NewStatus;
- 
+
       // Chỉ thực hiện xử phạt nếu trạng thái là Resolved
       if (request.NewStatus == ReportStatus.Resolved)
       {
@@ -118,36 +118,36 @@ namespace Application.Services.ReportSystem
         {
           await StrikeContentAsync(report, cancellationToken);
         }
- 
+
         // 2. Logic trừ điểm Trust Score
         if (request.PenaltyScore.HasValue && request.PenaltyScore.Value > 0)
         {
           await ApplyPenaltyAsync(report, request.PenaltyScore.Value, request.ResolutionNotes, cancellationToken);
         }
- 
+
         // 3. Logic Ban Creator / Send Warning (Cần OwnerId)
         var ownerId = await GetTargetOwnerIdAsync(report.ContentType, report.ContentId, cancellationToken);
         if (ownerId > 0)
         {
           if (request.BanCreator)
           {
-            await _accountModerationService.ApplyAsync(ownerId, moderatorId, new AccountActionRequest 
-            { 
-              Action = AccountActionType.DEACTIVATE, 
-              Reason = $"Bị khóa do vi phạm báo cáo #{report.ReportId}: {request.ResolutionNotes}" 
+            await _accountModerationService.ApplyAsync(ownerId, moderatorId, new AccountActionRequest
+            {
+              Action = AccountActionType.DEACTIVATE,
+              Reason = $"Bị khóa do vi phạm báo cáo #{report.ReportId}: {request.ResolutionNotes}"
             }, cancellationToken);
           }
           else if (request.SendWarning)
           {
-            await _notificationService.CreateNotificationAsync(ownerId, "Hệ thống Cảnh cáo", 
-              $"Nội dung của bạn bị báo cáo vi phạm (#{report.ReportId}). Lý do: {request.ResolutionNotes}. Vui lòng tuân thủ nội quy.", 
+            await _notificationService.CreateNotificationAsync(ownerId, "Hệ thống Cảnh cáo",
+              $"Nội dung của bạn bị báo cáo vi phạm (#{report.ReportId}). Lý do: {request.ResolutionNotes}. Vui lòng tuân thủ nội quy.",
               "#", NotificationType.SYSTEM);
           }
         }
       }
- 
+
       await _context.SaveChangesAsync(cancellationToken);
- 
+
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);
       return dto;
@@ -323,8 +323,8 @@ namespace Application.Services.ReportSystem
         ReportTargetType.ChapterTranslation => await _context.Translations
             .Where(t => t.TranslationId == targetId)
             .Select(t => t.Permission != null ? t.Permission.TeamId : 0)
-            .FirstOrDefaultAsync(ct) is int teamId && teamId > 0 
-              ? await _context.TeamMembers.Where(tm => tm.TeamId == teamId && tm.Role == TeamMemberRole.LEADER).Select(tm => tm.UserId).FirstOrDefaultAsync(ct) 
+            .FirstOrDefaultAsync(ct) is int teamId && teamId > 0
+              ? await _context.TeamMembers.Where(tm => tm.TeamId == teamId && tm.Role == TeamMemberRole.LEADER).Select(tm => tm.UserId).FirstOrDefaultAsync(ct)
               : 0,
         ReportTargetType.User => targetId,
         ReportTargetType.Team => await _context.TeamMembers

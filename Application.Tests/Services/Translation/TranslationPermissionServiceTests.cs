@@ -34,23 +34,23 @@ namespace Application.Tests.Services.Translation
 
     public async Task InitializeAsync()
     {
-        await _fixture.ResetDatabaseAsync();
-        using var db = _fixture.CreateDbContext();
-        db.Users.AddRange(
-            new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
-            new User { UserId = 123, Username = "user123", Email = "u123@test.com", DisplayName = "D123", PasswordHash = "X" },
-            new User { UserId = 222, Username = "user222", Email = "u222@test.com", DisplayName = "D222", PasswordHash = "X" },
-            new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
-            new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
-            new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
-            new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
-            new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
-            new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
-            new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
-            new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
-            new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" }
-        );
-        await db.SaveChangesAsync();
+      await _fixture.ResetDatabaseAsync();
+      using var db = _fixture.CreateDbContext();
+      db.Users.AddRange(
+          new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
+          new User { UserId = 123, Username = "user123", Email = "u123@test.com", DisplayName = "D123", PasswordHash = "X" },
+          new User { UserId = 222, Username = "user222", Email = "u222@test.com", DisplayName = "D222", PasswordHash = "X" },
+          new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
+          new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
+          new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
+          new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
+          new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
+          new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
+          new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
+          new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
+          new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" }
+      );
+      await db.SaveChangesAsync();
     }
     public Task DisposeAsync() => Task.CompletedTask;
 

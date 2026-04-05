@@ -41,34 +41,34 @@ namespace Application.Tests.Services.Translation
 
     public async Task InitializeAsync()
     {
-        await _fixture.ResetDatabaseAsync();
-        using var db = _fixture.CreateDbContext();
-        db.Users.AddRange(
-            new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
-            new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
-            new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
-            new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
-            new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
-            new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
-            new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
-            new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
-            new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
-            new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" },
-            new User { UserId = 55, Username = "user55", Email = "u55@test.com", DisplayName = "D55", PasswordHash = "X" },
-            new User { UserId = 77, Username = "user77", Email = "u77@test.com", DisplayName = "D77", PasswordHash = "X" },
-            new User { UserId = 88, Username = "user88", Email = "u88@test.com", DisplayName = "D88", PasswordHash = "X" },
-            new User { UserId = 99, Username = "user99", Email = "u99@test.com", DisplayName = "D99", PasswordHash = "X" },
-            new User { UserId = 888, Username = "user888", Email = "u888@test.com", DisplayName = "D888", PasswordHash = "X" }
-        );
-        db.Languages.AddRange(
-            new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" },
-            new Language { LanguageId = 2, Name = "English", Code = "en" }
-        );
-        db.Genres.AddRange(
-            new Genre { GenreId = 1, Name = "Action" },
-            new Genre { GenreId = 2, Name = "Romance" }
-        );
-        await db.SaveChangesAsync();
+      await _fixture.ResetDatabaseAsync();
+      using var db = _fixture.CreateDbContext();
+      db.Users.AddRange(
+          new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
+          new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
+          new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
+          new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
+          new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
+          new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
+          new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
+          new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
+          new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
+          new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" },
+          new User { UserId = 55, Username = "user55", Email = "u55@test.com", DisplayName = "D55", PasswordHash = "X" },
+          new User { UserId = 77, Username = "user77", Email = "u77@test.com", DisplayName = "D77", PasswordHash = "X" },
+          new User { UserId = 88, Username = "user88", Email = "u88@test.com", DisplayName = "D88", PasswordHash = "X" },
+          new User { UserId = 99, Username = "user99", Email = "u99@test.com", DisplayName = "D99", PasswordHash = "X" },
+          new User { UserId = 888, Username = "user888", Email = "u888@test.com", DisplayName = "D888", PasswordHash = "X" }
+      );
+      db.Languages.AddRange(
+          new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" },
+          new Language { LanguageId = 2, Name = "English", Code = "en" }
+      );
+      db.Genres.AddRange(
+          new Genre { GenreId = 1, Name = "Action" },
+          new Genre { GenreId = 2, Name = "Romance" }
+      );
+      await db.SaveChangesAsync();
     }
     public Task DisposeAsync() => Task.CompletedTask;
 
@@ -83,12 +83,19 @@ namespace Application.Tests.Services.Translation
       var team = new TranslationTeam
       {
         LeaderId = leaderId,
-        TeamName = "Hero Team", Slug = "hero-team", LanguageId = 1
+        TeamName = "Hero Team",
+        Slug = "hero-team",
+        LanguageId = 1
       };
       db.TranslationTeams.Add(team);
       await db.SaveChangesAsync();
-      db.TeamMembers.Add(new TeamMember { TeamId = team.TeamId, UserId = leaderId,
-        Role = TeamMemberRole.LEADER, IsActive = true, JoinedAt = DateTime.UtcNow
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = team.TeamId,
+        UserId = leaderId,
+        Role = TeamMemberRole.LEADER,
+        IsActive = true,
+        JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
       return team.TeamId;
@@ -106,8 +113,10 @@ namespace Application.Tests.Services.Translation
 
       var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
-        TeamName = "Hero Team", Slug = "hero-team",
-        Description = "Best team", LanguageId = 1
+        TeamName = "Hero Team",
+        Slug = "hero-team",
+        Description = "Best team",
+        LanguageId = 1
       });
 
       result.Should().NotBeNull();
@@ -125,7 +134,9 @@ namespace Application.Tests.Services.Translation
 
       await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
-        TeamName = "Genre Team", Slug = "genre-team", LanguageId = 1,
+        TeamName = "Genre Team",
+        Slug = "genre-team",
+        LanguageId = 1,
         GenreIds = new List<int> { 1 }
       });
 
@@ -168,7 +179,9 @@ namespace Application.Tests.Services.Translation
       await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
           {
-            TeamName = "Team X", Slug = "team-x", LanguageId = 1
+            TeamName = "Team X",
+            Slug = "team-x",
+            LanguageId = 1
           }));
     }
 
@@ -180,7 +193,10 @@ namespace Application.Tests.Services.Translation
 
       var result = await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
-        TeamName = "No-Desc Team", Slug = "no-desc", LanguageId = 1, Description = null
+        TeamName = "No-Desc Team",
+        Slug = "no-desc",
+        LanguageId = 1,
+        Description = null
       });
 
       result.Should().NotBeNull();
@@ -194,7 +210,10 @@ namespace Application.Tests.Services.Translation
 
       await CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
       {
-        TeamName = "Approval Team", Slug = "approval-team", LanguageId = 1, RequireApproval = true
+        TeamName = "Approval Team",
+        Slug = "approval-team",
+        LanguageId = 1,
+        RequireApproval = true
       });
 
       var team = await db.TranslationTeams.FirstOrDefaultAsync(t => t.Slug == "approval-team");
@@ -215,7 +234,8 @@ namespace Application.Tests.Services.Translation
 
       var id = await CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest
       {
-        UserId = 99, Role = TeamMemberRole.TRANSLATOR
+        UserId = 99,
+        Role = TeamMemberRole.TRANSLATOR
       });
 
       var inv = await db.TeamInvitations.FirstOrDefaultAsync(i => i.InviteeId == 99);
@@ -260,8 +280,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       db.TeamInvitations.Add(new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 99, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 99,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
+        CreatedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
 
@@ -344,8 +368,13 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       var teamId = await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = teamId, UserId = 55, IsActive = false,
-        JoinedAt = DateTime.UtcNow.AddDays(-5), LeftAt = DateTime.UtcNow.AddDays(-1)
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = teamId,
+        UserId = 55,
+        IsActive = false,
+        JoinedAt = DateTime.UtcNow.AddDays(-5),
+        LeftAt = DateTime.UtcNow.AddDays(-1)
       });
       await db.SaveChangesAsync();
 
@@ -359,8 +388,13 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       var teamId = await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = teamId, UserId = 77,
-        Role = TeamMemberRole.EDITOR, IsActive = true, JoinedAt = DateTime.UtcNow
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = teamId,
+        UserId = 77,
+        Role = TeamMemberRole.EDITOR,
+        IsActive = true,
+        JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
 
@@ -380,8 +414,11 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING,
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
         CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
@@ -404,8 +441,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
+        CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
       await db.SaveChangesAsync();
@@ -422,8 +463,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.ACCEPTED, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.ACCEPTED,
+        CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
       await db.SaveChangesAsync();
@@ -440,8 +485,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
+        CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
       db.TeamMembers.Add(new TeamMember { TeamId = teamId, UserId = 55, IsActive = true, JoinedAt = DateTime.UtcNow });
@@ -468,7 +517,11 @@ namespace Application.Tests.Services.Translation
       var cooldownTeam = new TranslationTeam { LeaderId = 2, TeamName = "Old Team", Slug = "old-team", LanguageId = 1 };
       db.TranslationTeams.Add(cooldownTeam);
       await db.SaveChangesAsync();
-      db.TeamMembers.Add(new TeamMember { TeamId = cooldownTeam.TeamId, UserId = 55, IsActive = false,
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = cooldownTeam.TeamId,
+        UserId = 55,
+        IsActive = false,
         JoinedAt = DateTime.UtcNow.AddHours(-5),
         LeftAt = DateTime.UtcNow.AddHours(-1) // left 1h ago → still in 24h cooldown
       });
@@ -479,8 +532,11 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
       var inv = new TeamInvitation
       {
-        TeamId = targetTeam.TeamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING,
+        TeamId = targetTeam.TeamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
         CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
@@ -502,8 +558,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
+        CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
       await db.SaveChangesAsync();
@@ -522,8 +582,12 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var inv = new TeamInvitation
       {
-        TeamId = teamId, InviteeId = 55, InviterId = 1,
-        Role = "TRANSLATOR", Status = TeamInvitationStatus.PENDING, CreatedAt = DateTime.UtcNow
+        TeamId = teamId,
+        InviteeId = 55,
+        InviterId = 1,
+        Role = "TRANSLATOR",
+        Status = TeamInvitationStatus.PENDING,
+        CreatedAt = DateTime.UtcNow
       };
       db.TeamInvitations.Add(inv);
       await db.SaveChangesAsync();
@@ -542,8 +606,13 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       var teamId = await SeedTeamWithLeader(db);
-      db.TeamMembers.Add(new TeamMember { TeamId = teamId, UserId = 55, Role = TeamMemberRole.TRANSLATOR,
-        IsActive = true, JoinedAt = DateTime.UtcNow
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = teamId,
+        UserId = 55,
+        Role = TeamMemberRole.TRANSLATOR,
+        IsActive = true,
+        JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
 
@@ -656,8 +725,11 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(55);
       var team = new TranslationTeam
       {
-        LeaderId = 1, TeamName = "Hero Team",
-        Slug = "hero-team", RequireApproval = true, LanguageId = 1
+        LeaderId = 1,
+        TeamName = "Hero Team",
+        Slug = "hero-team",
+        RequireApproval = true,
+        LanguageId = 1
       };
       db.TranslationTeams.Add(team);
       await db.SaveChangesAsync();
@@ -675,15 +747,20 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(55);
       var team = new TranslationTeam
       {
-        LeaderId = 1, TeamName = "Hero Team",
-        Slug = "hero-team", RequireApproval = true, LanguageId = 1
+        LeaderId = 1,
+        TeamName = "Hero Team",
+        Slug = "hero-team",
+        RequireApproval = true,
+        LanguageId = 1
       };
       db.TranslationTeams.Add(team);
       await db.SaveChangesAsync();
       db.TeamJoinRequests.Add(new TeamJoinRequest
       {
-        TeamId = team.TeamId, UserId = 55,
-        Status = TeamJoinRequestStatus.PENDING, CreatedAt = DateTime.UtcNow,
+        TeamId = team.TeamId,
+        UserId = 55,
+        Status = TeamJoinRequestStatus.PENDING,
+        CreatedAt = DateTime.UtcNow,
         Message = "previous request"
       });
       await db.SaveChangesAsync();
@@ -705,8 +782,10 @@ namespace Application.Tests.Services.Translation
 
       var joinReq = new TeamJoinRequest
       {
-        TeamId = teamId, UserId = 55,
-        Status = TeamJoinRequestStatus.PENDING, CreatedAt = DateTime.UtcNow,
+        TeamId = teamId,
+        UserId = 55,
+        Status = TeamJoinRequestStatus.PENDING,
+        CreatedAt = DateTime.UtcNow,
         Message = "please let me in"
       };
       db.TeamJoinRequests.Add(joinReq);
@@ -729,8 +808,10 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var joinReq = new TeamJoinRequest
       {
-        TeamId = teamId, UserId = 55,
-        Status = TeamJoinRequestStatus.PENDING, CreatedAt = DateTime.UtcNow,
+        TeamId = teamId,
+        UserId = 55,
+        Status = TeamJoinRequestStatus.PENDING,
+        CreatedAt = DateTime.UtcNow,
         Message = "join please"
       };
       db.TeamJoinRequests.Add(joinReq);
@@ -752,8 +833,10 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var joinReq = new TeamJoinRequest
       {
-        TeamId = teamId, UserId = 55,
-        Status = TeamJoinRequestStatus.PENDING, CreatedAt = DateTime.UtcNow,
+        TeamId = teamId,
+        UserId = 55,
+        Status = TeamJoinRequestStatus.PENDING,
+        CreatedAt = DateTime.UtcNow,
         Message = "join please"
       };
       db.TeamJoinRequests.Add(joinReq);
@@ -773,8 +856,10 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
       var joinReq = new TeamJoinRequest
       {
-        TeamId = teamId, UserId = 55,
-        Status = TeamJoinRequestStatus.PENDING, CreatedAt = DateTime.UtcNow,
+        TeamId = teamId,
+        UserId = 55,
+        Status = TeamJoinRequestStatus.PENDING,
+        CreatedAt = DateTime.UtcNow,
         Message = "join please"
       };
       db.TeamJoinRequests.Add(joinReq);
@@ -830,8 +915,13 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       var teamId = await SeedTeamWithLeader(db);
 
-      db.TeamMembers.Add(new TeamMember { TeamId = teamId, UserId = 55,
-        Role = TeamMemberRole.EDITOR, IsActive = true, JoinedAt = DateTime.UtcNow
+      db.TeamMembers.Add(new TeamMember
+      {
+        TeamId = teamId,
+        UserId = 55,
+        Role = TeamMemberRole.EDITOR,
+        IsActive = true,
+        JoinedAt = DateTime.UtcNow
       });
       await db.SaveChangesAsync();
 

@@ -401,10 +401,10 @@ namespace Application.Services.AIModeration
 
       var aiResult = new AiModerationResultDto
       {
-          Flagged = false,
-          CategoryScores = new Dictionary<string, double>()
+        Flagged = false,
+        CategoryScores = new Dictionary<string, double>()
       };
-      
+
       if (translation.ContentType == ContentType.IMAGE)
       {
         var imageUrls = translation.TranslationPages
@@ -442,7 +442,7 @@ namespace Application.Services.AIModeration
             var textResult = PreCheckText(new TextCheckRequest
             {
               Text = fullText,
-              UserReputation = 100, 
+              UserReputation = 100,
               IsComment = false
             });
 
@@ -463,29 +463,29 @@ namespace Application.Services.AIModeration
       }
       else if (translation.ContentType == ContentType.TEXT)
       {
-          if (translation.TranslationText != null && !string.IsNullOrWhiteSpace(translation.TranslationText.ContentUrl))
+        if (translation.TranslationText != null && !string.IsNullOrWhiteSpace(translation.TranslationText.ContentUrl))
+        {
+          using var httpClient = new global::System.Net.Http.HttpClient();
+          var textContent = await httpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
+
+          var textResult = PreCheckText(new TextCheckRequest
           {
-            using var httpClient = new global::System.Net.Http.HttpClient();
-            var textContent = await httpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
+            Text = textContent,
+            UserReputation = 100,
+            IsComment = false
+          });
 
-            var textResult = PreCheckText(new TextCheckRequest
-            {
-              Text = textContent,
-              UserReputation = 100,
-              IsComment = false
-            });
-
-            if (textResult.Action == ModerationActionType.AutoReject.ToString()
-                || textResult.Action == ModerationActionType.InstantBan.ToString())
-            {
-              aiResult.Flagged = true;
-            }
-
-            if (textResult.Action != ModerationActionType.AutoPass.ToString())
-            {
-              aiResult.FlaggedReason = string.Join(", ", textResult.Reasons);
-            }
+          if (textResult.Action == ModerationActionType.AutoReject.ToString()
+              || textResult.Action == ModerationActionType.InstantBan.ToString())
+          {
+            aiResult.Flagged = true;
           }
+
+          if (textResult.Action != ModerationActionType.AutoPass.ToString())
+          {
+            aiResult.FlaggedReason = string.Join(", ", textResult.Reasons);
+          }
+        }
       }
 
       // 3. Scoring Engine (if category scores exist)
@@ -503,7 +503,7 @@ namespace Application.Services.AIModeration
         analysis = AnalyzeOpenAiScores(scoreRequest);
         if (!aiResult.Flagged && (analysis.Action == ModerationActionType.AutoReject.ToString() || analysis.Action == ModerationActionType.FlagForReview.ToString()))
         {
-           aiReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+          aiReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
         }
       }
 
@@ -530,7 +530,7 @@ namespace Application.Services.AIModeration
           var report = new Report
           {
             ContentId = translationId,
-            ContentType = ReportTargetType.ChapterTranslation, 
+            ContentType = ReportTargetType.ChapterTranslation,
             Reason = ReportReason.Inappropriate,
             Description = "AI_" + aiReason,
             ReporterId = 1,
@@ -546,14 +546,14 @@ namespace Application.Services.AIModeration
       else
       {
         translation.ModerationStatus = ModerationStatus.APPROVED;
-        translation.QualityStatus = TranslationQualityStatus.PUBLISHED; 
+        translation.QualityStatus = TranslationQualityStatus.PUBLISHED;
         translation.PublishedAt = DateTime.UtcNow;
 
         var approvedQueueItem = await _db.ModerationQueues
             .FirstOrDefaultAsync(q => q.ContentId == translationId
                 && q.ContentType == ModerationQueueContentType.TRANSLATION);
         if (approvedQueueItem != null)
-            approvedQueueItem.Status = QueueStatus.RESOLVED;
+          approvedQueueItem.Status = QueueStatus.RESOLVED;
 
         _logger.LogInformation("Translation {TranslationId} đã được AI tự động duyệt → PUBLISHED", translationId);
       }
@@ -568,7 +568,7 @@ namespace Application.Services.AIModeration
       translation.AiScoresJson = JsonSerializer.Serialize(scoresData);
 
       await _db.SaveChangesAsync();
-      
+
       return aiResult;
     }
 
@@ -649,11 +649,11 @@ namespace Application.Services.AIModeration
       // Check against dynamic blacklist (Treat as profanity/mild violation)
       foreach (var word in dynamicWords)
       {
-          if (cleanedText.Contains(word.ToLower()))
-          {
-              penaltyScore += 20; // Default penalty for manual blacklist
-              flagReasons.Add($"Blacklist: {word}");
-          }
+        if (cleanedText.Contains(word.ToLower()))
+        {
+          penaltyScore += 20; // Default penalty for manual blacklist
+          flagReasons.Add($"Blacklist: {word}");
+        }
       }
 
       // Illegal content -> Instant ban
@@ -1156,7 +1156,7 @@ int chapterId, CancellationToken ct = default)
 
         if (owners.Count == 0)
         {
-            owners = translation.Permission.Team.TeamMembers.Where(m => m.IsActive).ToList();
+          owners = translation.Permission.Team.TeamMembers.Where(m => m.IsActive).ToList();
         }
 
         foreach (var owner in owners)
