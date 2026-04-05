@@ -109,9 +109,21 @@ public class ChapterController : BaseController
         if (int.TryParse(claim, out var parsed))
             userId = parsed;
 
+        // Lấy translationId từ query string nếu có (?translationId=123)
+        int? translationId = null;
+        if (Request.Query.TryGetValue("translationId", out var tidVal)
+            && int.TryParse(tidVal, out var tid))
+        {
+            translationId = tid;
+        }
+
         try
         {
-            var result = await _service.GetChapterDetailAsync(id, userId, cancellationToken);
+            var result = await _service.GetChapterDetailAsync(
+                id,
+                userId,
+                translationId,                  // int? — có thể null
+                cancellationToken);             // named arg tránh nhầm slot
             if (result == null) return NotFoundResponse("Không tìm thấy chương này.");
             return OkResponse(result);
         }

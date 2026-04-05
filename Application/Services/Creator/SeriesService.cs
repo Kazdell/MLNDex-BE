@@ -489,9 +489,20 @@ namespace Application.Services.Creator
 
             // 1. Map original chapters (bản gốc) — PUBLISHED only
             var chapterDtos = series.Chapters
-        .Where(c => c.Status == ChapterStatus.PUBLISHED)
-        .OrderByDescending(c => c.ChapterNumber)
-        .Select(c => new SeriesChapterDto
+    .Where(c => c.Status == ChapterStatus.PUBLISHED)
+    .OrderByDescending(c => c.ChapterNumber)
+    .Select(c =>
+    {
+        var now = DateTime.UtcNow;
+        var effectiveLock = c.LockStatus;
+        if (effectiveLock == ChapterLockStatus.LOCKED
+            && c.UnlockTime.HasValue
+            && now >= c.UnlockTime.Value)
+        {
+            effectiveLock = ChapterLockStatus.UNLOCKED;
+        }
+
+        return new SeriesChapterDto
         {
             ChapterId = c.ChapterId,
             Title = c.Title ?? "Untitled",
@@ -507,34 +518,66 @@ namespace Application.Services.Creator
             LanguageName = c.Language?.Name,
             CommentCount = 0,
             PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
-            // ── NEW ──
-            IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId)
-        }).ToList();
+            IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId),
+            // ── THÊM 3 DÒNG NÀY ──
+            LockStatus = effectiveLock.ToString(),
+            UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
+            UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
+        };
+    }).ToList();
 
             // 2. Map PUBLISHED translations as additional entries
             //    Each Translation maps to the same ChapterNumber so FE can group them together
             var translationDtos = series.Chapters
-                  .SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
-                      .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
-                      .Select(t => new SeriesChapterDto
-                      {
-                          ChapterId = c.ChapterId,
-                          TranslationId = t.TranslationId,
-                          Title = c.Title ?? "Untitled",
-                          ChapterNumber = (int)c.ChapterNumber,
-                          Price = 0,
-                          PublishedAt = t.PublishedAt ?? DateTime.UtcNow,
-                          ViewCount = 0,
-                          GroupName = t.Permission?.Team?.TeamName,
-                          TeamId = t.Permission?.TeamId,
-                          IsOriginal = false,
-                          IsOfficialTranslation = t.IsOfficial
-                            || (t.Permission?.TeamId != null && grantedTeamIds.Contains(t.Permission.TeamId)),
-                          LanguageCode = t.Language?.Code,
-                          LanguageName = t.Language?.Name,
-                          CommentCount = 0
-                      }))
-                  .ToList();
+    .SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
+        .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
+        .Select(t =>
+        {
+            // Tính effective lock của chapter gốc
+            var now = DateTime.UtcNow;
+            var effectiveLock = c.LockStatus;
+            if (effectiveLock == ChapterLockStatus.LOCKED
+                && c.UnlockTime.HasValue
+                && now >= c.UnlockTime.Value)
+            {
+                effectiveLock = ChapterLockStatus.UNLOCKED;
+            }
+
+            // TeamUnlockPrice chỉ có giá trị khi chapter gốc đang bị lock
+            var teamPrice = effectiveLock == ChapterLockStatus.LOCKED
+                ? (t.Permission?.Team?.DefaultUnlockPriceCoins ?? c.UnlockPriceCoins)
+                : null;
+
+            // isUnlocked: đã mua chapter gốc → mở tất cả translation
+            // hoặc đã mua đúng translation này
+            var isUnlocked = unlockedChapterIds.Contains(c.ChapterId);
+            // TODO: nếu muốn check per-translation unlock riêng, cần query ChapterUnlocks theo TranslationId
+
+            return new SeriesChapterDto
+            {
+                ChapterId = c.ChapterId,
+                TranslationId = t.TranslationId,
+                Title = c.Title ?? "Untitled",
+                ChapterNumber = (int)c.ChapterNumber,
+                Price = teamPrice ?? 0,           // giá hiển thị trên badge
+                PublishedAt = t.PublishedAt ?? DateTime.UtcNow,
+                ViewCount = 0,
+                GroupName = t.Permission?.Team?.TeamName,
+                TeamId = t.Permission?.TeamId,
+                IsOriginal = false,
+                IsOfficialTranslation = t.IsOfficial
+                    || (t.Permission?.TeamId != null && grantedTeamIds.Contains(t.Permission.TeamId)),
+                LanguageCode = t.Language?.Code,
+                LanguageName = t.Language?.Name,
+                CommentCount = 0,
+                // ── NEW fields ──
+                LockStatus = effectiveLock.ToString(),
+                TeamUnlockPrice = teamPrice,
+                UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
+                IsUnlockedByUser = isUnlocked,
+            };
+        }))
+    .ToList();
 
             // Merge both lists
             chapterDtos.AddRange(translationDtos);
