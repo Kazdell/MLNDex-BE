@@ -9,7 +9,11 @@ namespace Application.Interfaces.Creator
             int userId,
             CreateChapterDto dto,
             CancellationToken cancellationToken = default);
-        Task<ChapterDetailDto?> GetChapterDetailAsync(int chapterId, int? userId = null, CancellationToken ct = default);
+        Task<ChapterDetailDto?> GetChapterDetailAsync(
+    int chapterId,
+    int? userId,
+    int? translationId = null,
+    CancellationToken cancellationToken = default);
         Task<ChapterModerationStatusDto> GetModerationStatusAsync(int chapterId, CancellationToken ct = default);
         Task RetryModerationAsync(int chapterId, CancellationToken ct = default);
         Task<List<ChapterListItemDto>> GetBySeriesAsync(int seriesId, int userId, CancellationToken ct = default);

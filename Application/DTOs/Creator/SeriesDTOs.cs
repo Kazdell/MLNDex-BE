@@ -105,6 +105,10 @@ namespace Application.DTOs.Creator
         public bool IsOfficialTranslation { get; set; } // If it's a translation and has official permission
         public bool IsUnlockedByUser { get; set; }
         public int? TranslationId { get; set; }
+        public string LockStatus { get; set; } = "UNLOCKED";
+        public int? UnlockPriceCoins { get; set; }
+        public DateTime? UnlockTime { get; set; }
+        public int? TeamUnlockPrice { get; set; }
     }
 
     public class SeriesSearchRequest
