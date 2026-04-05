@@ -26,7 +26,7 @@ namespace mlndex_backend.Controllers.Auth
 
       var result = await _authService.RegisterAsync(dto);
       return result.Success
-          ? OkResponse<object>(null, result.Message)
+          ? OkResponse<object?>(null, result.Message)
           : BadRequestResponse(result.Message);
     }
 
@@ -39,7 +39,7 @@ namespace mlndex_backend.Controllers.Auth
 
       var result = await _authService.VerifyEmailOtpAsync(dto);
       return result.Success
-          ? OkResponse<object>(null, result.Message)
+          ? OkResponse<object?>(null, result.Message)
           : BadRequestResponse(result.Message);
     }
 
@@ -68,7 +68,7 @@ namespace mlndex_backend.Controllers.Auth
 
 			var result = await _authService.LogoutAsync(token);
 			return result.Success
-				? OkResponse<object>(null, result.Message)
+				? OkResponse<object?>(null, result.Message)
 				: BadRequestResponse(result.Message);
 	}
 
@@ -123,7 +123,7 @@ namespace mlndex_backend.Controllers.Auth
       if (string.IsNullOrWhiteSpace(dto.Email))
         return BadRequestResponse("Email không được để trống.");
       var result = await _authService.ForgotPasswordAsync(dto.Email);
-      return OkResponse<object>(null, result.Message);
+      return OkResponse<object?>(null, result.Message);
     }
 
     // POST /api/auth/reset-password — verify OTP and set new password
@@ -135,7 +135,7 @@ namespace mlndex_backend.Controllers.Auth
         return BadRequestResponse("Dữ liệu không hợp lệ.");
       var result = await _authService.ResetPasswordAsync(dto.Email, dto.OtpCode, dto.NewPassword);
       return result.Success
-          ? OkResponse<object>(null, result.Message)
+          ? OkResponse<object?>(null, result.Message)
           : BadRequestResponse(result.Message);
     }
 
@@ -152,7 +152,7 @@ namespace mlndex_backend.Controllers.Auth
 
       var result = await _authService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
       return result.Success
-          ? OkResponse<object>(null, result.Message)
+          ? OkResponse<object?>(null, result.Message)
           : BadRequestResponse(result.Message);
     }
   }

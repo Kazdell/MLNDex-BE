@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Payment;
+using Application.DTOs.Payment;
 using Application.Interfaces.Financial;
 using Application.Interfaces.Payment;
 using Microsoft.AspNetCore.Authorization;
@@ -70,6 +70,6 @@ public class AdminPaymentController : BaseController
 	public async Task<IActionResult> DeactivatePackage(int id)
 	{
 		await _coinPackageService.DeactivateAsync(id);
-		return OkResponse<object>(null!, "Vô hiệu hoá gói coin thành công.");
+		return OkResponse<object?>(null!, "Vô hiệu hoá gói coin thành công.");
 	}
 }

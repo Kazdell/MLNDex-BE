@@ -100,7 +100,7 @@ namespace mlndex_backend.Controllers.Creator
             try
             {
                 await _service.UpdateStatusAsync(id, userId, request.Status, ct);
-                return OkResponse<object>(null, "Cập nhật trạng thái thành công.");
+                return OkResponse<object?>(null, "Cập nhật trạng thái thành công.");
             }
             catch (Exception ex)
             {

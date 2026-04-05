@@ -166,14 +166,14 @@ namespace Application.Services.ReportSystem
       var reportedTranslation = await _context.Translations
           .Include(t => t.Chapter)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TranslationPages)
           .FirstOrDefaultAsync(t => t.TranslationId == report.ContentId, cancellationToken);
 
       var referenceTranslation = await _context.Translations
           .Include(t => t.Chapter)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TranslationPages)
           .FirstOrDefaultAsync(t => t.TranslationId == referenceTranslationId, cancellationToken);
 
@@ -307,7 +307,7 @@ namespace Application.Services.ReportSystem
         ReportTargetType.Series => await _context.Series.Where(s => s.SeriesId == targetId).Select(s => s.Title).FirstOrDefaultAsync(ct) ?? "Unknown Series",
         ReportTargetType.ChapterTranslation => await _context.Translations
             .Where(t => t.TranslationId == targetId)
-            .Select(t => t.Chapter.Title + " - " + t.Permission.Team.TeamName)
+            .Select(t => t.Chapter!.Title + " - " + t.Permission!.Team!.TeamName)
             .FirstOrDefaultAsync(ct) ?? "Unknown Translation",
         ReportTargetType.Team => await _context.TranslationTeams.Where(t => t.TeamId == targetId).Select(t => t.TeamName).FirstOrDefaultAsync(ct) ?? "Unknown Team",
         ReportTargetType.User => await _context.Users.Where(u => u.UserId == targetId).Select(u => u.Username).FirstOrDefaultAsync(ct) ?? "Unknown User",

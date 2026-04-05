@@ -190,8 +190,8 @@ namespace Application.Services.Translation
           .Select(m => new TeamMemberDetailResponse
           {
             UserId = m.UserId,
-            Username = m.User.Username,
-            DisplayName = m.User.DisplayName,
+            Username = m.User!.Username,
+            DisplayName = m.User!.DisplayName,
             Role = m.Role.ToString(),
             JoinedAt = m.JoinedAt
           })
@@ -211,6 +211,8 @@ namespace Application.Services.Translation
     public async Task<int> InviteMemberAsync(int teamId, InviteTeamMemberRequest inviteDto)
     {
       var leaderId = _userContext.UserId;
+      if (leaderId == null) throw new UnauthorizedAccessException();
+
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Exception("Team not found or unauthorized.");
 
@@ -253,6 +255,7 @@ namespace Application.Services.Translation
     public async Task<bool> AcceptInvitationAsync(int invitationId)
     {
       var userId = _userContext.UserId;
+      if (userId == null) throw new UnauthorizedAccessException();
 
       // Cooldown 24h check
       await CheckLeaveTeamCooldownAsync(userId.Value);
@@ -644,7 +647,7 @@ namespace Application.Services.Translation
     public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
     {
       var translatedChaptersCount = await _context.Translations
-          .CountAsync(t => t.Permission.TeamId == teamId);
+          .CountAsync(t => t.Permission!.TeamId == teamId);
 
       var activeSeriesCount = await _context.TranslationPermissions
           .CountAsync(p => p.TeamId == teamId && (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL));
@@ -725,7 +728,7 @@ namespace Application.Services.Translation
           .OrderByDescending(m => m.LeftAt)
           .FirstOrDefaultAsync();
 
-      if (recentLeave != null)
+      if (recentLeave != null && recentLeave.LeftAt.HasValue)
       {
         var remaining = recentLeave.LeftAt.Value.AddHours(24) - DateTime.UtcNow;
         var hours = (int)remaining.TotalHours;

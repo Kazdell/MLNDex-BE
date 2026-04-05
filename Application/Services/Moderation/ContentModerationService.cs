@@ -161,10 +161,10 @@ namespace Application.Services.Moderation
           }
           break;
         case ModerationQueueContentType.TRANSLATION:
-          var translation = await _context.Translations.Include(t => t.Chapter).ThenInclude(c => c.Series).Include(t => t.Permission).ThenInclude(p => p.Team).FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+          var translation = await _context.Translations.Include(t => t.Chapter).ThenInclude(c => c.Series).Include(t => t.Permission).ThenInclude(p => p!.Team).FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
           if (translation != null)
           {
-            ownerUserId = translation.Permission.Team.LeaderId;
+            ownerUserId = translation.Permission!.Team!.LeaderId;
             contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
             actionUrl = $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
           }

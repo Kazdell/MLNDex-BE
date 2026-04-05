@@ -392,8 +392,8 @@ namespace Application.Services.AIModeration
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
-              .ThenInclude(t => t.TeamMembers)
+              .ThenInclude(p => p!.Team)
+              .ThenInclude(t => t!.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId)
           ?? throw new KeyNotFoundException($"Không tìm thấy translation {translationId}");
 
@@ -1144,8 +1144,8 @@ int chapterId, CancellationToken ct = default)
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
-              .ThenInclude(t => t.TeamMembers)
+              .ThenInclude(p => p!.Team)
+              .ThenInclude(t => t!.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
 
       if (translation?.Permission?.Team?.TeamMembers != null)

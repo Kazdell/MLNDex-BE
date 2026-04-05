@@ -193,7 +193,7 @@ namespace Application.Services.ReportSystem
                   .ThenInclude(c => c.Series)
           .Include(tc => tc.Translation)
               .ThenInclude(t => t.Permission)
-                  .ThenInclude(p => p.Team)
+                  .ThenInclude(p => p!.Team)
           .OrderByDescending(tc => tc.Translation.PublishedAt)
           .ToListAsync(ct);
 

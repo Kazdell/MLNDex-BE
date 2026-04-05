@@ -27,7 +27,7 @@ namespace Application.Services.User
           .Include(u => u.Wallet)
           .Include(u => u.ReadingHistories)
           .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
-          .Include(u => u.CreatorProfile).ThenInclude(cp => cp.Series)
+          .Include(u => u.CreatorProfile).ThenInclude(cp => cp!.Series)
           .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
       if (user == null) return null;
@@ -183,7 +183,7 @@ namespace Application.Services.User
           .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
           .Include(u => u.ReadingHistories)
           .Include(u => u.VipSubscriptions).ThenInclude(vs => vs.VipPlan)
-          .Include(u => u.CreatorProfile).ThenInclude(cp => cp.Series)
+          .Include(u => u.CreatorProfile).ThenInclude(cp => cp!.Series)
           .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
 
       if (user == null) return null;

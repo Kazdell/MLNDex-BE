@@ -426,7 +426,7 @@ public class ModerationWorker : BackgroundService
 
       if (translation?.Chapter?.Series != null && translation.Permission?.Team != null)
       {
-        var owners = translation.Permission.Team.TeamMembers
+        var owners = translation!.Permission!.Team!.TeamMembers
             .Where(m => m.Role == Domain.Entities.TeamMemberRole.LEADER && m.IsActive)
             .ToList();
 
