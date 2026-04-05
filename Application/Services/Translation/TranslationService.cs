@@ -149,7 +149,7 @@ namespace Application.Services.Translation
       bool translationExists = await _context.Translations
           .AnyAsync(t => t.ChapterId == dto.ChapterId &&
                          t.LanguageId == dto.LanguageId &&
-                         (t.TeamId == resolvedTeamId || (t.PermissionId != null && t.Permission.TeamId == resolvedTeamId)));
+                         (t.TeamId == resolvedTeamId || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)));
 
       if (translationExists)
       {
@@ -315,7 +315,7 @@ namespace Application.Services.Translation
           .Include(t => t.Language)
           .Include(t => t.Team)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
           .Include(t => t.TranslationPages)
@@ -333,7 +333,7 @@ namespace Application.Services.Translation
           .Include(t => t.Language)
           .Include(t => t.Team)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TeamJoins)
               .ThenInclude(tj => tj.Team)
           .Include(t => t.Chapter)
@@ -348,7 +348,7 @@ namespace Application.Services.Translation
       var translations = await _context.Translations
           .Include(t => t.Language)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .ToListAsync();
       return translations.Select(MapToDto);
     }
@@ -360,7 +360,7 @@ namespace Application.Services.Translation
 
       var translation = await _context.Translations
           .Include(t => t.Permission)
-          .ThenInclude(p => p.Team)
+          .ThenInclude(p => p!.Team)
           .ThenInclude(t => t.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
@@ -381,7 +381,7 @@ namespace Application.Services.Translation
             .AnyAsync(t => t.ChapterId == translation.ChapterId &&
                            t.LanguageId == dto.LanguageId &&
                            t.TranslationId != translationId &&
-                           (t.TeamId == translation.Permission.TeamId || (t.PermissionId != null && t.Permission.TeamId == translation.Permission.TeamId)));
+                           (t.TeamId == translation.Permission.TeamId || (t.PermissionId != null && t.Permission!.TeamId == translation.Permission.TeamId)));
 
         if (translationExists)
         {
@@ -402,7 +402,7 @@ namespace Application.Services.Translation
 
       var translation = await _context.Translations
           .Include(t => t.Permission)
-          .ThenInclude(p => p.Team)
+          .ThenInclude(p => p!.Team)
           .ThenInclude(t => t.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
@@ -471,7 +471,7 @@ namespace Application.Services.Translation
           .Include(t => t.TranslationPages)
           .Include(t => t.TranslationText)
           .Where(t => t.Chapter.SeriesId == seriesId &&
-                      (t.Permission.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)))
+                      (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)))
           .OrderByDescending(t => t.Chapter.ChapterNumber)
           .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
           {
@@ -501,7 +501,7 @@ namespace Application.Services.Translation
           .Include(t => t.Permission)
           .Include(t => t.TeamJoins)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId &&
-                                   (t.Permission.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)), ct);
+                                   (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)), ct);
 
       if (translation == null)
         throw new KeyNotFoundException("Không tìm thấy bản dịch hoặc bản dịch không thuộc về nhóm của bạn.");
@@ -517,7 +517,7 @@ int userId, int translationId, CancellationToken ct = default)
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
           ?? throw new KeyNotFoundException($"Không tìm thấy bản dịch {translationId}.");
 

@@ -335,7 +335,7 @@ CancellationToken cancellationToken = default)
           var translation = await _db.Translations
               .Include(t => t.TranslationCredits).ThenInclude(tc => tc.User)
               .Include(t => t.TeamJoins).ThenInclude(tj => tj.Team)
-              .Include(t => t.Permission).ThenInclude(p => p.Team) // ← thêm
+              .Include(t => t.Permission).ThenInclude(p => p!.Team) // ← thêm
               .FirstOrDefaultAsync(t => t.ChapterId == chapter.ChapterId, cancellationToken);
 
           if (translation != null)
@@ -385,7 +385,7 @@ CancellationToken cancellationToken = default)
                   .ThenInclude(s => s.Creator)
           .Include(t => t.Language)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TranslationPages.OrderBy(p => p.PageNumber))
           .Include(t => t.TranslationCredits)
               .ThenInclude(tc => tc.User)
@@ -403,10 +403,10 @@ CancellationToken cancellationToken = default)
           .Include(t => t.Chapter)
           .Include(t => t.Language)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Where(t => t.Chapter.SeriesId == chapter.SeriesId
                    && t.Permission != null
-                   && t.Permission.TeamId == translation.Permission.TeamId
+                   && t.Permission!.TeamId == translation.Permission!.TeamId
                    && t.Chapter.Status == ChapterStatus.PUBLISHED)
           .OrderByDescending(t => t.Chapter.ChapterNumber)
           .Select(t => new ChapterSummaryDto
@@ -415,7 +415,7 @@ CancellationToken cancellationToken = default)
             TranslationId = t.TranslationId,
             ChapterNumber = t.Chapter.ChapterNumber,
             Title = t.Chapter.Title,
-            TeamId = t.Permission.TeamId,
+            TeamId = t.Permission!.TeamId,
             TeamName = t.Permission.Team != null ? t.Permission.Team.TeamName : null,
             LanguageCode = t.Language != null ? t.Language.Code : null,
             LanguageName = t.Language != null ? t.Language.Name : null,

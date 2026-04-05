@@ -1,39 +1,38 @@
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\User\UserService.cs(30,61) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\ReportSystem\TrustScoreService.cs(196,37) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\DTOs\Chapter\UpdateChapterLockResponseDto.cs(12,23) 8618
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\AIModeration\ModerationService.cs(395,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\ReportSystem\PlagiarismReportService.cs(169,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\ReportSystem\PlagiarismReportService.cs(176,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(194,27) 8601
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\ReportSystem\PlagiarismReportService.cs(310,52) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(233,21) 8629
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(326,73) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(258,41) 8629
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\User\UserService.cs(186,61) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\ContentModerationService.cs(164,152) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Moderation\ContentModerationService.cs(167,27) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(380,39) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(398,39) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(401,52) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(410,30) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(152,84) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\AIModeration\ModerationService.cs(1147,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(318,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(404,73) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(336,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(351,33) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(363,29) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(384,101) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(647,28) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(405,29) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(461,43) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(730,25) 8629
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(474,24) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(504,37) 8602
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Services\OCR\TextDetectorOnnxService.cs(22,16) 8618
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Services\Auth\EmailService.cs(28,11) 8604
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Adapters\Translation\GeminiTranslationClient.cs(217,52) 8601
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Adapters\Translation\GeminiTranslationClient.cs(218,54) 8601
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Adapters\Translation\AiTranslationClient.cs(192,35) 8601
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\Adapters\Translation\AiTranslationClient.cs(193,37) 8601
-C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\BackgroundJobs\Workers\ModerationWorker.cs(423,33) 8602
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Domain -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Domain\bin\Debug\net8.0\Domain.dll
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Financial\FinancialReportService.cs(44,15): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Financial\FinancialReportService.cs(52,23): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(338,60): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(194,27): warning CS8601: Possible null reference assignment. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(326,65): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(388,33): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(406,33): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(409,46): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(418,22): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(404,65): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(504,37): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(461,37): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+  Application -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\bin\Debug\net8.0\Application.dll
+  Infrastructure -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Infrastructure\bin\Debug\net8.0\Infrastructure.dll
+  Application.Tests -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application.Tests\bin\Debug\net8.0\Application.Tests.dll
+  mlndex-backend -> C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\mlndex-backend\bin\Debug\net8.0\mlndex-backend.dll
+
+Build succeeded.
+
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Financial\FinancialReportService.cs(44,15): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Financial\FinancialReportService.cs(52,23): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(338,60): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationTeamService.cs(194,27): warning CS8601: Possible null reference assignment. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(326,65): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(388,33): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(406,33): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(409,46): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\ChapterService.cs(418,22): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(404,65): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Translation\TranslationService.cs(504,37): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Services\Creator\SeriesService.cs(461,37): warning CS8602: Dereference of a possibly null reference. [C:\Users\ACER\Downloads\MLNDex\MLNDex-BE\Application\Application.csproj]
+    12 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.91

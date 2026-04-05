@@ -323,7 +323,7 @@ namespace Application.Services.Creator
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -401,7 +401,7 @@ namespace Application.Services.Creator
       if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -458,7 +458,7 @@ namespace Application.Services.Creator
               .ThenInclude(t => t.Language)
           .Include(s => s.Chapters).ThenInclude(c => c.Translations)
               .ThenInclude(t => t.Permission)
-                  .ThenInclude(p => p.Team)
+                  .ThenInclude(p => p!.Team)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
       if (series == null) return null;

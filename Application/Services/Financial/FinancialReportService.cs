@@ -41,7 +41,7 @@ namespace Application.Services.Financial
 
       var totalUnlocks = await _context
           .ChapterUnlocks.Where(u =>
-              u.Transaction.CreatedAt >= from && u.Transaction.CreatedAt <= to
+              u.Transaction!.CreatedAt >= from && u.Transaction!.CreatedAt <= to
           )
           .CountAsync(cancellationToken);
 
@@ -49,7 +49,7 @@ namespace Application.Services.Financial
           .ChapterUnlocks.Include(u => u.Chapter)
               .ThenInclude(c => c.Series)
                   .ThenInclude(s => s.Creator)
-          .Where(u => u.Transaction.CreatedAt >= from && u.Transaction.CreatedAt <= to)
+          .Where(u => u.Transaction!.CreatedAt >= from && u.Transaction!.CreatedAt <= to)
           .GroupBy(u => new { u.Chapter.Series.CreatorId, u.Chapter.Series.Creator.PenName })
           .Select(g => new CreatorRevenueDto
           {
