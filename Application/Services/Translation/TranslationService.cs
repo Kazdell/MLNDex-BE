@@ -539,7 +539,7 @@ int userId, int translationId, CancellationToken ct = default)
       }
 
       if (effectiveChapterLock == ChapterLockStatus.UNLOCKED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Chương gốc đang miễn phí, bản dịch này không cần mua.");
 
       // ── 4. User đã unlock chapter gốc rồi → đọc được tất cả translation ─
@@ -550,7 +550,7 @@ int userId, int translationId, CancellationToken ct = default)
                     ct);
 
       if (hasChapterUnlock)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Bạn đã mở khóa chương gốc nên có thể đọc tất cả bản dịch miễn phí.");
 
       // ── 5. Idempotency: đã mua translation này chưa? ─────────────────────
@@ -567,12 +567,12 @@ int userId, int translationId, CancellationToken ct = default)
       var team = translation.Permission?.Team;
 
       if (team == null || !team.IsMonetizationEnabled)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Nhóm dịch này chưa bật tính năng kinh doanh.");
 
       var rawPrice = team.DefaultUnlockPriceCoins
                  ?? chapter.UnlockPriceCoins
-                 ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+                 ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
                      "Bản dịch này chưa được cấu hình giá mở khóa.");
 
       if (rawPrice <= 0)
@@ -586,7 +586,7 @@ int userId, int translationId, CancellationToken ct = default)
           ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
 
       // ── 8. Trừ coin ──────────────────────────────────────────────────────

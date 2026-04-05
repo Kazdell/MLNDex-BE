@@ -57,7 +57,7 @@ namespace Application.Services.Creator
           .Where(c => c.Series.Creator.UserId == userId && c.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (chaptersToday >= 10)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Bạn đã đạt giới hạn 10 chapter/ngày. Vui lòng quay lại ngày mai.");
 
       // ── 2b. Cooldown: 15 phút giữa mỗi lần đăng ───────────────────
@@ -86,7 +86,7 @@ namespace Application.Services.Creator
                   && c.Series.Creator.UserId == userId))
           .CountAsync(cancellationToken);
       if (pendingJobs >= 10)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Bạn đang có 10 chapter chờ kiểm duyệt. Hãy đợi kết quả trước khi tải thêm.");
 
       // ── 4. Kiểm tra trùng số chương (chương gốc) ──
@@ -598,7 +598,7 @@ int chapterId, CancellationToken ct = default)
           && (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes < 2)
       {
         var remaining = 2 - (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi thử lại.");
       }
 
@@ -1037,7 +1037,7 @@ int userId, int chapterId, CancellationToken ct = default)
           ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
 
       // ── 7. Deduct coins ────────────────────────────────────────────────

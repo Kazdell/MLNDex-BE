@@ -48,7 +48,7 @@ namespace Application.Services.Creator
           .Where(s => s.Creator.UserId == userId && s.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (seriesToday >= 5)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Bạn đã đạt giới hạn 5 bộ truyện/ngày. Vui lòng quay lại ngày mai.");
 
       // 2. Check Title Duplicate
@@ -175,7 +175,7 @@ namespace Application.Services.Creator
           && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
       {
         var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi chỉnh sửa lại.");
       }
 
@@ -493,37 +493,37 @@ namespace Application.Services.Creator
 .OrderByDescending(c => c.ChapterNumber)
 .Select(c =>
 {
-var now = DateTime.UtcNow;
-var effectiveLock = c.LockStatus;
-if (effectiveLock == ChapterLockStatus.LOCKED
-          && c.UnlockTime.HasValue
-          && now >= c.UnlockTime.Value)
-{
-  effectiveLock = ChapterLockStatus.UNLOCKED;
-}
+  var now = DateTime.UtcNow;
+  var effectiveLock = c.LockStatus;
+  if (effectiveLock == ChapterLockStatus.LOCKED
+            && c.UnlockTime.HasValue
+            && now >= c.UnlockTime.Value)
+  {
+    effectiveLock = ChapterLockStatus.UNLOCKED;
+  }
 
-return new SeriesChapterDto
-{
-  ChapterId = c.ChapterId,
-  Title = c.Title ?? "Untitled",
-  ChapterNumber = (int)c.ChapterNumber,
-  Price = c.UnlockPriceCoins ?? 0,
-  PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-  ViewCount = c.ReadingHistories?.Count ?? 0,
-  GroupName = c.Team?.TeamName,
-  TeamId = c.TeamId,
-  IsOriginal = c.TeamId == null,
-  IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-  LanguageCode = c.Language?.Code,
-  LanguageName = c.Language?.Name,
-  CommentCount = 0,
-  PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
-  IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId),
-  // ── THÊM 3 DÒNG NÀY ──
-  LockStatus = effectiveLock.ToString(),
-  UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
-  UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
-};
+  return new SeriesChapterDto
+  {
+    ChapterId = c.ChapterId,
+    Title = c.Title ?? "Untitled",
+    ChapterNumber = (int)c.ChapterNumber,
+    Price = c.UnlockPriceCoins ?? 0,
+    PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
+    ViewCount = c.ReadingHistories?.Count ?? 0,
+    GroupName = c.Team?.TeamName,
+    TeamId = c.TeamId,
+    IsOriginal = c.TeamId == null,
+    IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
+    LanguageCode = c.Language?.Code,
+    LanguageName = c.Language?.Name,
+    CommentCount = 0,
+    PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
+    IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId),
+    // ── THÊM 3 DÒNG NÀY ──
+    LockStatus = effectiveLock.ToString(),
+    UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
+    UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
+  };
 }).ToList();
 
       // 2. Map PUBLISHED translations as additional entries
@@ -918,7 +918,7 @@ return new SeriesChapterDto
       catch (Exception ex)
       {
         _logger.LogError(ex, "Lỗi khi xóa truyện {SeriesId}", seriesId);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau. {ex.Message}");
       }
     }
