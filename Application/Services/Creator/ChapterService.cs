@@ -223,145 +223,153 @@ namespace Application.Services.Creator
         }
 
         public async Task<ChapterDetailDto?> GetChapterDetailAsync(
-        int chapterId,
-        int? userId,
-        CancellationToken cancellationToken = default)
+    int chapterId, int? userId, int? translationId = null,
+    CancellationToken cancellationToken = default)
         {
-
-            var chapter = await _db.Chapters
-                .Include(c => c.Series)
-                    .ThenInclude(s => s.Creator)
-                .Include(c => c.Team)
-                .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-                .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
-
-            // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
-            if (chapter == null)
             {
-                return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
-            }
 
-            var chapters = await _db.Chapters
-                .Include(c => c.Team)
-                .Include(c => c.Language)
-                .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
-                .OrderByDescending(c => c.ChapterNumber)
-                .Select(c => new ChapterSummaryDto
+                var chapter = await _db.Chapters
+                    .Include(c => c.Series)
+                        .ThenInclude(s => s.Creator)
+                    .Include(c => c.Team)
+                    .Include(c => c.Pages.OrderBy(p => p.PageNumber))
+                    .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+
+                // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
+                if (chapter == null)
                 {
-                    ChapterId = c.ChapterId,
-                    ChapterNumber = c.ChapterNumber,
-                    Title = c.Title,
-                    TeamId = c.TeamId,
-                    TeamName = c.Team != null ? c.Team.TeamName : null,
-                    LanguageCode = c.Language != null ? c.Language.Code : null,
-                    LanguageName = c.Language != null ? c.Language.Name : null,
-                    IsOriginal = c.TeamId == null
-                })
-                .ToListAsync(cancellationToken);
+                    return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
+                }
 
-            var prevChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
-                .OrderByDescending(c => c.ChapterNumber)
-                .Select(c => (int?)c.ChapterId)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            var nextChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
-                .OrderBy(c => c.ChapterNumber)
-                .Select(c => (int?)c.ChapterId)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            var now = DateTime.UtcNow;
-            var effectiveLockStatus = chapter.LockStatus;
-
-            // Lazy check: đã qua UnlockTime → coi như free
-            if (chapter.LockStatus == ChapterLockStatus.LOCKED
-                && chapter.UnlockTime.HasValue
-                && now >= chapter.UnlockTime.Value)
-            {
-                effectiveLockStatus = ChapterLockStatus.UNLOCKED;
-            }
-
-            // Check user này đã bỏ coin unlock chưa
-            bool isUnlockedByUser = false;
-            if (userId.HasValue && effectiveLockStatus == ChapterLockStatus.LOCKED)
-            {
-                isUnlockedByUser = await _db.ChapterUnlocks
-                    .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId.Value, cancellationToken);
-            }
-
-            bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
-    && chapter.Series.Creator?.UserId == userId.Value;
-
-            var dto = new ChapterDetailDto
-            {
-                ChapterId = chapter.ChapterId,
-                SeriesId = chapter.SeriesId,
-                SeriesTitle = chapter.Series?.Title,
-                UploaderName = chapter.Series?.Creator?.PenName,
-                CreatorUserId = chapter.Series?.Creator?.UserId,
-                TranslatorTeamName = chapter.Team?.TeamName,
-                ChapterNumber = chapter.ChapterNumber,
-                Title = chapter.Title,
-                PrevChapterId = prevChapterId,
-                NextChapterId = nextChapterId,
-                Chapters = chapters,
-                LockStatus = effectiveLockStatus.ToString(),
-                UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
-                UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-                IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
-
-                // Chặn Pages nếu locked và user chưa unlock
-                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
-                ? chapter.Pages.Select(p => new ChapterPageResponseDto
-                {
-                    PageId = p.PageId,
-                    ChapterId = p.ChapterId,
-                    PageNumber = p.PageNumber,
-                    ImageUrl = p.ImageUrl
-                }).ToList()
-                : new List<ChapterPageResponseDto>(),
-            };
-
-            // Translation Ecosystem logic:
-            if (chapter.TeamId != null)
-            {
-                var translation = await _db.Translations
-                    .Include(t => t.TranslationCredits)
-                        .ThenInclude(tc => tc.User)
-                    .Include(t => t.TeamJoins)
-                        .ThenInclude(tj => tj.Team)
-                    .FirstOrDefaultAsync(t => t.ChapterId == chapter.ChapterId, cancellationToken);
-
-                if (translation != null)
-                {
-                    dto.IsTranslation = true;
-                    dto.IsOfficial = translation.IsOfficial;
-                    dto.IsOutdated = translation.IsOutdated;
-                    dto.IsOrphan = translation.IsOrphan;
-
-                    if (translation.TranslationCredits != null)
+                var chapters = await _db.Chapters
+                    .Include(c => c.Team)
+                    .Include(c => c.Language)
+                    .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
+                    .OrderByDescending(c => c.ChapterNumber)
+                    .Select(c => new ChapterSummaryDto
                     {
-                        dto.TranslationCredits = translation.TranslationCredits.Select(tc => new TranslationCreditDetailDto
-                        {
-                            UserId = tc.UserId,
-                            Username = tc.User.Username,
-                            Role = tc.Role.ToString()
-                        }).ToList();
-                    }
+                        ChapterId = c.ChapterId,
+                        ChapterNumber = c.ChapterNumber,
+                        Title = c.Title,
+                        TeamId = c.TeamId,
+                        TeamName = c.Team != null ? c.Team.TeamName : null,
+                        LanguageCode = c.Language != null ? c.Language.Code : null,
+                        LanguageName = c.Language != null ? c.Language.Name : null,
+                        IsOriginal = c.TeamId == null
+                    })
+                    .ToListAsync(cancellationToken);
 
-                    if (translation.TeamJoins != null)
+                var prevChapterId = await _db.Chapters
+                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
+                    .OrderByDescending(c => c.ChapterNumber)
+                    .Select(c => (int?)c.ChapterId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                var nextChapterId = await _db.Chapters
+                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
+                    .OrderBy(c => c.ChapterNumber)
+                    .Select(c => (int?)c.ChapterId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                var now = DateTime.UtcNow;
+                var effectiveLockStatus = chapter.LockStatus;
+
+                // Lazy check: đã qua UnlockTime → coi như free
+                if (chapter.LockStatus == ChapterLockStatus.LOCKED
+                    && chapter.UnlockTime.HasValue
+                    && now >= chapter.UnlockTime.Value)
+                {
+                    effectiveLockStatus = ChapterLockStatus.UNLOCKED;
+                }
+
+                bool isUnlockedByUser = false;
+                if (userId.HasValue && effectiveLockStatus == ChapterLockStatus.LOCKED)
+                {
+                    isUnlockedByUser = await _db.ChapterUnlocks
+                        .AnyAsync(u => u.ChapterId == chapterId
+                                    && u.UserId == userId.Value
+                                    && (
+                                        u.TranslationId == null                         // đã mua chapter gốc → mở tất cả
+                                        || (translationId.HasValue                      // hoặc đã mua đúng translation này
+                                            && u.TranslationId == translationId.Value)
+                                    ),
+                                  cancellationToken);
+                }
+
+                bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
+        && chapter.Series.Creator?.UserId == userId.Value;
+
+                var dto = new ChapterDetailDto
+                {
+                    ChapterId = chapter.ChapterId,
+                    SeriesId = chapter.SeriesId,
+                    SeriesTitle = chapter.Series?.Title,
+                    UploaderName = chapter.Series?.Creator?.PenName,
+                    CreatorUserId = chapter.Series?.Creator?.UserId,
+                    TranslatorTeamName = chapter.Team?.TeamName,
+                    ChapterNumber = chapter.ChapterNumber,
+                    Title = chapter.Title,
+                    PrevChapterId = prevChapterId,
+                    NextChapterId = nextChapterId,
+                    Chapters = chapters,
+                    LockStatus = effectiveLockStatus.ToString(),
+                    UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
+                    UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
+                    IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
+
+                    // Chặn Pages nếu locked và user chưa unlock
+                    Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+                    ? chapter.Pages.Select(p => new ChapterPageResponseDto
                     {
-                        dto.JointTeams = translation.TeamJoins.Select(tj => new JointTeamDetailDto
+                        PageId = p.PageId,
+                        ChapterId = p.ChapterId,
+                        PageNumber = p.PageNumber,
+                        ImageUrl = p.ImageUrl
+                    }).ToList()
+                    : new List<ChapterPageResponseDto>(),
+                };
+
+                // Translation Ecosystem logic:
+                if (chapter.TeamId != null)
+                {
+                    var translation = await _db.Translations
+                        .Include(t => t.TranslationCredits).ThenInclude(tc => tc.User)
+                        .Include(t => t.TeamJoins).ThenInclude(tj => tj.Team)
+                        .Include(t => t.Permission).ThenInclude(p => p.Team) // ← thêm
+                        .FirstOrDefaultAsync(t => t.ChapterId == chapter.ChapterId, cancellationToken);
+
+                    if (translation != null)
+                    {
+                        dto.IsTranslation = true;
+                        dto.IsOfficial = translation.IsOfficial;
+                        dto.IsOutdated = translation.IsOutdated;
+                        dto.IsOrphan = translation.IsOrphan;
+                        dto.TeamUnlockPrice = translation.Permission?.Team?.DefaultUnlockPriceCoins
+                                              ?? chapter.UnlockPriceCoins; // ← thêm
+
+                        if (translation.TranslationCredits != null)
                         {
-                            TeamId = tj.TeamId,
-                            TeamName = tj.Team.TeamName
-                        }).ToList();
+                            dto.TranslationCredits = translation.TranslationCredits.Select(tc => new TranslationCreditDetailDto
+                            {
+                                UserId = tc.UserId,
+                                Username = tc.User.Username,
+                                Role = tc.Role.ToString()
+                            }).ToList();
+                        }
+
+                        if (translation.TeamJoins != null)
+                        {
+                            dto.JointTeams = translation.TeamJoins.Select(tj => new JointTeamDetailDto
+                            {
+                                TeamId = tj.TeamId,
+                                TeamName = tj.Team.TeamName
+                            }).ToList();
+                        }
                     }
                 }
-            }
 
-            return dto;
+                return dto;
+            }
         }
 
         /// <summary>
@@ -396,9 +404,9 @@ namespace Application.Services.Creator
                 .Include(t => t.Language)
                 .Include(t => t.Permission)
                     .ThenInclude(p => p.Team)
-                .Where(t => t.Chapter.SeriesId == chapter.SeriesId 
+                .Where(t => t.Chapter.SeriesId == chapter.SeriesId
                          && t.Permission != null
-                         && t.Permission.TeamId == translation.Permission.TeamId 
+                         && t.Permission.TeamId == translation.Permission.TeamId
                          && t.Chapter.Status == ChapterStatus.PUBLISHED)
                 .OrderByDescending(t => t.Chapter.ChapterNumber)
                 .Select(t => new ChapterSummaryDto
@@ -429,7 +437,7 @@ namespace Application.Services.Creator
 
             var dto = new ChapterDetailDto
             {
-                ChapterId = translationId, // Use TranslationId so nav stays consistent
+                ChapterId = translationId,
                 SeriesId = chapter.SeriesId,
                 SeriesTitle = chapter.Series?.Title,
                 UploaderName = chapter.Series?.Creator?.PenName,
@@ -443,6 +451,8 @@ namespace Application.Services.Creator
                 IsOfficial = translation.IsOfficial,
                 IsOutdated = translation.IsOutdated,
                 IsOrphan = translation.IsOrphan,
+                TeamUnlockPrice = translation.Permission?.Team?.DefaultUnlockPriceCoins
+                      ?? chapter.UnlockPriceCoins,
                 Pages = translation.TranslationPages.Select(p => new ChapterPageResponseDto
                 {
                     PageId = p.TransPageId,
@@ -1073,64 +1083,64 @@ namespace Application.Services.Creator
                 Message = $"Mở khóa thành công! Đã trừ {price} coin.",
             };
         }
-    public async Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default)
-    {
-      var chapter = await _db.Chapters
-          .Include(c => c.Series)
-              .ThenInclude(s => s.Creator)
-          .Include(c => c.Pages)
-          .Include(c => c.Translations)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+        public async Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default)
+        {
+            var chapter = await _db.Chapters
+                .Include(c => c.Series)
+                    .ThenInclude(s => s.Creator)
+                .Include(c => c.Pages)
+                .Include(c => c.Translations)
+                .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
-      if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương.");
+            if (chapter == null)
+                throw new KeyNotFoundException("Không tìm thấy chương.");
 
-      // Verify ownership
-      if (chapter.Series?.Creator?.UserId != userId)
-        throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
+            // Verify ownership
+            if (chapter.Series?.Creator?.UserId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
 
-      // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
-      // Let's assume it cascade deletes or we allow it. Here we just delete the images.
-      
-      foreach (var page in chapter.Pages)
-      {
-        if (!string.IsNullOrEmpty(page.ImageUrl))
-          await _storage.DeleteAsync(page.ImageUrl, ct);
-      }
+            // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
+            // Let's assume it cascade deletes or we allow it. Here we just delete the images.
 
-      _db.Chapters.Remove(chapter);
-      await _db.SaveChangesAsync(ct);
-      
-      _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
+            foreach (var page in chapter.Pages)
+            {
+                if (!string.IsNullOrEmpty(page.ImageUrl))
+                    await _storage.DeleteAsync(page.ImageUrl, ct);
+            }
+
+            _db.Chapters.Remove(chapter);
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
+        }
+
+        public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
+        {
+            // Verify team membership
+            var isMember = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+
+            if (!isMember)
+                throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
+
+            var chapter = await _db.Chapters
+                .Include(c => c.Pages)
+                .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+
+            if (chapter == null)
+                throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+
+            // Delete images from cloud storage
+            foreach (var page in chapter.Pages)
+            {
+                if (!string.IsNullOrEmpty(page.ImageUrl))
+                    await _storage.DeleteAsync(page.ImageUrl, ct);
+            }
+
+            _db.Chapters.Remove(chapter);
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Nhóm {TeamId} xoá chương dịch {ChapterId} bởi User {UserId}", teamId, chapterId, userId);
+        }
     }
-
-    public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
-    {
-      // Verify team membership
-      var isMember = await _db.TeamMembers
-          .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
-          
-      if (!isMember)
-        throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
-
-      var chapter = await _db.Chapters
-          .Include(c => c.Pages)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
-
-      if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
-
-      // Delete images from cloud storage
-      foreach (var page in chapter.Pages)
-      {
-        if (!string.IsNullOrEmpty(page.ImageUrl))
-          await _storage.DeleteAsync(page.ImageUrl, ct);
-      }
-
-      _db.Chapters.Remove(chapter);
-      await _db.SaveChangesAsync(ct);
-
-      _logger.LogInformation("Nhóm {TeamId} xoá chương dịch {ChapterId} bởi User {UserId}", teamId, chapterId, userId);
-    }
-  }
 }

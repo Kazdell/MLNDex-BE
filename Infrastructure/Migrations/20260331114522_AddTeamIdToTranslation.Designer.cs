@@ -4,6 +4,7 @@ using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    partial class MlndexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331114522_AddTeamIdToTranslation")]
+    partial class AddTeamIdToTranslation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -259,13 +262,7 @@ namespace Infrastructure.Migrations
                     b.Property<decimal>("CoinsPaid")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("TransactionId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TranslationId")
+                    b.Property<int>("TransactionId")
                         .HasColumnType("int");
 
                     b.Property<string>("UnlockSource")
@@ -280,10 +277,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("ChapterId");
 
                     b.HasIndex("TransactionId")
-                        .IsUnique()
-                        .HasFilter("[TransactionId] IS NOT NULL");
-
-                    b.HasIndex("TranslationId");
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -1014,9 +1008,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(MAX)");
 
                     b.Property<decimal>("ExchangeRateCoinToVnd")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("TranslationAuthorCommissionPercent")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -2039,11 +2030,8 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Transaction", "Transaction")
                         .WithOne("ChapterUnlock")
                         .HasForeignKey("Domain.Entities.ChapterUnlock", "TransactionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Translation", "Translation")
-                        .WithMany()
-                        .HasForeignKey("TranslationId");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Domain.Entities.User", "User")
                         .WithMany()
@@ -2054,8 +2042,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("Chapter");
 
                     b.Navigation("Transaction");
-
-                    b.Navigation("Translation");
 
                     b.Navigation("User");
                 });

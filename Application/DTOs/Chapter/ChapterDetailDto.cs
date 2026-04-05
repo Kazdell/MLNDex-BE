@@ -27,6 +27,7 @@ namespace Application.DTOs.Chapter
         public bool IsUnlockedByUser { get; set; } = false;
         public int? UnlockPriceCoins { get; set; }
         public DateTime? UnlockTime { get; set; }
+        public int? TeamUnlockPrice { get; set; }
         public CreatorUnlockDefaultsDto? CreatorDefaults { get; set; }
 
 

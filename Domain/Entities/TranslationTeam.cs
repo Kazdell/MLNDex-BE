@@ -41,6 +41,7 @@ namespace Domain.Entities
         public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
         public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
         public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
+        public ICollection<Translation> Translations { get; set; } = new List<Translation>();
         public ICollection<TeamGenre> TeamGenres { get; set; } = new List<TeamGenre>();
         public ICollection<TranslationTeamJoin> TeamJoins { get; set; } = new List<TranslationTeamJoin>();
         public ICollection<TrustScoreHistory> TrustScoreHistories { get; set; } = new List<TrustScoreHistory>();

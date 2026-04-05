@@ -1,5 +1,5 @@
 using Application.DTOs.Chapter;
-using Application.Interfaces.Creator;
+using Application.Interfaces.Translation;
 using Application.Interfaces.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,12 +17,12 @@ namespace mlndex_backend.Controllers.Translation;
 [Authorize] // Any authenticated user — service layer checks team membership + permissions
 public class TranslationChapterController : BaseController
 {
-  private readonly IChapterService _service;
+  private readonly ITranslationService _service;
   private readonly IMlndexDbContext _db;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-  public TranslationChapterController(IChapterService service, IMlndexDbContext db)
+  public TranslationChapterController(ITranslationService service, IMlndexDbContext db)
   {
     _service = service;
     _db = db;
@@ -37,7 +37,7 @@ public class TranslationChapterController : BaseController
 
     try
     {
-      var result = await _service.GetTeamChaptersBySeriesAsync(teamId, seriesId, userId, cancellationToken);
+      var result = await _service.GetTeamTranslationsBySeriesAsync(teamId, seriesId, userId, cancellationToken);
       return OkResponse(result);
     }
     catch (KeyNotFoundException ex)
@@ -62,7 +62,7 @@ public class TranslationChapterController : BaseController
 
     try
     {
-      await _service.DeleteTranslationChapterAsync(id, teamId, userId, cancellationToken);
+      await _service.DeleteTeamTranslationAsync(id, teamId, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương dịch thành công.");
     }
     catch (KeyNotFoundException ex)
