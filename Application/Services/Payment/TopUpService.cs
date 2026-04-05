@@ -34,7 +34,7 @@ public class TopUpService : ITopUpService
   public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
   {
     var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
-        ?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
 
     return new SystemConfigDto
     {
@@ -131,7 +131,7 @@ public class TopUpService : ITopUpService
     var method = request.PaymentMethod.ToUpper();
 
     var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
-        ?? throw new InvalidOperationException("Chưa có cấu hình hệ thống nào được thiết lập.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
 
     long amountVnd;
     long coinsWillReceive;
@@ -188,7 +188,7 @@ public class TopUpService : ITopUpService
     });
 
     if (!gatewayResult.IsSuccess)
-      throw new Exception($"Tạo link thanh toán thất bại: {gatewayResult.ErrorMessage}");
+      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Tạo link thanh toán thất bại: {gatewayResult.ErrorMessage}");
 
     return new TopUpInitResponseDto
     {
@@ -303,7 +303,7 @@ public class TopUpService : ITopUpService
   private async Task<TopUpCallbackResponseDto> CompleteTopUpAsync(Transaction transaction, string txnRef)
   {
     var wallet = await _context.Wallets.FindAsync(transaction.WalletId)
-        ?? throw new InvalidOperationException("Không tìm thấy ví.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không tìm thấy ví.");
 
     wallet.CoinBalance += transaction.AmountCoins;
     wallet.TotalEarned += transaction.AmountCoins;

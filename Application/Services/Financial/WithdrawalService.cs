@@ -112,12 +112,12 @@ namespace Application.Services.Financial
           || entity.Status == WithdrawalStatus.REJECTED
       )
       {
-        throw new InvalidOperationException("Yêu cầu đã được xử lý trước đó.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Yêu cầu đã được xử lý trước đó.");
       }
 
       if (request.Status == WithdrawalStatus.PENDING)
       {
-        throw new InvalidOperationException("Không thể chuyển về trạng thái PENDING.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể chuyển về trạng thái PENDING.");
       }
 
       entity.Status = request.Status;
@@ -154,7 +154,7 @@ namespace Application.Services.Financial
     )
     {
       var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
-          ?? throw new InvalidOperationException("Hệ thống chưa được cấu hình.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống chưa được cấu hình.");
 
       // 1. Validate limits
       if (dto.AmountCoins < config.WithdrawalMinCoins)
@@ -167,7 +167,7 @@ namespace Application.Services.Financial
           ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < dto.AmountCoins)
-        throw new InvalidOperationException("Số dư không đủ để thực hiện yêu cầu này.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Số dư không đủ để thực hiện yêu cầu này.");
 
       // 3. Calculate VND amount after fee
       var amountVnd = dto.AmountCoins * config.ExchangeRateCoinToVnd * (1 - config.WithdrawalFeePercent / 100);

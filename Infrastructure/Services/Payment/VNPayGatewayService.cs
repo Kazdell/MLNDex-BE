@@ -16,13 +16,13 @@ public class VNPayGatewayService : IPaymentGatewayService
   private readonly IConfiguration _configuration;
 
   private string TmnCode => _configuration["VNPay:TmnCode"]
-      ?? throw new InvalidOperationException("Thiếu VNPay:TmnCode");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu VNPay:TmnCode");
   private string HashSecret => _configuration["VNPay:HashSecret"]
-      ?? throw new InvalidOperationException("Thiếu VNPay:HashSecret");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu VNPay:HashSecret");
   private string PaymentUrl => _configuration["VNPay:PaymentUrl"]
       ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
   private string ReturnUrl => _configuration["VNPay:ReturnUrl"]
-      ?? throw new InvalidOperationException("Thiếu VNPay:ReturnUrl");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu VNPay:ReturnUrl");
 
   public VNPayGatewayService(IConfiguration configuration, ILogger<VNPayGatewayService> logger)
   {

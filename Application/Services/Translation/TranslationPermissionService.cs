@@ -31,23 +31,23 @@ namespace Application.Services.Translation
           .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
 
       if (!isMember)
-        throw new Exception("You are not an active member of this translation team.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "You are not an active member of this translation team.");
 
       var series = await _context.Series
           .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId);
 
       if (series == null)
-        throw new Exception("Series not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Series not found.");
 
       var creatorProfile = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);
 
       if (creatorProfile == null)
-        throw new Exception("Creator profile not found for this series.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Creator profile not found for this series.");
 
       var language = await _context.Languages.FindAsync(dto.LanguageId);
       if (language == null)
-        throw new Exception("Language not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Language not found.");
 
       var existingPermission = await _context.TranslationPermissions
           .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
@@ -57,9 +57,9 @@ namespace Application.Services.Translation
       if (existingPermission != null)
       {
         if (existingPermission.Status == TranslationPermissionStatus.PENDING)
-          throw new Exception("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
         if (existingPermission.Status == TranslationPermissionStatus.GRANTED)
-          throw new Exception("Nhóm đã có quyền dịch Official cho bộ truyện này.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Nhóm đã có quyền dịch Official cho bộ truyện này.");
 
         // Allow re-requests from DENIED, UNOFFICIAL, or REVOKED
         existingPermission.Status = dto.IsUnofficial ? TranslationPermissionStatus.UNOFFICIAL : TranslationPermissionStatus.PENDING;
@@ -123,7 +123,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
 
       if (permission == null)
-        throw new Exception("Permission request not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Permission request not found.");
 
       var seriesCreatorUserId = await _context.CreatorProfiles
           .Where(c => c.CreatorId == permission.Series.CreatorId)
@@ -131,7 +131,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync();
 
       if (seriesCreatorUserId != creatorId)
-        throw new Exception("Unauthorized. Only the creator of the series can review this translation request.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only the creator of the series can review this translation request.");
 
       if (dto.IsApproved)
       {
@@ -200,7 +200,7 @@ namespace Application.Services.Translation
           .AnyAsync(t => t.TeamId == teamId && t.LeaderId == userId);
 
       if (!isMember && !isLeader)
-        throw new Exception("Unauthorized. Only active team members can view permissions.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only active team members can view permissions.");
 
       var permissions = await _context.TranslationPermissions
           .Where(p => p.TeamId == teamId)

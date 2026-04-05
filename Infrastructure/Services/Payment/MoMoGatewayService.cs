@@ -20,15 +20,15 @@ public class MoMoGatewayService : IPaymentGatewayService
   private const string PaymentUrl = "https://test-payment.momo.vn/v2/gateway/api/create";
 
   private string PartnerCode => _configuration["MoMo:PartnerCode"]
-      ?? throw new InvalidOperationException("Thiếu MoMo:PartnerCode");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu MoMo:PartnerCode");
   private string AccessKey => _configuration["MoMo:AccessKey"]
-      ?? throw new InvalidOperationException("Thiếu MoMo:AccessKey");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu MoMo:AccessKey");
   private string SecretKey => _configuration["MoMo:SecretKey"]
-      ?? throw new InvalidOperationException("Thiếu MoMo:SecretKey");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu MoMo:SecretKey");
   private string IpnUrl => _configuration["MoMo:IpnUrl"]
-      ?? throw new InvalidOperationException("Thiếu MoMo:IpnUrl");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu MoMo:IpnUrl");
   private string ReturnUrl => _configuration["MoMo:ReturnUrl"]
-      ?? throw new InvalidOperationException("Thiếu MoMo:ReturnUrl");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu MoMo:ReturnUrl");
 
   public MoMoGatewayService(
       IHttpClientFactory httpClientFactory,

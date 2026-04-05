@@ -305,7 +305,7 @@ namespace Application.Services.Translation
       catch (Exception ex)
       {
         _logger.LogError(ex, "OCR failed for PageId {PageId}", request.PageId);
-        throw new Exception($"OCR Engine gặp lỗi: {ex.Message}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"OCR Engine gặp lỗi: {ex.Message}");
       }
 
       if (regions == null || regions.Count == 0)
@@ -478,7 +478,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(p => p.PageId == pageId);
 
       if (page == null)
-        throw new Exception($"Chapter Page not found: {pageId}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Chapter Page not found: {pageId}");
 
       try
       {
@@ -487,7 +487,7 @@ namespace Application.Services.Translation
       catch (Exception ex)
       {
         _logger.LogError(ex, "Failed to download image for PageId {PageId} at URL {Url}", pageId, page.ImageUrl);
-        throw new Exception("Lỗi khi tải ảnh từ server.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Lỗi khi tải ảnh từ server.");
       }
     }
   }

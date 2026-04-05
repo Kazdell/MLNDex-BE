@@ -28,7 +28,7 @@ namespace Application.Services.ReportSystem
         RestoreTrustScoreRequest request, int moderatorId, CancellationToken ct = default)
     {
       if (request.ScoreToRestore <= 0)
-        throw new InvalidOperationException("Điểm phục hồi phải lớn hơn 0.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Điểm phục hồi phải lớn hơn 0.");
 
       if (request.TargetType == TrustScoreTargetType.User)
       {
@@ -109,7 +109,7 @@ namespace Application.Services.ReportSystem
       var existingAppeal = await _context.Appeals
           .AnyAsync(a => a.UserId == userId && a.Status == AppealStatus.Pending, ct);
       if (existingAppeal)
-        throw new InvalidOperationException("Bạn đã có đơn kháng cáo đang chờ xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã có đơn kháng cáo đang chờ xử lý.");
 
       var appeal = new Appeal
       {
@@ -135,7 +135,7 @@ namespace Application.Services.ReportSystem
 
       if (appeal == null) throw new KeyNotFoundException("Appeal không tồn tại.");
       if (appeal.Status != AppealStatus.Pending)
-        throw new InvalidOperationException("Appeal đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Appeal đã được xử lý.");
 
       appeal.ReviewedBy = moderatorId;
       appeal.ReviewedAt = DateTime.UtcNow;

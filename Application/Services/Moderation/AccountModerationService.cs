@@ -27,7 +27,7 @@ namespace Application.Services.Moderation
           ?? throw new KeyNotFoundException("User không tồn tại.");
 
       if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
-        throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
 
       // Fetch the moderator to check their permissions
       var moderator = await _context.Users
@@ -57,7 +57,7 @@ namespace Application.Services.Moderation
       {
         // Admin can act on other Admins, but not themselves (for deactivation)
         if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
-          throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
 
         // If deactivating another Admin, ensure at least one OTHER active Admin remains
         if (request.Action == AccountActionType.DEACTIVATE && currentUserRolesCount.Contains(RoleName.ADMIN))
@@ -69,7 +69,7 @@ namespace Application.Services.Moderation
 
           if (activeAdminsCount == 0)
           {
-            throw new InvalidOperationException("Không thể vô hiệu hóa Admin này vì đây là Admin hoạt động cuối cùng của hệ thống.");
+            throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể vô hiệu hóa Admin này vì đây là Admin hoạt động cuối cùng của hệ thống.");
           }
         }
       }
@@ -186,7 +186,7 @@ namespace Application.Services.Moderation
 
         if (otherAdminsCount == 0)
         {
-          throw new InvalidOperationException("Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.");
         }
       }
 

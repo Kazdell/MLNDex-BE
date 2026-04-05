@@ -82,7 +82,7 @@ namespace Application.Services.System
     {
       var config = await _context.SystemConfigs.FirstOrDefaultAsync();
       if (config == null)
-        throw new InvalidOperationException("System config not found");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "System config not found");
 
       if (amountVnd <= 0)
         throw new ArgumentException("Amount must be greater than 0");

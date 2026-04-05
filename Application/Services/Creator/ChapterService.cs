@@ -46,7 +46,7 @@ namespace Application.Services.Creator
     {
       // ── 1. Kiểm tra quyền tải lên (Tác giả hoặc Nhóm dịch) ───────────
       if (dto.TeamId != null)
-        throw new InvalidOperationException("Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
 
       var series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
       if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
@@ -57,7 +57,7 @@ namespace Application.Services.Creator
           .Where(c => c.Series.Creator.UserId == userId && c.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (chaptersToday >= 10)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Bạn đã đạt giới hạn 10 chapter/ngày. Vui lòng quay lại ngày mai.");
 
       // ── 2b. Cooldown: 15 phút giữa mỗi lần đăng ───────────────────
@@ -73,7 +73,7 @@ namespace Application.Services.Creator
       //     if (elapsed.TotalMinutes < 15)
       //     {
       //         var remaining = TimeSpan.FromMinutes(15) - elapsed;
-      //         throw new InvalidOperationException(
+      //         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
       //             $"Vui lòng đợi {remaining.Minutes} phút {remaining.Seconds} giây nữa trước khi đăng chapter mới.");
       //     }
       // }
@@ -86,7 +86,7 @@ namespace Application.Services.Creator
                   && c.Series.Creator.UserId == userId))
           .CountAsync(cancellationToken);
       if (pendingJobs >= 10)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Bạn đang có 10 chapter chờ kiểm duyệt. Hãy đợi kết quả trước khi tải thêm.");
 
       // ── 4. Kiểm tra trùng số chương (chương gốc) ──
@@ -97,7 +97,7 @@ namespace Application.Services.Creator
           cancellationToken);
 
       if (duplicate)
-        throw new InvalidOperationException($"Chương {dto.ChapterNumber} đã tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Chương {dto.ChapterNumber} đã tồn tại.");
 
       // ── 3. Upload ảnh trang lên Cloudinary ────────────────────────
       var uploadedUrls = new List<string>();
@@ -584,7 +584,7 @@ int chapterId, CancellationToken ct = default)
         var isStale = chapter.ModerationStatus == ModerationStatus.APPROVED
                    || chapter.ModerationStatus == ModerationStatus.REJECTED;
         if (!isStale)
-          throw new InvalidOperationException("Chapter đang trong hàng đợi hoặc đang được xử lý. Vui lòng đợi.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter đang trong hàng đợi hoặc đang được xử lý. Vui lòng đợi.");
       }
 
       // ── Retry Cooldown: 2 phút giữa 2 lần retry ──────────────────
@@ -598,7 +598,7 @@ int chapterId, CancellationToken ct = default)
           && (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes < 2)
       {
         var remaining = 2 - (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes;
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi thử lại.");
       }
 
@@ -967,7 +967,7 @@ int chapterId, CancellationToken ct = default)
       if (dto.LockStatus == ChapterLockStatus.LOCKED
           && dto.UnlockPriceCoins == null
           && dto.UnlockTime == null)
-        throw new InvalidOperationException("Chapter bị khóa phải có giá coin hoặc thời gian mở khóa.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter bị khóa phải có giá coin hoặc thời gian mở khóa.");
 
       // 4. UNLOCKED thì clear hết
       if (dto.LockStatus == ChapterLockStatus.UNLOCKED)
@@ -1004,7 +1004,7 @@ int userId, int chapterId, CancellationToken ct = default)
 
       // ── 2. Must be published ───────────────────────────────────────────
       if (chapter.Status != ChapterStatus.PUBLISHED)
-        throw new InvalidOperationException("Chương này chưa được phát hành.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này chưa được phát hành.");
 
       // ── 3. Effective lock status ───────────────────────────────────────
       var now = DateTime.UtcNow;  // dùng chung một biến
@@ -1017,17 +1017,17 @@ int userId, int chapterId, CancellationToken ct = default)
       }
 
       if (effectiveLock == ChapterLockStatus.UNLOCKED)
-        throw new InvalidOperationException("Chương này đã miễn phí, không cần mở khóa.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này đã miễn phí, không cần mở khóa.");
 
       // ── 4. Idempotency ─────────────────────────────────────────────────
       var alreadyUnlocked = await _db.ChapterUnlocks
           .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId, ct);
       if (alreadyUnlocked)
-        throw new InvalidOperationException("Bạn đã mở khóa chương này rồi.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã mở khóa chương này rồi.");
 
       // ── 5. Price must be configured ────────────────────────────────────
       if (chapter.UnlockPriceCoins is null or <= 0)
-        throw new InvalidOperationException("Chương này chưa được cấu hình giá mở khóa.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này chưa được cấu hình giá mở khóa.");
 
       var price = chapter.UnlockPriceCoins.Value;
 
@@ -1037,7 +1037,7 @@ int userId, int chapterId, CancellationToken ct = default)
           ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
 
       // ── 7. Deduct coins ────────────────────────────────────────────────

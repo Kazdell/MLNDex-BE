@@ -48,7 +48,7 @@ namespace Application.Services.Creator
           .Where(s => s.Creator.UserId == userId && s.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (seriesToday >= 5)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Bạn đã đạt giới hạn 5 bộ truyện/ngày. Vui lòng quay lại ngày mai.");
 
       // 2. Check Title Duplicate
@@ -175,7 +175,7 @@ namespace Application.Services.Creator
           && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
       {
         var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi chỉnh sửa lại.");
       }
 
@@ -918,8 +918,8 @@ return new SeriesChapterDto
       catch (Exception ex)
       {
         _logger.LogError(ex, "Lỗi khi xóa truyện {SeriesId}", seriesId);
-        throw new InvalidOperationException(
-            "Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau.", ex);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
+            $"Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau. {ex.Message}");
       }
     }
 

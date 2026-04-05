@@ -20,7 +20,7 @@ namespace Infrastructure.Adapters.Translation
     public GeminiTranslationClient(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiTranslationClient> logger)
     {
       _apiKey = configuration["Gemini:ApiKey"]
-          ?? throw new InvalidOperationException("Chưa cấu hình Gemini:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình Gemini:ApiKey trong appsettings");
 
       _httpClient = httpClient;
       _logger = logger;
@@ -63,7 +63,7 @@ namespace Infrastructure.Adapters.Translation
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("Gemini Translation API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Exception($"API Gemini trả về lỗi [{response.StatusCode}]: {error}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"API Gemini trả về lỗi [{response.StatusCode}]: {error}");
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
@@ -192,7 +192,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("Gemini Vision API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Exception($"API Gemini (Vision) trả về lỗi [{response.StatusCode}]: {error}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"API Gemini (Vision) trả về lỗi [{response.StatusCode}]: {error}");
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
@@ -231,7 +231,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
       catch (Exception ex)
       {
         _logger.LogError(ex, "Lỗi parse JSON từ Gemini Vision API: {ResponseBody}", responseBody);
-        throw new Exception($"Lỗi đọc JSON từ Gemini: {ex.Message}. ResponseBody: {responseBody}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Lỗi đọc JSON từ Gemini: {ex.Message}. ResponseBody: {responseBody}");
       }
 
       return resultRegions;

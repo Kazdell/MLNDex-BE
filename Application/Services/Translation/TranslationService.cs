@@ -61,23 +61,23 @@ namespace Application.Services.Translation
             .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
 
         if (permission == null)
-          throw new Exception("Translation permission record not found.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Translation permission record not found.");
 
         if (permission.LanguageId != dto.LanguageId)
-          throw new Exception("Language mismatch with the requested permission language.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Language mismatch with the requested permission language.");
 
         // Verify the chapter belongs to the series for which permission was granted
         chapter = await _context.Chapters
             .Include(c => c.Series)
             .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
-            ?? throw new Exception("Chapter not found.");
-        if (chapter.SeriesId != permission.SeriesId) throw new Exception("Permission not valid for this series.");
+            ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Chapter not found.");
+        if (chapter.SeriesId != permission.SeriesId) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Permission not valid for this series.");
 
         // Verify uploader is in the team or is the leader
         bool isUploaderValid = permission.Team.LeaderId == uploaderId ||
                                permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
         if (!isUploaderValid)
-          throw new Exception("Uploader is not an active member or leader of the translation team.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Uploader is not an active member or leader of the translation team.");
 
         isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
         resolvedTeamId = permission.TeamId;
@@ -86,7 +86,7 @@ namespace Application.Services.Translation
       else
       {
         if (dto.TeamId == null)
-          throw new Exception("TeamId is required for unofficial translations.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "TeamId is required for unofficial translations.");
 
         resolvedTeamId = dto.TeamId.Value;
 
@@ -96,18 +96,18 @@ namespace Application.Services.Translation
             .FirstOrDefaultAsync(t => t.TeamId == resolvedTeamId);
 
         if (team == null)
-          throw new Exception("Translation team not found.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Translation team not found.");
 
         bool isUploaderValid = team.LeaderId == uploaderId ||
                                team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
         if (!isUploaderValid)
-          throw new Exception("Uploader is not an active member or leader of the translation team.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Uploader is not an active member or leader of the translation team.");
 
         // Verify chapter exists
         chapter = await _context.Chapters
             .Include(c => c.Series)
             .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
-            ?? throw new Exception("Chapter not found.");
+            ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Chapter not found.");
 
         // NOTE: Lock check (COIN_LOCK / TIMED_LOCK) will be added here
         // once the Creator team implements chapter locking feature.
@@ -284,7 +284,7 @@ namespace Application.Services.Translation
       try
       {
         var translationResult = await GetTranslationByIdAsync(translation.TranslationId)
-            ?? throw new Exception("Translation failed to retrieve.");
+            ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Translation failed to retrieve.");
 
         var seriesTitle = chapter.Series?.Title ?? "series";
 
@@ -303,7 +303,7 @@ namespace Application.Services.Translation
       {
         // Notification failure should NOT roll back the successful translation upload
         _logger.LogWarning(notifEx, "[TranslationService] Gửi thông báo thất bại sau upload (TranslationId={TranslationId}).", translation.TranslationId);
-        return await GetTranslationByIdAsync(translation.TranslationId) ?? throw new Exception("Translation failed to retrieve.");
+        return await GetTranslationByIdAsync(translation.TranslationId) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Translation failed to retrieve.");
       }
     } // end UploadTranslationAsync
 
@@ -364,15 +364,15 @@ namespace Application.Services.Translation
           .ThenInclude(t => t.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
-      if (translation == null) throw new Exception("Translation not found.");
+      if (translation == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Translation not found.");
 
-      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
+      if (translation.Permission == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Data consistency error: Missing TranslationPermission.");
 
       bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId ||
                              translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
       if (!isUploaderValid)
       {
-        throw new Exception("Unauthorized to edit.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized to edit.");
       }
 
       if (dto.LanguageId > 0 && dto.LanguageId != translation.LanguageId)
@@ -392,7 +392,7 @@ namespace Application.Services.Translation
       }
 
       await _context.SaveChangesAsync();
-      return await GetTranslationByIdAsync(translationId) ?? throw new Exception("Error retrieving updated translation.");
+      return await GetTranslationByIdAsync(translationId) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Error retrieving updated translation.");
     }
 
     public async Task<bool> DeleteTranslationAsync(int translationId)
@@ -408,13 +408,13 @@ namespace Application.Services.Translation
 
       if (translation == null) return false;
 
-      if (translation.Permission == null) throw new Exception("Data consistency error: Missing TranslationPermission.");
+      if (translation.Permission == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Data consistency error: Missing TranslationPermission.");
 
       bool isUploaderValid = translation.Permission.Team.LeaderId == uploaderId ||
                              translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
       if (!isUploaderValid)
       {
-        throw new Exception("Unauthorized to delete.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized to delete.");
       }
 
       var urlsToDelete = new List<string>();
@@ -522,11 +522,11 @@ int userId, int translationId, CancellationToken ct = default)
           ?? throw new KeyNotFoundException($"Không tìm thấy bản dịch {translationId}.");
 
       var chapter = translation.Chapter
-          ?? throw new InvalidOperationException("Bản dịch không liên kết với chương hợp lệ.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bản dịch không liên kết với chương hợp lệ.");
 
       // ── 2. Chapter phải được published ───────────────────────────────────
       if (chapter.Status != ChapterStatus.PUBLISHED)
-        throw new InvalidOperationException("Chương này chưa được phát hành.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này chưa được phát hành.");
 
       // ── 3. Translation chỉ có giá khi chapter gốc đang bị lock ──────────
       var now = DateTime.UtcNow;
@@ -539,7 +539,7 @@ int userId, int translationId, CancellationToken ct = default)
       }
 
       if (effectiveChapterLock == ChapterLockStatus.UNLOCKED)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Chương gốc đang miễn phí, bản dịch này không cần mua.");
 
       // ── 4. User đã unlock chapter gốc rồi → đọc được tất cả translation ─
@@ -550,7 +550,7 @@ int userId, int translationId, CancellationToken ct = default)
                     ct);
 
       if (hasChapterUnlock)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Bạn đã mở khóa chương gốc nên có thể đọc tất cả bản dịch miễn phí.");
 
       // ── 5. Idempotency: đã mua translation này chưa? ─────────────────────
@@ -561,22 +561,22 @@ int userId, int translationId, CancellationToken ct = default)
                     ct);
 
       if (alreadyUnlocked)
-        throw new InvalidOperationException("Bạn đã mua bản dịch này rồi.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã mua bản dịch này rồi.");
 
       // ── 6. Team phải bật monetization & có giá ───────────────────────────
       var team = translation.Permission?.Team;
 
       if (team == null || !team.IsMonetizationEnabled)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             "Nhóm dịch này chưa bật tính năng kinh doanh.");
 
       var rawPrice = team.DefaultUnlockPriceCoins
                  ?? chapter.UnlockPriceCoins
-                 ?? throw new InvalidOperationException(
+                 ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
                      "Bản dịch này chưa được cấu hình giá mở khóa.");
 
       if (rawPrice <= 0)
-        throw new InvalidOperationException("Giá mở khóa không hợp lệ.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Giá mở khóa không hợp lệ.");
 
       var price = (decimal)rawPrice;
 
@@ -586,7 +586,7 @@ int userId, int translationId, CancellationToken ct = default)
           ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
             $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
 
       // ── 8. Trừ coin ──────────────────────────────────────────────────────

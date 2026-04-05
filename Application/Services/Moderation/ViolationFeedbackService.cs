@@ -30,7 +30,7 @@ namespace Application.Services.Moderation
 
       var targetUserId =
           await ResolveTargetUserId(queue, cancellationToken)
-          ?? throw new InvalidOperationException("Không tìm thấy tác giả để gửi feedback.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không tìm thấy tác giả để gửi feedback.");
 
       // Add notification to creator
       _context.Notifications.Add(

@@ -68,7 +68,7 @@ namespace Application.Services.Translation
 
       if (page == null)
       {
-        throw new Exception("Chapter Page not found: " + pageId);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Chapter Page not found: " + pageId);
       }
 
       // 2. Clear existing layers for this specific config only (not all languages)
@@ -114,7 +114,7 @@ namespace Application.Services.Translation
       catch (Exception ex)
       {
         _logger.LogError(ex, "Failed to download image for page ID {PageId} at URL: {Url}", pageId, page.ImageUrl);
-        throw new Exception("Failed to download image for OCR.", ex);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Failed to download image for OCR. {ex.Message}");
       }
 
       // 4. Extract Text Regions via OCR (Tesseract)

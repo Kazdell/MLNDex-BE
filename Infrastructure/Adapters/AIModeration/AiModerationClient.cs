@@ -21,7 +21,7 @@ namespace Infrastructure.Adapters.AIModeration
     public AiModerationClient(IConfiguration configuration, ILogger<AiModerationClient> logger)
     {
       var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new InvalidOperationException("Chưa cấu hình OpenAI:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình OpenAI:ApiKey trong appsettings");
 
       _httpClient = new HttpClient
       {

@@ -201,7 +201,7 @@ namespace mlndex_backend
 
       //enable jwt token
       var _authkey = builder.Configuration.GetValue<string>("JwtSettings:securitykey")
-          ?? throw new InvalidOperationException("JwtSettings:securitykey is missing from configuration.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "JwtSettings:securitykey is missing from configuration.");
       builder.Services.AddAuthentication(item =>
       {
         item.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

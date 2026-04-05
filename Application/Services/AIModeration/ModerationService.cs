@@ -583,7 +583,7 @@ namespace Application.Services.AIModeration
 
       // Chỉ cho appeal khi đang bị Flagged
       if (chapter.ModerationStatus != ModerationStatus.REJECTED)
-        throw new InvalidOperationException("Chỉ có thể appeal khi chapter đang bị reject.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chỉ có thể appeal khi chapter đang bị reject.");
 
       // Đếm số lần đã appeal trước đó
       var appealCount = await _db.ModerationQueues

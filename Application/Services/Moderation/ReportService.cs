@@ -129,12 +129,12 @@ namespace Application.Services.Moderation
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
       {
-        throw new InvalidOperationException("Queue đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Queue đã được xử lý.");
       }
 
       if (request.Status == QueueStatus.PENDING)
       {
-        throw new InvalidOperationException("Không thể chuyển về trạng thái PENDING.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể chuyển về trạng thái PENDING.");
       }
 
       queue.Status = request.Status;

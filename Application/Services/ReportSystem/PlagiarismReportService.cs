@@ -106,7 +106,7 @@ namespace Application.Services.ReportSystem
         throw new KeyNotFoundException("Report không tồn tại.");
 
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
-        throw new InvalidOperationException("Report đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Report đã được xử lý.");
 
       report.Status = request.NewStatus;
 
@@ -160,7 +160,7 @@ namespace Application.Services.ReportSystem
 
       if (report.ContentType != ReportTargetType.ChapterTranslation)
       {
-        throw new InvalidOperationException("Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
       }
 
       var reportedTranslation = await _context.Translations

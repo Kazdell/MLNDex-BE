@@ -32,7 +32,7 @@ namespace Application.Services.Moderation
           ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
-        throw new InvalidOperationException("Queue đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Queue đã được xử lý.");
 
       var targetStatus = request.Action switch
       {
