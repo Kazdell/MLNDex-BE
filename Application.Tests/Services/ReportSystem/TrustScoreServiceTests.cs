@@ -154,7 +154,7 @@ namespace Application.Tests.Services.ReportSystem
       var service = new TrustScoreService(db);
       var act = () => service.CreateAppealAsync(1, new CreateAppealRequest { Reason = "Second appeal" });
 
-      await act.Should().ThrowAsync<InvalidOperationException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*đã có đơn kháng cáo*");
     }
 

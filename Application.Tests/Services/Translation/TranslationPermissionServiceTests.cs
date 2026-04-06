@@ -420,6 +420,7 @@ namespace Application.Tests.Services.Translation
     public async Task GetTeamPermissions_ShouldReturnOnlyRequestedTeam()
     {
       var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(1);
       var (t1, t2) = await SeedBaseData(db);
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 1, TeamId = t1, SeriesId = 10 });
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 2, TeamId = t2, SeriesId = 10 });
@@ -434,6 +435,7 @@ namespace Application.Tests.Services.Translation
     public async Task GetTeamPermissions_ShouldOrderByIdDescending()
     {
       var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(1);
       var (t1, _) = await SeedBaseData(db);
       db.Series.Add(new Series { SeriesId = 11, CreatorId = 5, Title = "Serie 2" });
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 1, TeamId = t1, SeriesId = 10 });

@@ -25,7 +25,7 @@ namespace Application.Services.Translation
     public async Task<TranslationTeamResponse> CreateTeamAsync(CreateTranslationTeamRequest createDto)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       if (await _context.TranslationTeams.AnyAsync(t => t.TeamName == createDto.TeamName))
       {
@@ -211,7 +211,7 @@ namespace Application.Services.Translation
     public async Task<int> InviteMemberAsync(int teamId, InviteTeamMemberRequest inviteDto)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
@@ -255,7 +255,7 @@ namespace Application.Services.Translation
     public async Task<bool> AcceptInvitationAsync(int invitationId)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       // Cooldown 24h check
       await CheckLeaveTeamCooldownAsync(userId.Value);
@@ -350,7 +350,7 @@ namespace Application.Services.Translation
     public async Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       // Cooldown 24h check
       await CheckLeaveTeamCooldownAsync(userId.Value);
@@ -459,7 +459,7 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
@@ -484,7 +484,7 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
@@ -508,7 +508,7 @@ namespace Application.Services.Translation
     public async Task<bool> RemoveMemberAsync(int teamId, int targetUserId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
       if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
@@ -536,7 +536,7 @@ namespace Application.Services.Translation
     public async Task<bool> LeaveTeamAsync(int teamId)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FindAsync(teamId);
       if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found.");
@@ -770,3 +770,4 @@ namespace Application.Services.Translation
     }
   }
 }
+

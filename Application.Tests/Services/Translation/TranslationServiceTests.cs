@@ -154,7 +154,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be("Uploader is not an active member of the translation team.");
+      ex.Message.Should().Be("Uploader is not an active member or leader of the translation team.");
     }
 
     [Fact]
@@ -244,7 +244,7 @@ namespace Application.Tests.Services.Translation
         ContentText = "Will fail"
       };
 
-      await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
+      await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
 
       var count = await db.Translations.CountAsync();
       count.Should().Be(0);

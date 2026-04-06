@@ -25,7 +25,7 @@ namespace Application.Services.Translation
     public async Task<TranslationPermissionResponse> RequestPermissionAsync(RequestPermissionRequest dto)
     {
       var requesterId = _userContext.UserId;
-      if (requesterId == null) throw new UnauthorizedAccessException();
+      if (requesterId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
@@ -116,7 +116,7 @@ namespace Application.Services.Translation
     public async Task<TranslationPermissionResponse> ReviewPermissionAsync(int permissionId, ReviewPermissionRequest dto)
     {
       var creatorId = _userContext.UserId;
-      if (creatorId == null) throw new UnauthorizedAccessException();
+      if (creatorId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var permission = await _context.TranslationPermissions
           .Include(p => p.Series)
@@ -191,7 +191,7 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TranslationPermissionResponse>> GetTeamPermissionsAsync(int teamId)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive);

@@ -56,9 +56,9 @@ namespace Application.Tests.Shared
       if (_rootDb == null) return;
 
       await _rootDb.Database.ExecuteSqlRawAsync(@"
-                EXEC sp_msforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
-                EXEC sp_msforeachtable 'DELETE FROM ?';
-                EXEC sp_msforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL';
+                EXEC sp_msforeachtable 'SET QUOTED_IDENTIFIER ON; ALTER TABLE ? NOCHECK CONSTRAINT ALL';
+                EXEC sp_msforeachtable 'SET QUOTED_IDENTIFIER ON; DELETE FROM ?';
+                EXEC sp_msforeachtable 'SET QUOTED_IDENTIFIER ON; ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL';
             ");
     }
 

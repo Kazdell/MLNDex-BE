@@ -51,7 +51,7 @@ namespace Application.Services.Moderation
       if (isModeratorLevel)
       {
         if (currentUserRolesCount.Contains(RoleName.ADMIN) || currentUserRolesCount.Contains(RoleName.MODERATOR))
-          throw new UnauthorizedAccessException("Bạn không có quyền thực thi hành động này lên Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền thực thi hành động này lên Hệ thống Quản trị (Moderator/Admin).");
       }
       else if (isAdminLevel)
       {
@@ -194,9 +194,9 @@ namespace Application.Services.Moderation
       if (isModeratorLevel)
       {
         if (currentRoles.Contains(RoleName.ADMIN) || currentRoles.Contains(RoleName.MODERATOR))
-          throw new UnauthorizedAccessException("Bạn không có quyền thay đổi vai trò của Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền thay đổi vai trò của Hệ thống Quản trị (Moderator/Admin).");
         if (newRoles.Contains(RoleName.ADMIN) || newRoles.Contains(RoleName.MODERATOR))
-          throw new UnauthorizedAccessException("Bạn không có quyền cấp quyền Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền cấp quyền Hệ thống Quản trị (Moderator/Admin).");
       }
       // Admin level can edit anyone's roles (including other Admins)
       // Safety checks for minimum admin count were handled above

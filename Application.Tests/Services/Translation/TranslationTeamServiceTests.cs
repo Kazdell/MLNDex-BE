@@ -176,7 +176,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns((int?)null);
 
-      await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+      await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest
           {
             TeamName = "Team X",
@@ -311,7 +311,8 @@ namespace Application.Tests.Services.Translation
 
       result.Should().BeTrue();
       var member = await db.TeamMembers.FirstOrDefaultAsync(m => m.UserId == 55 && m.TeamId == teamId);
-      member.Should().BeNull();
+      member.Should().NotBeNull();
+      member!.IsActive.Should().BeFalse();
       _mockNotificationService.Verify(n => n.CreateNotificationAsync(
           55, It.IsAny<string>(), "Bạn đã bị gỡ khỏi nhóm",
           It.IsAny<string>(), NotificationType.TEAM_MEMBER_REMOVED), Times.Once);
@@ -653,8 +654,11 @@ namespace Application.Tests.Services.Translation
       var result = await CreateService(db).DisbandTeamAsync(teamId);
 
       result.Should().BeTrue();
-      (await db.TranslationTeams.FindAsync(teamId)).Should().BeNull();
-      (await db.TeamMembers.Where(m => m.TeamId == teamId).CountAsync()).Should().Be(0);
+      var team = await db.TranslationTeams.FindAsync(teamId);
+      team.Should().NotBeNull();
+      team!.LockStatus.Should().Be(TeamLockStatus.DISBANDED);
+      var countActive = await db.TeamMembers.Where(m => m.TeamId == teamId && m.IsActive).CountAsync();
+      countActive.Should().Be(0);
     }
 
     [Fact]
@@ -931,3 +935,4 @@ namespace Application.Tests.Services.Translation
     }
   }
 }
+

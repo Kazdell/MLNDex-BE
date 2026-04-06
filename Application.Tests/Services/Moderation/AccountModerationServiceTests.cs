@@ -91,7 +91,7 @@ namespace Application.Tests.Services.Moderation
       var request = new AccountActionRequest { Action = AccountActionType.DEACTIVATE, Reason = "Test" };
 
       var act = async () => await _service.ApplyAsync(adminUser.UserId, modUser.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*Hệ thống Quản trị*");
     }
 
@@ -104,7 +104,7 @@ namespace Application.Tests.Services.Moderation
       var request = new AccountActionRequest { Action = AccountActionType.WARN, Reason = "Test warn" };
 
       var act = async () => await _service.ApplyAsync(modTarget.UserId, modActor.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*Hệ thống Quản trị*");
     }
 
@@ -117,7 +117,7 @@ namespace Application.Tests.Services.Moderation
       var request = new AccountActionRequest { Action = AccountActionType.DEACTIVATE, Reason = "Power struggle" };
 
       var act = async () => await _service.ApplyAsync(admin1.UserId, admin2.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*Admin không thể*");
     }
 
@@ -156,7 +156,7 @@ namespace Application.Tests.Services.Moderation
       var request = new AccountActionRequest { Action = AccountActionType.DEACTIVATE, Reason = "Testing" };
 
       var act = async () => await _service.ApplyAsync(adminUser.UserId, adminUser.UserId, request);
-      await act.Should().ThrowAsync<InvalidOperationException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*chính mình*");
     }
 
@@ -176,7 +176,7 @@ namespace Application.Tests.Services.Moderation
       var request = new UpdateUserRolesRequest { Roles = new List<string> { "READER", "ADMIN" } };
 
       var act = async () => await freshService.UpdateRolesAsync(readerUser.UserId, modUser.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*cấp quyền Hệ thống Quản trị*");
     }
 
@@ -192,7 +192,7 @@ namespace Application.Tests.Services.Moderation
       var request = new UpdateUserRolesRequest { Roles = new List<string> { "READER", "MODERATOR" } };
 
       var act = async () => await freshService.UpdateRolesAsync(readerUser.UserId, modUser.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*cấp quyền Hệ thống Quản trị*");
     }
 
@@ -210,7 +210,7 @@ namespace Application.Tests.Services.Moderation
       var request = new UpdateUserRolesRequest { Roles = new List<string> { "READER" } };
 
       var act = async () => await freshService.UpdateRolesAsync(adminUser.UserId, modUser.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*thay đổi vai trò*");
     }
 
@@ -226,7 +226,7 @@ namespace Application.Tests.Services.Moderation
       var request = new UpdateUserRolesRequest { Roles = new List<string> { "READER" } };
 
       var act = async () => await freshService.UpdateRolesAsync(admin1.UserId, admin2.UserId, request);
-      await act.Should().ThrowAsync<UnauthorizedAccessException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*Admin không thể*");
     }
 
@@ -272,8 +272,9 @@ namespace Application.Tests.Services.Moderation
       var request = new UpdateUserRolesRequest { Roles = new List<string> { "READER" } };
 
       var act = async () => await freshService.UpdateRolesAsync(adminUser.UserId, adminUser.UserId, request);
-      await act.Should().ThrowAsync<InvalidOperationException>()
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
           .WithMessage("*ít nhất một Admin*");
     }
   }
 }
+

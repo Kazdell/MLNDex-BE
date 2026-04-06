@@ -46,7 +46,7 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse> UploadTranslationAsync(UploadTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
-      if (uploaderId == null) throw new UnauthorizedAccessException();
+      if (uploaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       bool isOfficial = false;
       int resolvedTeamId;
@@ -356,7 +356,7 @@ namespace Application.Services.Translation
     public async Task<TranslationResponse> EditTranslationAsync(int translationId, EditTranslationRequest dto)
     {
       var uploaderId = _userContext.UserId;
-      if (uploaderId == null) throw new UnauthorizedAccessException();
+      if (uploaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var translation = await _context.Translations
           .Include(t => t.Permission)
@@ -398,7 +398,7 @@ namespace Application.Services.Translation
     public async Task<bool> DeleteTranslationAsync(int translationId)
     {
       var uploaderId = _userContext.UserId;
-      if (uploaderId == null) throw new UnauthorizedAccessException();
+      if (uploaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var translation = await _context.Translations
           .Include(t => t.Permission)
@@ -675,3 +675,4 @@ int userId, int translationId, CancellationToken ct = default)
     }
   }
 }
+
