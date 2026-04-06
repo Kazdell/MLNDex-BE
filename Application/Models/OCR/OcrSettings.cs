@@ -24,5 +24,12 @@ namespace Application.Models.OCR
     /// Mặc định: 5
     /// </summary>
     public int BoxPadding { get; set; } = 5;
+
+    /// <summary>
+    /// Chế độ tiền xử lý ảnh để phân tách chữ và nền.
+    /// Giá trị hỗ trợ: "Adaptive" (Cũ - gây rỗng chữ to), "Otsu" (Mới - giữ nét rất tốt cho CJK Box).
+    /// Mặc định: "Otsu"
+    /// </summary>
+    public string BinarizationMode { get; set; } = "Otsu";
   }
 }
