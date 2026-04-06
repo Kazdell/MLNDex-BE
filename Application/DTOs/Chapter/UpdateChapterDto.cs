@@ -1,4 +1,4 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,21 +7,21 @@ using System.Threading.Tasks;
 
 namespace Application.DTOs.Chapter
 {
-    public class UpdateChapterDto
-    {
-        public int SeriesId { get; set; }
-        public float ChapterNumber { get; set; }
-        public string? Title { get; set; }
-        public int? LanguageId { get; set; }
-        // Defines the sequence of pages. Example: [{"type":"existing", "id": 12}, {"type":"new", "fileIndex": 0}]
-        public string? PageLayoutJson { get; set; }
-        // Comma-separated list of existing page IDs to retain. Pages not in this list will be deleted.
-        public string? RetainedPageIds { get; set; }
+  public class UpdateChapterDto
+  {
+    public int SeriesId { get; set; }
+    public float ChapterNumber { get; set; }
+    public string? Title { get; set; }
+    public int? LanguageId { get; set; }
+    // Defines the sequence of pages. Example: [{"type":"existing", "id": 12}, {"type":"new", "fileIndex": 0}]
+    public string? PageLayoutJson { get; set; }
+    // Comma-separated list of existing page IDs to retain. Pages not in this list will be deleted.
+    public string? RetainedPageIds { get; set; }
 
-        // ── Unlock settings — all nullable so omitting them = "don't change" ──
-        public ChapterLockStatus? LockStatus { get; set; }
-        public int? UnlockPriceCoins { get; set; }
-        public int? FreeAfterDays { get; set; }
-        public DateTime? UnlockTime { get; set; } // fallback if FreeAfterDays not used
-    }
+    // ── Unlock settings — all nullable so omitting them = "don't change" ──
+    public ChapterLockStatus? LockStatus { get; set; }
+    public int? UnlockPriceCoins { get; set; }
+    public int? FreeAfterDays { get; set; }
+    public DateTime? UnlockTime { get; set; } // fallback if FreeAfterDays not used
+  }
 }

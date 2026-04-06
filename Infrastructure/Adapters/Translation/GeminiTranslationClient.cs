@@ -11,109 +11,109 @@ using System.Threading.Tasks;
 
 namespace Infrastructure.Adapters.Translation
 {
-    public class GeminiTranslationClient : IAiTranslationClient
+  public class GeminiTranslationClient : IAiTranslationClient
+  {
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<GeminiTranslationClient> _logger;
+    private readonly string _apiKey;
+
+    public GeminiTranslationClient(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiTranslationClient> logger)
     {
-        private readonly HttpClient _httpClient;
-        private readonly ILogger<GeminiTranslationClient> _logger;
-        private readonly string _apiKey;
+      _apiKey = configuration["Gemini:ApiKey"]
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình Gemini:ApiKey trong appsettings");
 
-        public GeminiTranslationClient(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiTranslationClient> logger)
+      _httpClient = httpClient;
+      _logger = logger;
+    }
+
+    public async Task<List<string>> TranslateTextsAsync(List<string> texts, string targetLanguage = "Vietnamese", string context = "")
+    {
+      if (texts == null || texts.Count == 0) return new List<string>();
+
+      var systemPrompt = $"You are an expert manga/comic translator. Translate the given text blocks into {targetLanguage}. Maintain the tone, style, and correct contextual meaning. Context: {context}. Respond strictly in JSON format returning an array of translated strings under the key 'translations' matching the exact order and length of the inputs.";
+      var userText = JsonSerializer.Serialize(new { texts });
+
+      var requestBody = new
+      {
+        systemInstruction = new
         {
-            _apiKey = configuration["Gemini:ApiKey"]
-                ?? throw new InvalidOperationException("Chưa cấu hình Gemini:ApiKey trong appsettings");
-
-            _httpClient = httpClient;
-            _logger = logger;
-        }
-
-        public async Task<List<string>> TranslateTextsAsync(List<string> texts, string targetLanguage = "Vietnamese", string context = "")
-        {
-            if (texts == null || texts.Count == 0) return new List<string>();
-
-            var systemPrompt = $"You are an expert manga/comic translator. Translate the given text blocks into {targetLanguage}. Maintain the tone, style, and correct contextual meaning. Context: {context}. Respond strictly in JSON format returning an array of translated strings under the key 'translations' matching the exact order and length of the inputs.";
-            var userText = JsonSerializer.Serialize(new { texts });
-
-            var requestBody = new
-            {
-                systemInstruction = new
-                {
-                    parts = new[] { new { text = systemPrompt } }
-                },
-                contents = new[]
-                {
+          parts = new[] { new { text = systemPrompt } }
+        },
+        contents = new[]
+          {
                     new
                     {
                         role = "user",
                         parts = new[] { new { text = userText } }
                     }
                 },
-                generationConfig = new
-                {
-                    temperature = 0.3,
-                    responseMimeType = "application/json"
-                }
-            };
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}", content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Gemini Translation API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-                throw new Exception($"API Gemini trả về lỗi [{response.StatusCode}]: {error}");
-            }
-
-            var responseBody = await response.Content.ReadAsStringAsync();
-            try
-            {
-                using var doc = JsonDocument.Parse(responseBody);
-                var candidates = doc.RootElement.GetProperty("candidates");
-                if (candidates.GetArrayLength() > 0)
-                {
-                    var textContent = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
-                    if (!string.IsNullOrEmpty(textContent))
-                    {
-                        using var resultDoc = JsonDocument.Parse(textContent);
-                        if (resultDoc.RootElement.TryGetProperty("translations", out var translationsArray) && translationsArray.ValueKind == JsonValueKind.Array)
-                        {
-                            var translatedList = new List<string>();
-                            foreach (var item in translationsArray.EnumerateArray())
-                            {
-                                translatedList.Add(item.GetString() ?? "");
-                            }
-
-                            if (translatedList.Count == texts.Count)
-                            {
-                                return translatedList;
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Translation array length mismatch: Expected {Expected}, Got {Got}", texts.Count, translatedList.Count);
-                                while (translatedList.Count < texts.Count) translatedList.Add("");
-                                return translatedList;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi parse JSON từ Gemini Translation");
-            }
-
-            var fallbackList = new List<string>();
-            foreach (var t in texts) fallbackList.Add(t);
-            return fallbackList;
-        }
-
-        public async Task<List<Application.DTOs.User.OverlayTranslationResponse>> TranslatePageByAiVisionAsync(string base64Image, string sourceLanguage, string targetLanguage)
+        generationConfig = new
         {
-            if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.User.OverlayTranslationResponse>();
+          temperature = 0.3,
+          responseMimeType = "application/json"
+        }
+      };
 
-            var systemPrompt = $@"You are an expert manga/comic translator and layout analyzer. 
+      var json = JsonSerializer.Serialize(requestBody);
+      var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+      var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}", content);
+
+      if (!response.IsSuccessStatusCode)
+      {
+        var error = await response.Content.ReadAsStringAsync();
+        _logger.LogError("Gemini Translation API lỗi {StatusCode}: {Error}", response.StatusCode, error);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"API Gemini trả về lỗi [{response.StatusCode}]: {error}");
+      }
+
+      var responseBody = await response.Content.ReadAsStringAsync();
+      try
+      {
+        using var doc = JsonDocument.Parse(responseBody);
+        var candidates = doc.RootElement.GetProperty("candidates");
+        if (candidates.GetArrayLength() > 0)
+        {
+          var textContent = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+          if (!string.IsNullOrEmpty(textContent))
+          {
+            using var resultDoc = JsonDocument.Parse(textContent);
+            if (resultDoc.RootElement.TryGetProperty("translations", out var translationsArray) && translationsArray.ValueKind == JsonValueKind.Array)
+            {
+              var translatedList = new List<string>();
+              foreach (var item in translationsArray.EnumerateArray())
+              {
+                translatedList.Add(item.GetString() ?? "");
+              }
+
+              if (translatedList.Count == texts.Count)
+              {
+                return translatedList;
+              }
+              else
+              {
+                _logger.LogWarning("Translation array length mismatch: Expected {Expected}, Got {Got}", texts.Count, translatedList.Count);
+                while (translatedList.Count < texts.Count) translatedList.Add("");
+                return translatedList;
+              }
+            }
+          }
+        }
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Lỗi parse JSON từ Gemini Translation");
+      }
+
+      var fallbackList = new List<string>();
+      foreach (var t in texts) fallbackList.Add(t);
+      return fallbackList;
+    }
+
+    public async Task<List<Application.DTOs.User.OverlayTranslationResponse>> TranslatePageByAiVisionAsync(string base64Image, string sourceLanguage, string targetLanguage)
+    {
+      if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.User.OverlayTranslationResponse>();
+
+      var systemPrompt = $@"You are an expert manga/comic translator and layout analyzer. 
 Analyze the provided manga page image. 
 Your task is to identify all speech bubbles, boxes, or floating texts.
 For each text block:
@@ -135,36 +135,36 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
   ""height"": double
 }}";
 
-            string mimeType = "image/jpeg";
-            if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.User.OverlayTranslationResponse>();
+      string mimeType = "image/jpeg";
+      if (string.IsNullOrEmpty(base64Image)) return new List<Application.DTOs.User.OverlayTranslationResponse>();
 
-            string base64Data = base64Image;
+      string base64Data = base64Image;
 
-            if (base64Image.StartsWith("data:image"))
-            {
-                var parts = base64Image.Split(',');
-                if (parts.Length == 2)
-                {
-                    var header = parts[0];
-                    base64Data = parts[1];
-                    var match = System.Text.RegularExpressions.Regex.Match(header, @"data:(image/[a-zA-Z]+);base64");
-                    if (match.Success)
-                    {
-                        mimeType = match.Groups[1].Value;
-                    }
-                }
-            }
+      if (base64Image.StartsWith("data:image"))
+      {
+        var parts = base64Image.Split(',');
+        if (parts.Length == 2)
+        {
+          var header = parts[0];
+          base64Data = parts[1];
+          var match = System.Text.RegularExpressions.Regex.Match(header, @"data:(image/[a-zA-Z]+);base64");
+          if (match.Success)
+          {
+            mimeType = match.Groups[1].Value;
+          }
+        }
+      }
 
-            base64Data = base64Data.Replace("\n", "").Replace("\r", "").Replace(" ", "");
+      base64Data = base64Data.Replace("\n", "").Replace("\r", "").Replace(" ", "");
 
-            var requestBody = new
-            {
-                systemInstruction = new
-                {
-                    parts = new[] { new { text = systemPrompt } }
-                },
-                contents = new[]
-                {
+      var requestBody = new
+      {
+        systemInstruction = new
+        {
+          parts = new[] { new { text = systemPrompt } }
+        },
+        contents = new[]
+          {
                     new
                     {
                         role = "user",
@@ -175,66 +175,66 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
                         }
                     }
                 },
-                generationConfig = new
-                {
-                    temperature = 0.2,
-                    responseMimeType = "application/json"
-                }
-            };
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            // Use gemini-1.5-pro for vision tasks, or gemini-1.5-flash
-            var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={_apiKey}", content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Gemini Vision API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-                throw new Exception($"API Gemini (Vision) trả về lỗi [{response.StatusCode}]: {error}");
-            }
-
-            var responseBody = await response.Content.ReadAsStringAsync();
-            var resultRegions = new List<Application.DTOs.User.OverlayTranslationResponse>();
-
-            try
-            {
-                using var doc = JsonDocument.Parse(responseBody);
-                var candidates = doc.RootElement.GetProperty("candidates");
-                if (candidates.GetArrayLength() > 0)
-                {
-                    var textContent = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
-                    if (!string.IsNullOrEmpty(textContent))
-                    {
-                        using var resultDoc = JsonDocument.Parse(textContent);
-                        if (resultDoc.RootElement.TryGetProperty("regions", out var regionsArray) && regionsArray.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var region in regionsArray.EnumerateArray())
-                            {
-                                resultRegions.Add(new Application.DTOs.User.OverlayTranslationResponse
-                                {
-                                    OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
-                                    TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",
-                                    X = region.TryGetProperty("x", out var dx) ? dx.GetDouble() : 0,
-                                    Y = region.TryGetProperty("y", out var dy) ? dy.GetDouble() : 0,
-                                    Width = region.TryGetProperty("width", out var dw) ? dw.GetDouble() : 0,
-                                    Height = region.TryGetProperty("height", out var dh) ? dh.GetDouble() : 0,
-                                    IsUserAdjusted = false,
-                                    Provider = "Gemini_Vision"
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi parse JSON từ Gemini Vision API: {ResponseBody}", responseBody);
-                throw new Exception($"Lỗi đọc JSON từ Gemini: {ex.Message}. ResponseBody: {responseBody}");
-            }
-
-            return resultRegions;
+        generationConfig = new
+        {
+          temperature = 0.2,
+          responseMimeType = "application/json"
         }
+      };
+
+      var json = JsonSerializer.Serialize(requestBody);
+      var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+      // Use gemini-1.5-pro for vision tasks, or gemini-1.5-flash
+      var response = await _httpClient.PostAsync($"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={_apiKey}", content);
+
+      if (!response.IsSuccessStatusCode)
+      {
+        var error = await response.Content.ReadAsStringAsync();
+        _logger.LogError("Gemini Vision API lỗi {StatusCode}: {Error}", response.StatusCode, error);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"API Gemini (Vision) trả về lỗi [{response.StatusCode}]: {error}");
+      }
+
+      var responseBody = await response.Content.ReadAsStringAsync();
+      var resultRegions = new List<Application.DTOs.User.OverlayTranslationResponse>();
+
+      try
+      {
+        using var doc = JsonDocument.Parse(responseBody);
+        var candidates = doc.RootElement.GetProperty("candidates");
+        if (candidates.GetArrayLength() > 0)
+        {
+          var textContent = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+          if (!string.IsNullOrEmpty(textContent))
+          {
+            using var resultDoc = JsonDocument.Parse(textContent);
+            if (resultDoc.RootElement.TryGetProperty("regions", out var regionsArray) && regionsArray.ValueKind == JsonValueKind.Array)
+            {
+              foreach (var region in regionsArray.EnumerateArray())
+              {
+                resultRegions.Add(new Application.DTOs.User.OverlayTranslationResponse
+                {
+                  OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
+                  TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",
+                  X = region.TryGetProperty("x", out var dx) ? dx.GetDouble() : 0,
+                  Y = region.TryGetProperty("y", out var dy) ? dy.GetDouble() : 0,
+                  Width = region.TryGetProperty("width", out var dw) ? dw.GetDouble() : 0,
+                  Height = region.TryGetProperty("height", out var dh) ? dh.GetDouble() : 0,
+                  IsUserAdjusted = false,
+                  Provider = "Gemini_Vision"
+                });
+              }
+            }
+          }
+        }
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Lỗi parse JSON từ Gemini Vision API: {ResponseBody}", responseBody);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Lỗi đọc JSON từ Gemini: {ex.Message}. ResponseBody: {responseBody}");
+      }
+
+      return resultRegions;
     }
+  }
 }

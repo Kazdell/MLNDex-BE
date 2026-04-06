@@ -34,23 +34,23 @@ namespace Application.Tests.Services.Translation
 
     public async Task InitializeAsync()
     {
-        await _fixture.ResetDatabaseAsync();
-        using var db = _fixture.CreateDbContext();
-        db.Users.AddRange(
-            new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
-            new User { UserId = 123, Username = "user123", Email = "u123@test.com", DisplayName = "D123", PasswordHash = "X" },
-            new User { UserId = 222, Username = "user222", Email = "u222@test.com", DisplayName = "D222", PasswordHash = "X" },
-            new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
-            new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
-            new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
-            new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
-            new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
-            new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
-            new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
-            new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
-            new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" }
-        );
-        await db.SaveChangesAsync();
+      await _fixture.ResetDatabaseAsync();
+      using var db = _fixture.CreateDbContext();
+      db.Users.AddRange(
+          new User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
+          new User { UserId = 123, Username = "user123", Email = "u123@test.com", DisplayName = "D123", PasswordHash = "X" },
+          new User { UserId = 222, Username = "user222", Email = "u222@test.com", DisplayName = "D222", PasswordHash = "X" },
+          new User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
+          new User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
+          new User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
+          new User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
+          new User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" },
+          new User { UserId = 3, Username = "user3", Email = "u3@test.com", DisplayName = "D3", PasswordHash = "X" },
+          new User { UserId = 4, Username = "user4", Email = "u4@test.com", DisplayName = "D4", PasswordHash = "X" },
+          new User { UserId = 5, Username = "user5", Email = "u5@test.com", DisplayName = "D5", PasswordHash = "X" },
+          new User { UserId = 10, Username = "user10", Email = "u10@test.com", DisplayName = "D10", PasswordHash = "X" }
+      );
+      await db.SaveChangesAsync();
     }
     public Task DisposeAsync() => Task.CompletedTask;
 
@@ -86,7 +86,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(999);
       var (t1, _) = await SeedBaseData(db);
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
 
@@ -100,7 +100,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("You are not an active member of this translation team.");
     }
 
@@ -114,7 +114,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Series not found.");
     }
 
@@ -133,7 +133,7 @@ namespace Application.Tests.Services.Translation
       db.TeamMembers.Add(new TeamMember { TeamId = t1, UserId = 123, IsActive = true, JoinedAt = DateTime.UtcNow });
       await db.SaveChangesAsync();
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 99 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Language not found.");
     }
 
@@ -148,7 +148,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
     }
 
@@ -163,7 +163,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).RequestPermissionAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
       ex.Message.Should().Be("Nhóm đã có quyền dịch Official cho bộ truyện này.");
     }
 
@@ -261,7 +261,7 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(456);
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Be("Permission request not found.");
     }
 
@@ -274,7 +274,7 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.PENDING });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
       ex.Message.Should().Contain("Unauthorized");
     }
 
@@ -420,6 +420,7 @@ namespace Application.Tests.Services.Translation
     public async Task GetTeamPermissions_ShouldReturnOnlyRequestedTeam()
     {
       var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(1);
       var (t1, t2) = await SeedBaseData(db);
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 1, TeamId = t1, SeriesId = 10 });
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 2, TeamId = t2, SeriesId = 10 });
@@ -434,6 +435,7 @@ namespace Application.Tests.Services.Translation
     public async Task GetTeamPermissions_ShouldOrderByIdDescending()
     {
       var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(1);
       var (t1, _) = await SeedBaseData(db);
       db.Series.Add(new Series { SeriesId = 11, CreatorId = 5, Title = "Serie 2" });
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 1, TeamId = t1, SeriesId = 10 });

@@ -46,17 +46,17 @@ namespace Application.Tests.Services.Translation
 
     public async Task InitializeAsync()
     {
-        await _fixture.ResetDatabaseAsync();
-        using var db = _fixture.CreateDbContext();
-        db.Users.AddRange(
-            new Domain.Entities.User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
-            new Domain.Entities.User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
-            new Domain.Entities.User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
-            new Domain.Entities.User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
-            new Domain.Entities.User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
-            new Domain.Entities.User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" }
-        );
-        await db.SaveChangesAsync();
+      await _fixture.ResetDatabaseAsync();
+      using var db = _fixture.CreateDbContext();
+      db.Users.AddRange(
+          new Domain.Entities.User { UserId = 111, Username = "user111", Email = "u111@test.com", DisplayName = "D111", PasswordHash = "X" },
+          new Domain.Entities.User { UserId = 456, Username = "user456", Email = "u456@test.com", DisplayName = "D456", PasswordHash = "X" },
+          new Domain.Entities.User { UserId = 789, Username = "user789", Email = "u789@test.com", DisplayName = "D789", PasswordHash = "X" },
+          new Domain.Entities.User { UserId = 999, Username = "user999", Email = "u999@test.com", DisplayName = "D999", PasswordHash = "X" },
+          new Domain.Entities.User { UserId = 1, Username = "user1", Email = "u1@test.com", DisplayName = "D1", PasswordHash = "X" },
+          new Domain.Entities.User { UserId = 2, Username = "user2", Email = "u2@test.com", DisplayName = "D2", PasswordHash = "X" }
+      );
+      await db.SaveChangesAsync();
     }
     public Task DisposeAsync() => Task.CompletedTask;
 
@@ -64,11 +64,11 @@ namespace Application.Tests.Services.Translation
 
     private TranslationService CreateService(MlndexDbContext db)
       => new TranslationService(
-          db, 
-          _mockUserContext.Object, 
-          _mockStorage.Object, 
-          _mockLogger.Object, 
-          _mockNotificationService.Object, 
+          db,
+          _mockUserContext.Object,
+          _mockStorage.Object,
+          _mockLogger.Object,
+          _mockNotificationService.Object,
           _mockModerationService.Object);
 
     /// <summary>
@@ -110,7 +110,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedBaseData(db);
 
       var dto = new UploadTranslationRequest { PermissionId = 999, ChapterId = 100, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Be("Translation permission record not found.");
     }
 
@@ -124,7 +124,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 2 }; // Wrong language
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Contain("Language mismatch");
     }
 
@@ -139,7 +139,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
       ex.Message.Should().Be("Permission not valid for this series.");
     }
 
@@ -153,8 +153,8 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be("Uploader is not an active member of the translation team.");
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
+      ex.Message.Should().Be("Uploader is not an active member or leader of the translation team.");
     }
 
     [Fact]
@@ -169,12 +169,15 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync("https://cdn.mlndex.com/test-text.txt");
 
-      var dto = new UploadTranslationRequest 
-      { 
-        PermissionId = 1, ChapterId = 100, LanguageId = 1, ContentType = ContentType.TEXT,
+      var dto = new UploadTranslationRequest
+      {
+        PermissionId = 1,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.TEXT,
         ContentText = "Hello World! This is a test."
       };
-      
+
       var result = await CreateService(db).UploadTranslationAsync(dto);
 
       result.Should().NotBeNull();
@@ -184,7 +187,7 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once());
       _mockModerationService.Verify(m => m.EnqueueTranslationForModerationAsync(result.TranslationId, It.IsAny<CancellationToken>()), Times.Once());
       _mockNotificationService.Verify(n => n.CreateNotificationAsync(111, "Đã đưa vào hàng đợi kiểm duyệt!", It.IsAny<string>(), It.IsAny<string>(), NotificationType.SYSTEM), Times.Once());
-      
+
       var entity = await db.Translations.Include(t => t.TranslationText).FirstOrDefaultAsync(t => t.TranslationId == result.TranslationId);
       entity!.TranslationText!.WordCount.Should().Be(6);
     }
@@ -199,9 +202,12 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync("https://cdn.mlndex.com/img1.png");
 
-      var dto = new UploadTranslationRequest 
-      { 
-        TeamId = teamId, ChapterId = 100, LanguageId = 1, ContentType = ContentType.IMAGE,
+      var dto = new UploadTranslationRequest
+      {
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.IMAGE,
         Pages = new List<UploadPageDto> { new UploadPageDto { FileName = "p1.png", FileStream = new MemoryStream() } }
       };
 
@@ -229,16 +235,49 @@ namespace Application.Tests.Services.Translation
       _mockStorage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ThrowsAsync(new Exception("Upload API Error"));
 
-      var dto = new UploadTranslationRequest 
-      { 
-        TeamId = teamId, ChapterId = 100, LanguageId = 1, ContentType = ContentType.TEXT,
+      var dto = new UploadTranslationRequest
+      {
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.TEXT,
         ContentText = "Will fail"
       };
 
       await Assert.ThrowsAsync<Exception>(() => CreateService(db).UploadTranslationAsync(dto));
 
       var count = await db.Translations.CountAsync();
-      count.Should().Be(0); 
+      count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Upload_Unofficial_ShouldThrow_WhenDuplicateLanguageForTeam()
+    {
+      var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(111);
+      var teamId = await SeedBaseData(db);
+
+      // Add existing translation
+      db.Translations.Add(new Domain.Entities.Translation
+      {
+        TranslationId = 999,
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1
+      });
+      await db.SaveChangesAsync();
+
+      var dto = new UploadTranslationRequest
+      {
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.TEXT,
+        ContentText = "Hi"
+      };
+
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
+      ex.Message.Should().Contain("Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc");
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -251,12 +290,12 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(999); // Imposter
       var teamId = await SeedBaseData(db);
-      
+
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 5, TeamId = teamId, SeriesId = 10, LanguageId = 1, GrantedBy = 456 });
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = 5, ChapterId = 100 });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 }));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 }));
       ex.Message.Should().Be("Unauthorized to edit.");
     }
 
@@ -266,7 +305,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(111); // Member
       var teamId = await SeedBaseData(db);
-      
+
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 5, TeamId = teamId, SeriesId = 10, LanguageId = 1, GrantedBy = 456 });
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = 5, ChapterId = 100, LanguageId = 1 });
       await db.SaveChangesAsync();
@@ -284,7 +323,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(111); // Member
       var teamId = await SeedBaseData(db);
-      
+
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 5, TeamId = teamId, SeriesId = 10, LanguageId = 1, GrantedBy = 456 });
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = 5, ChapterId = 100 });
       await db.SaveChangesAsync();
@@ -302,12 +341,12 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(111); // Member
       var teamId = await SeedBaseData(db);
-      
+
       // Simulating the bug (null permission)
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 55, PermissionId = null, ChapterId = 100 });
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Exception>(() => CreateService(db).DeleteTranslationAsync(55));
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).DeleteTranslationAsync(55));
       ex.Message.Should().Be("Data consistency error: Missing TranslationPermission.");
     }
 
@@ -320,7 +359,7 @@ namespace Application.Tests.Services.Translation
     {
       var db = CreateDb();
       var teamId = await SeedBaseData(db);
-      
+
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 1, ChapterId = 100, LanguageId = 1, IsOfficial = true });
       db.Translations.Add(new Domain.Entities.Translation { TranslationId = 2, ChapterId = 100, LanguageId = 2, IsOfficial = false });
       await db.SaveChangesAsync();

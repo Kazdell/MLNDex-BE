@@ -101,15 +101,15 @@ namespace Application.Services.ReportSystem
       var report = await _context.Reports
           .Include(r => r.Reporter)
           .FirstOrDefaultAsync(r => r.ReportId == reportId, cancellationToken);
- 
+
       if (report == null)
         throw new KeyNotFoundException("Report không tồn tại.");
- 
+
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
-        throw new InvalidOperationException("Report đã được xử lý.");
- 
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Report đã được xử lý.");
+
       report.Status = request.NewStatus;
- 
+
       // Chỉ thực hiện xử phạt nếu trạng thái là Resolved
       if (request.NewStatus == ReportStatus.Resolved)
       {
@@ -118,36 +118,36 @@ namespace Application.Services.ReportSystem
         {
           await StrikeContentAsync(report, cancellationToken);
         }
- 
+
         // 2. Logic trừ điểm Trust Score
         if (request.PenaltyScore.HasValue && request.PenaltyScore.Value > 0)
         {
           await ApplyPenaltyAsync(report, request.PenaltyScore.Value, request.ResolutionNotes, cancellationToken);
         }
- 
+
         // 3. Logic Ban Creator / Send Warning (Cần OwnerId)
         var ownerId = await GetTargetOwnerIdAsync(report.ContentType, report.ContentId, cancellationToken);
         if (ownerId > 0)
         {
           if (request.BanCreator)
           {
-            await _accountModerationService.ApplyAsync(ownerId, moderatorId, new AccountActionRequest 
-            { 
-              Action = AccountActionType.DEACTIVATE, 
-              Reason = $"Bị khóa do vi phạm báo cáo #{report.ReportId}: {request.ResolutionNotes}" 
+            await _accountModerationService.ApplyAsync(ownerId, moderatorId, new AccountActionRequest
+            {
+              Action = AccountActionType.DEACTIVATE,
+              Reason = $"Bị khóa do vi phạm báo cáo #{report.ReportId}: {request.ResolutionNotes}"
             }, cancellationToken);
           }
           else if (request.SendWarning)
           {
-            await _notificationService.CreateNotificationAsync(ownerId, "Hệ thống Cảnh cáo", 
-              $"Nội dung của bạn bị báo cáo vi phạm (#{report.ReportId}). Lý do: {request.ResolutionNotes}. Vui lòng tuân thủ nội quy.", 
+            await _notificationService.CreateNotificationAsync(ownerId, "Hệ thống Cảnh cáo",
+              $"Nội dung của bạn bị báo cáo vi phạm (#{report.ReportId}). Lý do: {request.ResolutionNotes}. Vui lòng tuân thủ nội quy.",
               "#", NotificationType.SYSTEM);
           }
         }
       }
- 
+
       await _context.SaveChangesAsync(cancellationToken);
- 
+
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);
       return dto;
@@ -160,20 +160,20 @@ namespace Application.Services.ReportSystem
 
       if (report.ContentType != ReportTargetType.ChapterTranslation)
       {
-        throw new InvalidOperationException("Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
       }
 
       var reportedTranslation = await _context.Translations
           .Include(t => t.Chapter)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TranslationPages)
           .FirstOrDefaultAsync(t => t.TranslationId == report.ContentId, cancellationToken);
 
       var referenceTranslation = await _context.Translations
           .Include(t => t.Chapter)
           .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
+              .ThenInclude(p => p!.Team)
           .Include(t => t.TranslationPages)
           .FirstOrDefaultAsync(t => t.TranslationId == referenceTranslationId, cancellationToken);
 
@@ -307,7 +307,7 @@ namespace Application.Services.ReportSystem
         ReportTargetType.Series => await _context.Series.Where(s => s.SeriesId == targetId).Select(s => s.Title).FirstOrDefaultAsync(ct) ?? "Unknown Series",
         ReportTargetType.ChapterTranslation => await _context.Translations
             .Where(t => t.TranslationId == targetId)
-            .Select(t => t.Chapter.Title + " - " + t.Permission.Team.TeamName)
+            .Select(t => t.Chapter!.Title + " - " + t.Permission!.Team!.TeamName)
             .FirstOrDefaultAsync(ct) ?? "Unknown Translation",
         ReportTargetType.Team => await _context.TranslationTeams.Where(t => t.TeamId == targetId).Select(t => t.TeamName).FirstOrDefaultAsync(ct) ?? "Unknown Team",
         ReportTargetType.User => await _context.Users.Where(u => u.UserId == targetId).Select(u => u.Username).FirstOrDefaultAsync(ct) ?? "Unknown User",
@@ -323,8 +323,8 @@ namespace Application.Services.ReportSystem
         ReportTargetType.ChapterTranslation => await _context.Translations
             .Where(t => t.TranslationId == targetId)
             .Select(t => t.Permission != null ? t.Permission.TeamId : 0)
-            .FirstOrDefaultAsync(ct) is int teamId && teamId > 0 
-              ? await _context.TeamMembers.Where(tm => tm.TeamId == teamId && tm.Role == TeamMemberRole.LEADER).Select(tm => tm.UserId).FirstOrDefaultAsync(ct) 
+            .FirstOrDefaultAsync(ct) is int teamId && teamId > 0
+              ? await _context.TeamMembers.Where(tm => tm.TeamId == teamId && tm.Role == TeamMemberRole.LEADER).Select(tm => tm.UserId).FirstOrDefaultAsync(ct)
               : 0,
         ReportTargetType.User => targetId,
         ReportTargetType.Team => await _context.TeamMembers

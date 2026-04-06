@@ -25,16 +25,16 @@ namespace Application.Services.Translation
     public async Task<TranslationTeamResponse> CreateTeamAsync(CreateTranslationTeamRequest createDto)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       if (await _context.TranslationTeams.AnyAsync(t => t.TeamName == createDto.TeamName))
       {
-        throw new Exception("Team name already exists.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team name already exists.");
       }
 
       if (await _context.TranslationTeams.AnyAsync(t => t.Slug == createDto.Slug))
       {
-        throw new Exception("Slug already exists.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Slug already exists.");
       }
 
       var team = new TranslationTeam
@@ -93,13 +93,13 @@ namespace Application.Services.Translation
       var team = await _context.TranslationTeams
           .FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == userId);
 
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
       if (!string.IsNullOrEmpty(updateDto.TeamName) && updateDto.TeamName != team.TeamName)
       {
         if (await _context.TranslationTeams.AnyAsync(t => t.TeamName == updateDto.TeamName && t.TeamId != teamId))
         {
-          throw new Exception("Team name already exists.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team name already exists.");
         }
         team.TeamName = updateDto.TeamName;
       }
@@ -108,7 +108,7 @@ namespace Application.Services.Translation
       {
         if (await _context.TranslationTeams.AnyAsync(t => t.Slug == updateDto.Slug && t.TeamId != teamId))
         {
-          throw new Exception("Slug already exists.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Slug already exists.");
         }
         team.Slug = updateDto.Slug;
       }
@@ -165,7 +165,7 @@ namespace Application.Services.Translation
 
       team.LockStatus = TeamLockStatus.DISBANDED;
       team.UpdatedAt = DateTime.UtcNow;
-      
+
       await _context.SaveChangesAsync();
       return true;
     }
@@ -190,8 +190,8 @@ namespace Application.Services.Translation
           .Select(m => new TeamMemberDetailResponse
           {
             UserId = m.UserId,
-            Username = m.User.Username,
-            DisplayName = m.User.DisplayName,
+            Username = m.User!.Username,
+            DisplayName = m.User!.DisplayName ?? m.User.Username,
             Role = m.Role.ToString(),
             JoinedAt = m.JoinedAt
           })
@@ -211,19 +211,21 @@ namespace Application.Services.Translation
     public async Task<int> InviteMemberAsync(int teamId, InviteTeamMemberRequest inviteDto)
     {
       var leaderId = _userContext.UserId;
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
+
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
       var existingMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == inviteDto.UserId && m.IsActive);
       if (existingMember != null)
       {
         if (inviteDto.Role != TeamMemberRole.LEADER)
-            throw new Exception("User is already a team member.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "User is already a team member.");
       }
 
       if (await _context.TeamInvitations.AnyAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING))
       {
-        throw new Exception("Invitation already pending.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Invitation already pending.");
       }
 
       var invitation = new TeamInvitation
@@ -253,6 +255,7 @@ namespace Application.Services.Translation
     public async Task<bool> AcceptInvitationAsync(int invitationId)
     {
       var userId = _userContext.UserId;
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       // Cooldown 24h check
       await CheckLeaveTeamCooldownAsync(userId.Value);
@@ -272,34 +275,34 @@ namespace Application.Services.Translation
       bool isLeadershipTransfer = teamRole == TeamMemberRole.LEADER;
       if (isLeadershipTransfer)
       {
-          var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
-          if (oldLeaderMember != null)
-          {
-              oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
-          }
-          team.LeaderId = userId.Value;
+        var oldLeaderMember = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == invitation.TeamId && m.UserId == team.LeaderId);
+        if (oldLeaderMember != null)
+        {
+          oldLeaderMember.Role = TeamMemberRole.TRANSLATOR;
+        }
+        team.LeaderId = userId.Value;
       }
 
       if (existingMember != null)
       {
-          existingMember.Role = teamRole;
-          existingMember.JoinedAt = DateTime.UtcNow;
-          existingMember.IsActive = true;
-          existingMember.LeftAt = null;
+        existingMember.Role = teamRole;
+        existingMember.JoinedAt = DateTime.UtcNow;
+        existingMember.IsActive = true;
+        existingMember.LeftAt = null;
       }
       else
       {
-          var member = new TeamMember
-          {
-            TeamId = invitation.TeamId,
-            UserId = invitation.InviteeId,
-            Role = teamRole,
-            JoinedAt = DateTime.UtcNow,
-            IsActive = true
-          };
-          _context.TeamMembers.Add(member);
+        var member = new TeamMember
+        {
+          TeamId = invitation.TeamId,
+          UserId = invitation.InviteeId,
+          Role = teamRole,
+          JoinedAt = DateTime.UtcNow,
+          IsActive = true
+        };
+        _context.TeamMembers.Add(member);
       }
-      
+
       await _context.SaveChangesAsync();
 
       var invitee = await _context.Users.FindAsync(userId);
@@ -347,19 +350,19 @@ namespace Application.Services.Translation
     public async Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       // Cooldown 24h check
       await CheckLeaveTeamCooldownAsync(userId.Value);
 
       if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive))
       {
-        throw new Exception("You are already a member of this team.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "You are already a member of this team.");
       }
 
       if (await _context.TeamJoinRequests.AnyAsync(r => r.TeamId == teamId && r.UserId == userId && r.Status == TeamJoinRequestStatus.PENDING))
       {
-        throw new Exception("Join request already pending.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Join request already pending.");
       }
 
       var request = new TeamJoinRequest
@@ -456,10 +459,10 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
       return await _context.TeamInvitations
           .Include(i => i.Invitee)
@@ -481,10 +484,10 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
       return await _context.TeamJoinRequests
           .Include(r => r.User)
@@ -505,12 +508,12 @@ namespace Application.Services.Translation
     public async Task<bool> RemoveMemberAsync(int teamId, int targetUserId)
     {
       var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new UnauthorizedAccessException();
+      if (leaderId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
-      if (leaderId.Value == targetUserId) throw new Exception("Leader cannot be removed.");
+      if (leaderId.Value == targetUserId) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Leader cannot be removed.");
 
       var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId && m.IsActive);
       if (member == null) return false;
@@ -533,14 +536,14 @@ namespace Application.Services.Translation
     public async Task<bool> LeaveTeamAsync(int teamId)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new UnauthorizedAccessException();
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var team = await _context.TranslationTeams.FindAsync(teamId);
-      if (team == null) throw new Exception("Team not found.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found.");
 
       // Leader cannot leave — must disband or transfer leadership
       if (team.LeaderId == userId.Value)
-        throw new Exception("Trưởng nhóm không thể rời nhóm. Vui lòng giải tán nhóm hoặc chuyển quyền trước.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Trưởng nhóm không thể rời nhóm. Vui lòng giải tán nhóm hoặc chuyển quyền trước.");
 
       var member = await _context.TeamMembers
           .FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == userId.Value && m.IsActive);
@@ -583,13 +586,13 @@ namespace Application.Services.Translation
     {
       var leaderId = _userContext.UserId;
       var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new Exception("Team not found or unauthorized.");
+      if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Team not found or unauthorized.");
 
-      if (leaderId == targetUserId) throw new Exception("Leader role cannot be changed manually.");
-      if (roleDto.Role == TeamMemberRole.LEADER) throw new Exception("Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên.");
+      if (leaderId == targetUserId) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Leader role cannot be changed manually.");
+      if (roleDto.Role == TeamMemberRole.LEADER) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên.");
 
       var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
-      if (member == null) throw new Exception("Member not found.");
+      if (member == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Member not found.");
 
       member.Role = roleDto.Role;
       await _context.SaveChangesAsync();
@@ -644,7 +647,7 @@ namespace Application.Services.Translation
     public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
     {
       var translatedChaptersCount = await _context.Translations
-          .CountAsync(t => t.Permission.TeamId == teamId);
+          .CountAsync(t => t.Permission!.TeamId == teamId);
 
       var activeSeriesCount = await _context.TranslationPermissions
           .CountAsync(p => p.TeamId == teamId && (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL));
@@ -725,12 +728,12 @@ namespace Application.Services.Translation
           .OrderByDescending(m => m.LeftAt)
           .FirstOrDefaultAsync();
 
-      if (recentLeave != null)
+      if (recentLeave != null && recentLeave.LeftAt.HasValue)
       {
         var remaining = recentLeave.LeftAt.Value.AddHours(24) - DateTime.UtcNow;
         var hours = (int)remaining.TotalHours;
         var minutes = remaining.Minutes;
-        throw new Exception($"Bạn phải chờ {hours} giờ {minutes} phút nữa sau khi rời nhóm trước để có thể tham gia nhóm khác.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Bạn phải chờ {hours} giờ {minutes} phút nữa sau khi rời nhóm trước để có thể tham gia nhóm khác.");
       }
     }
 
@@ -767,3 +770,4 @@ namespace Application.Services.Translation
     }
   }
 }
+

@@ -255,7 +255,7 @@ namespace Infrastructure.Services
 
       if (existingItem != null)
       {
-        throw new InvalidOperationException("Truyện này đã có trong danh sách");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Truyện này đã có trong danh sách");
       }
 
       var item = new UserListItem

@@ -32,7 +32,7 @@ namespace Application.Services.Community
           throw new KeyNotFoundException("Parent comment không tồn tại.");
 
         if (parent.ParentCommentId != null)
-          throw new InvalidOperationException("Không thể reply một comment đã là reply (chỉ hỗ trợ 2 cấp độ bình luận).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể reply một comment đã là reply (chỉ hỗ trợ 2 cấp độ bình luận).");
 
         // Inherit Target information from parent to prevent Target Hijacking
         request.TargetId = parent.TargetId;

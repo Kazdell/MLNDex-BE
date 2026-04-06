@@ -9,6 +9,7 @@ namespace Application.DTOs.User
     public string SourceLanguage { get; set; } = "auto";
     public string TargetLanguage { get; set; } = "vi";
     public string Provider { get; set; } = "Google";
+    public string OcrProvider { get; set; } = "server_tesseract";
   }
 
   // Phase 1: Scan boxes only — no translation
@@ -16,6 +17,7 @@ namespace Application.DTOs.User
   {
     public int PageId { get; set; }
     public string SourceLanguage { get; set; } = "auto";
+    public string OcrProvider { get; set; } = "server_tesseract";
   }
 
   // Phase 2: Translate with user-adjusted boxes
@@ -24,7 +26,8 @@ namespace Application.DTOs.User
     public int PageId { get; set; }
     public string SourceLanguage { get; set; } = "auto";
     public string TargetLanguage { get; set; } = "vi";
-    public string Provider { get; set; } = "Google";
+    public string Provider { get; set; } = "Google"; // Translation Provider
+    public string OcrProvider { get; set; } = "server_tesseract"; // Engine Scan
     public bool IsUserAdjusted { get; set; } = true;
     public List<AdjustedBox> Boxes { get; set; } = new();
   }

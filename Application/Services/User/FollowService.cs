@@ -30,7 +30,7 @@ namespace Application.Services.User
           .FirstOrDefaultAsync(f => f.UserId == userId && f.TargetId == dto.TargetId && f.TargetType == targetType, ct);
 
       if (existing != null)
-        throw new InvalidOperationException("Already following this target.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Already following this target.");
 
       var follow = new Follow
       {

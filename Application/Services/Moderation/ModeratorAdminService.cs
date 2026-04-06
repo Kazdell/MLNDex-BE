@@ -127,7 +127,7 @@ namespace Application.Services.Moderation
     public async Task RemoveAsync(int userId, int moderatorId, CancellationToken cancellationToken = default)
     {
       if (userId == moderatorId)
-        throw new InvalidOperationException("Bạn không thể tự gỡ bỏ quyền hạn của chính mình. Hãy nhờ một Admin khác.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự gỡ bỏ quyền hạn của chính mình. Hãy nhờ một Admin khác.");
 
       var user = await _context.Users
           .Include(u => u.UserRoles)
@@ -149,7 +149,7 @@ namespace Application.Services.Moderation
         var otherAdminsCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == adminRoleId && ur.UserId != userId, cancellationToken);
         if (otherAdminsCount == 0)
         {
-          throw new InvalidOperationException("Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ Admin cuối cùng.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ Admin cuối cùng.");
         }
       }
 

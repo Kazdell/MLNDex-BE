@@ -50,7 +50,7 @@ public class ModerationController : BaseController
     try
     {
       await _service.RetryModerationAsync(chapterId, cancellationToken);
-      return OkResponse<object>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
+      return OkResponse<object?>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
     }
     catch (KeyNotFoundException ex)
     {

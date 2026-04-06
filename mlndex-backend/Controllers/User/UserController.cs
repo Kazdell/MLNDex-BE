@@ -55,11 +55,11 @@ namespace mlndex_backend.Controllers.User
     [HttpGet("stats")]
     [Authorize(Roles = "MODERATOR,ADMIN")] // Only admins/mods should see this
     public async Task<IActionResult> GetUserStats(
-        [FromQuery] int days = 7, 
+        [FromQuery] int days = 7,
         CancellationToken cancellationToken = default)
     {
-        var stats = await _userService.GetUserStatsAsync(days, cancellationToken);
-        return Ok(new ApiResponse<UserStatsDto>(true, "Lấy thống kê thành công", stats));
+      var stats = await _userService.GetUserStatsAsync(days, cancellationToken);
+      return Ok(new ApiResponse<UserStatsDto>(true, "Lấy thống kê thành công", stats));
     }
 
     [HttpGet("membership/plans")]

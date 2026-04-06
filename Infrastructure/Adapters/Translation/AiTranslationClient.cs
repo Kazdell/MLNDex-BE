@@ -19,7 +19,7 @@ namespace Infrastructure.Adapters.Translation
     public AiTranslationClient(IConfiguration configuration, ILogger<AiTranslationClient> logger)
     {
       var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new InvalidOperationException("Chưa cấu hình OpenAI:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình OpenAI:ApiKey trong appsettings");
 
       _httpClient = new HttpClient
       {
@@ -36,7 +36,7 @@ namespace Infrastructure.Adapters.Translation
       if (texts == null || texts.Count == 0) return new List<string>();
 
       var systemPrompt = $"You are an expert manga/comic translator. Translate the given text blocks into {targetLanguage}. Maintain the tone, style, and correct contextual meaning. Context: {context}. Respond strictly in JSON format returning an array of translated strings under the key 'translations' matching the exact order and length of the inputs.";
-      
+
       var userContentJson = JsonSerializer.Serialize(new { texts });
 
       var requestBody = new
@@ -60,7 +60,7 @@ namespace Infrastructure.Adapters.Translation
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("OpenAI Translation API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Exception($"OpenAI Translation API error: {response.StatusCode}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"OpenAI Translation API error: {response.StatusCode}");
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
@@ -81,7 +81,7 @@ namespace Infrastructure.Adapters.Translation
               {
                 translatedList.Add(item.GetString() ?? "");
               }
-              
+
               if (translatedList.Count == texts.Count)
               {
                 return translatedList;
@@ -135,8 +135,9 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
 }}";
 
       string imagePayload = "data:image/jpeg;base64," + base64Image;
-      if (base64Image.StartsWith("data:image")) {
-          imagePayload = base64Image;
+      if (base64Image.StartsWith("data:image"))
+      {
+        imagePayload = base64Image;
       }
 
       var requestBody = new
@@ -146,13 +147,13 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
         messages = new object[]
         {
           new { role = "system", content = systemPrompt },
-          new { 
-            role = "user", 
-            content = new object[] 
+          new {
+            role = "user",
+            content = new object[]
             {
                new { type = "text", text = "Extract and translate the text on this page." },
                new { type = "image_url", image_url = new { url = imagePayload } }
-            } 
+            }
           }
         },
         temperature = 0.2
@@ -167,7 +168,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("OpenAI Vision API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Exception($"OpenAI Vision API error: {response.StatusCode}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"OpenAI Vision API error: {response.StatusCode}");
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
@@ -189,14 +190,14 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
               {
                 resultRegions.Add(new Application.DTOs.User.OverlayTranslationResponse
                 {
-                   OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
-                   TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",
-                   X = region.TryGetProperty("x", out var dx) ? dx.GetDouble() : 0,
-                   Y = region.TryGetProperty("y", out var dy) ? dy.GetDouble() : 0,
-                   Width = region.TryGetProperty("width", out var dw) ? dw.GetDouble() : 0,
-                   Height = region.TryGetProperty("height", out var dh) ? dh.GetDouble() : 0,
-                   IsUserAdjusted = false,
-                   Provider = "OpenAI_Vision"
+                  OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
+                  TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",
+                  X = region.TryGetProperty("x", out var dx) ? dx.GetDouble() : 0,
+                  Y = region.TryGetProperty("y", out var dy) ? dy.GetDouble() : 0,
+                  Width = region.TryGetProperty("width", out var dw) ? dw.GetDouble() : 0,
+                  Height = region.TryGetProperty("height", out var dh) ? dh.GetDouble() : 0,
+                  IsUserAdjusted = false,
+                  Provider = "OpenAI_Vision"
                 });
               }
             }

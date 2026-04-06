@@ -170,75 +170,75 @@ public class ModerationWorker : BackgroundService
   // ── Main loop: listen for signals from Channel ─────────────────────────
   protected override async Task ExecuteAsync(CancellationToken stoppingToken)
   {
-      _logger.LogInformation("[ModerationWorker] Bắt đầu lắng nghe queue.");
-      
-      // Process any jobs already PENDING in the database on startup
-      _ = ProcessAllPendingAsync(stoppingToken);
+    _logger.LogInformation("[ModerationWorker] Bắt đầu lắng nghe queue.");
 
-      await foreach (var signal in _queue.Reader.ReadAllAsync(stoppingToken))
-      {
-          // Process all pending jobs whenever a new signal arrives
-          _ = ProcessAllPendingAsync(stoppingToken);
-      }
+    // Process any jobs already PENDING in the database on startup
+    _ = ProcessAllPendingAsync(stoppingToken);
+
+    await foreach (var signal in _queue.Reader.ReadAllAsync(stoppingToken))
+    {
+      // Process all pending jobs whenever a new signal arrives
+      _ = ProcessAllPendingAsync(stoppingToken);
+    }
   }
 
   // ── Safe concurrent dispatcher ─────────────────────────────────────────
   private async Task ProcessAllPendingAsync(CancellationToken stoppingToken)
   {
-      // Sequentially lock jobs to avoid race conditions, but run AI async
-      while (true)
+    // Sequentially lock jobs to avoid race conditions, but run AI async
+    while (true)
+    {
+      if (stoppingToken.IsCancellationRequested) break;
+
+      using var scope = _scopeFactory.CreateScope();
+      var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
+
+      var job = await db.ModerationQueues
+          .Where(q => q.Status == QueueStatus.PENDING)
+          .OrderBy(q => q.Priority == QueuePriority.HIGH ? 0
+                      : q.Priority == QueuePriority.URGENT ? 0 : 1)
+              .ThenBy(q => q.FlaggedAt)
+          .FirstOrDefaultAsync(stoppingToken);
+
+      if (job == null) break;
+
+      // Lock the job synchronously relative to other loops
+      job.Status = QueueStatus.IN_REVIEW;
+      job.AssignedAt = DateTime.UtcNow;
+      await db.SaveChangesAsync(stoppingToken);
+
+      // Wait until there's room to process this job
+      await _semaphore.WaitAsync(stoppingToken);
+
+      // Spawn a background task for the actual AI API call and DB updates
+      _ = Task.Run(async () =>
       {
-          if (stoppingToken.IsCancellationRequested) break;
-          
-          using var scope = _scopeFactory.CreateScope();
-          var db = scope.ServiceProvider.GetRequiredService<IMlndexDbContext>();
+        try
+        {
+          // Provide a new scope for the background task
+          using var innerScope = _scopeFactory.CreateScope();
 
-          var job = await db.ModerationQueues
-              .Where(q => q.Status == QueueStatus.PENDING)
-              .OrderBy(q => q.Priority == QueuePriority.HIGH ? 0
-                          : q.Priority == QueuePriority.URGENT ? 0 : 1)
-                  .ThenBy(q => q.FlaggedAt)
-              .FirstOrDefaultAsync(stoppingToken);
+          _logger.LogInformation(
+                  "[ModerationWorker] Processing {ContentType} ContentId={ContentId} (retry {Retry})",
+                  job.ContentType, job.ContentId, job.RetryCount);
 
-          if (job == null) break;
-
-          // Lock the job synchronously relative to other loops
-          job.Status = QueueStatus.IN_REVIEW;
-          job.AssignedAt = DateTime.UtcNow;
-          await db.SaveChangesAsync(stoppingToken);
-
-          // Wait until there's room to process this job
-          await _semaphore.WaitAsync(stoppingToken);
-
-          // Spawn a background task for the actual AI API call and DB updates
-          _ = Task.Run(async () =>
-          {
-              try
-              {
-                  // Provide a new scope for the background task
-                  using var innerScope = _scopeFactory.CreateScope();
-                  
-                  _logger.LogInformation(
-                      "[ModerationWorker] Processing {ContentType} ContentId={ContentId} (retry {Retry})",
-                      job.ContentType, job.ContentId, job.RetryCount);
-
-                  if (job.ContentType == ModerationQueueContentType.SERIES)
-                      await RunSeriesModerationAsync(job.ContentId, innerScope, stoppingToken);
-                  else if (job.ContentType == ModerationQueueContentType.TRANSLATION)
-                      await RunTranslationModerationAsync(job.ContentId, innerScope, stoppingToken);
-                  else
-                      await RunChapterModerationAsync(job.ContentId, innerScope, stoppingToken);
-              }
-              catch (Exception ex)
-              {
-                  _logger.LogError(ex, "[ModerationWorker] Error during background AI task");
-              }
-              finally
-              {
-                  _semaphore.Release();
-              }
-          }, stoppingToken);
-      }
+          if (job.ContentType == ModerationQueueContentType.SERIES)
+            await RunSeriesModerationAsync(job.ContentId, innerScope, stoppingToken);
+          else if (job.ContentType == ModerationQueueContentType.TRANSLATION)
+            await RunTranslationModerationAsync(job.ContentId, innerScope, stoppingToken);
+          else
+            await RunChapterModerationAsync(job.ContentId, innerScope, stoppingToken);
+        }
+        catch (Exception ex)
+        {
+          _logger.LogError(ex, "[ModerationWorker] Error during background AI task");
+        }
+        finally
+        {
+          _semaphore.Release();
+        }
+      }, stoppingToken);
+    }
   }
 
   // ── Chapter Moderation (Main flow + Backup retry) ──────────────────────
@@ -426,7 +426,7 @@ public class ModerationWorker : BackgroundService
 
       if (translation?.Chapter?.Series != null && translation.Permission?.Team != null)
       {
-        var owners = translation.Permission.Team.TeamMembers
+        var owners = translation!.Permission!.Team!.TeamMembers
             .Where(m => m.Role == Domain.Entities.TeamMemberRole.LEADER && m.IsActive)
             .ToList();
 
