@@ -34,17 +34,19 @@ namespace Infrastructure.Services.OCR
 
       string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "craft_mlt_25k.onnx");
 
-      if (File.Exists(modelPath))
+      if (!File.Exists(modelPath))
       {
-        var options = new SessionOptions();
-        try
-        {
-          options.AppendExecutionProvider_CPU();
-        }
-        catch { /* Ignore if not supported */ }
-
-        _session = new InferenceSession(modelPath, options);
+        throw new FileNotFoundException("OCR model file was not found.", modelPath);
       }
+
+      var options = new SessionOptions();
+      try
+      {
+        options.AppendExecutionProvider_CPU();
+      }
+      catch { /* Ignore if not supported */ }
+
+      _session = new InferenceSession(modelPath, options);
     }
 
     public async Task<List<BoundingBoxDto>> DetectTextBoxesAsync(Stream imageStream)
