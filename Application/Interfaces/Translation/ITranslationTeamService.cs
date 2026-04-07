@@ -1,36 +1,38 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 
 namespace Application.Interfaces.Translation
 {
   public interface ITranslationTeamService
   {
     // Translation Team Management
-    Task<TranslationTeamDto> CreateTeamAsync(CreateTranslationTeamDto createDto);
-    Task<TranslationTeamDto> UpdateTeamAsync(int teamId, UpdateTranslationTeamDto updateDto);
+    Task<TranslationTeamResponse> CreateTeamAsync(CreateTranslationTeamRequest createDto);
+    Task<TranslationTeamResponse> UpdateTeamAsync(int teamId, UpdateTranslationTeamRequest updateDto);
     Task<bool> DisbandTeamAsync(int teamId);
-    Task<TranslationTeamDto?> GetTeamByIdAsync(int teamId);
-    Task<IEnumerable<TranslationTeamDto>> GetAllTeamsAsync();
-    Task<IEnumerable<TeamMemberDetailDto>> GetTeamMembersAsync(int teamId);
+    Task<TranslationTeamResponse?> GetTeamByIdAsync(int teamId);
+    Task<IEnumerable<TranslationTeamResponse>> GetAllTeamsAsync();
+    Task<IEnumerable<TeamMemberDetailResponse>> GetTeamMembersAsync(int teamId);
 
     // Team Member Management
-    Task<int> InviteMemberAsync(int teamId, InviteTeamMemberDto inviteDto);
+    Task<int> InviteMemberAsync(int teamId, InviteTeamMemberRequest inviteDto);
     Task<bool> AcceptInvitationAsync(int invitationId);
     Task<bool> RejectInvitationAsync(int invitationId);
-    Task<IEnumerable<TeamInvitationDto>> GetTeamInvitationsAsync(int teamId);
+    Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId);
 
-    Task<int> RequestToJoinAsync(int teamId, JoinTeamRequestDto joinDto);
+    Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto);
     Task<bool> ApproveJoinRequestAsync(int requestId);
     Task<bool> RejectJoinRequestAsync(int requestId);
-    Task<IEnumerable<TeamJoinRequestDtoResponse>> GetTeamJoinRequestsAsync(int teamId);
+    Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId);
 
     Task<bool> RemoveMemberAsync(int teamId, int targetUserId);
-    Task<TeamMemberDto> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleDto roleDto);
+    Task<bool> LeaveTeamAsync(int teamId);
+    Task<TeamMemberResponse> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleRequest roleDto);
 
     // Team stats and series
-    Task<IEnumerable<TeamSeriesDto>> GetTeamSeriesAsync(int teamId);
-    Task<TeamStatsDto> GetTeamStatsAsync(int teamId);
-    Task<IEnumerable<TranslationTeamDto>> GetUserTeamsAsync(int userId, int limit = 5);
+    Task<IEnumerable<TeamSeriesResponse>> GetTeamSeriesAsync(int teamId);
+    Task<TeamStatsResponse> GetTeamStatsAsync(int teamId);
+    Task<IEnumerable<TranslationTeamResponse>> GetUserTeamsAsync(int userId, int limit = 5);
   }
 }

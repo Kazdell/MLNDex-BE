@@ -23,6 +23,9 @@ namespace Application.Services.Financial
       var from = request.From ?? DateTime.MinValue;
       var to = request.To ?? DateTime.MaxValue;
 
+      var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken);
+      var exchangeRate = config?.ExchangeRateCoinToVnd ?? 1000m;
+
       var totalCoinPurchased =
           await _context
               .Transactions.Where(t => t.CreatedAt >= from && t.CreatedAt <= to)
@@ -38,7 +41,7 @@ namespace Application.Services.Financial
 
       var totalUnlocks = await _context
           .ChapterUnlocks.Where(u =>
-              u.Transaction.CreatedAt >= from && u.Transaction.CreatedAt <= to
+              u.Transaction!.CreatedAt >= from && u.Transaction!.CreatedAt <= to
           )
           .CountAsync(cancellationToken);
 
@@ -46,7 +49,7 @@ namespace Application.Services.Financial
           .ChapterUnlocks.Include(u => u.Chapter)
               .ThenInclude(c => c.Series)
                   .ThenInclude(s => s.Creator)
-          .Where(u => u.Transaction.CreatedAt >= from && u.Transaction.CreatedAt <= to)
+          .Where(u => u.Transaction!.CreatedAt >= from && u.Transaction!.CreatedAt <= to)
           .GroupBy(u => new { u.Chapter.Series.CreatorId, u.Chapter.Series.Creator.PenName })
           .Select(g => new CreatorRevenueDto
           {
@@ -67,6 +70,11 @@ namespace Application.Services.Financial
           TotalCoinPurchased = totalCoinPurchased,
           TotalWithdrawCoins = totalWithdrawCoins,
           TotalUnlocks = totalUnlocks,
+          TotalCoinPurchasedVnd = totalCoinPurchased * exchangeRate,
+          TotalWithdrawVnd = totalWithdrawCoins * exchangeRate,
+          NetCoins = totalCoinPurchased - totalWithdrawCoins,
+          NetVnd = (totalCoinPurchased - totalWithdrawCoins) * exchangeRate,
+          ExchangeRateUsed = exchangeRate
         },
         TopCreators = topCreators,
       };

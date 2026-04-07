@@ -1,3 +1,4 @@
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,5 +21,10 @@ namespace Application.DTOs.Chapter
     public int? PermissionId { get; set; } // The permission ID under which this is uploaded
     public string? CreditsJson { get; set; } // JSON string of translation credits (roles and users/names)
     public string? JointTeamIdsJson { get; set; } // JSON string of joint team IDs
+
+    // --- Unlock fields ---
+    public ChapterLockStatus? LockStatus { get; set; }
+    public int? UnlockPriceCoins { get; set; }
+    public int? FreeAfterDays { get; set; }
   }
 }

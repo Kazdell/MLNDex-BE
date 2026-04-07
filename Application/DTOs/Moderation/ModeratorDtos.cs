@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Application.DTOs.Moderation
@@ -23,6 +24,7 @@ namespace Application.DTOs.Moderation
     public string? DisplayName { get; set; }
     public bool IsActive { get; set; }
     public DateTime AssignedAt { get; set; }
+    public List<string> Roles { get; set; } = new();
   }
 
   public class ModeratorListResponse

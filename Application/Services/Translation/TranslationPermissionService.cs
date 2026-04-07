@@ -1,6 +1,7 @@
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
 using Application.Interfaces.Notification;
 using Domain.Entities;
@@ -21,32 +22,32 @@ namespace Application.Services.Translation
       _notificationService = notificationService;
     }
 
-    public async Task<TranslationPermissionDto> RequestPermissionAsync(RequestPermissionDto dto)
+    public async Task<TranslationPermissionResponse> RequestPermissionAsync(RequestPermissionRequest dto)
     {
       var requesterId = _userContext.UserId;
-      if (requesterId == null) throw new UnauthorizedAccessException();
+      if (requesterId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
 
       if (!isMember)
-        throw new Exception("You are not an active member of this translation team.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "You are not an active member of this translation team.");
 
       var series = await _context.Series
           .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId);
 
       if (series == null)
-        throw new Exception("Series not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Series not found.");
 
       var creatorProfile = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);
 
       if (creatorProfile == null)
-        throw new Exception("Creator profile not found for this series.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Creator profile not found for this series.");
 
       var language = await _context.Languages.FindAsync(dto.LanguageId);
       if (language == null)
-        throw new Exception("Language not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Language not found.");
 
       var existingPermission = await _context.TranslationPermissions
           .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
@@ -56,9 +57,9 @@ namespace Application.Services.Translation
       if (existingPermission != null)
       {
         if (existingPermission.Status == TranslationPermissionStatus.PENDING)
-          throw new Exception("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
         if (existingPermission.Status == TranslationPermissionStatus.GRANTED)
-          throw new Exception("Nhóm đã có quyền dịch Official cho bộ truyện này.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Nhóm đã có quyền dịch Official cho bộ truyện này.");
 
         // Allow re-requests from DENIED, UNOFFICIAL, or REVOKED
         existingPermission.Status = dto.IsUnofficial ? TranslationPermissionStatus.UNOFFICIAL : TranslationPermissionStatus.PENDING;
@@ -112,17 +113,17 @@ namespace Application.Services.Translation
       return await MapToDtoAsync(savedPermission);
     }
 
-    public async Task<TranslationPermissionDto> ReviewPermissionAsync(int permissionId, ReviewPermissionDto dto)
+    public async Task<TranslationPermissionResponse> ReviewPermissionAsync(int permissionId, ReviewPermissionRequest dto)
     {
       var creatorId = _userContext.UserId;
-      if (creatorId == null) throw new UnauthorizedAccessException();
+      if (creatorId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
 
       var permission = await _context.TranslationPermissions
           .Include(p => p.Series)
           .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
 
       if (permission == null)
-        throw new Exception("Permission request not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Permission request not found.");
 
       var seriesCreatorUserId = await _context.CreatorProfiles
           .Where(c => c.CreatorId == permission.Series.CreatorId)
@@ -130,7 +131,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync();
 
       if (seriesCreatorUserId != creatorId)
-        throw new Exception("Unauthorized. Only the creator of the series can review this translation request.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only the creator of the series can review this translation request.");
 
       if (dto.IsApproved)
       {
@@ -187,14 +188,26 @@ namespace Application.Services.Translation
       return await MapToDtoAsync(permission);
     }
 
-    public async Task<IEnumerable<TranslationPermissionDto>> GetTeamPermissionsAsync(int teamId)
+    public async Task<IEnumerable<TranslationPermissionResponse>> GetTeamPermissionsAsync(int teamId)
     {
+      var userId = _userContext.UserId;
+      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
+
+      var isMember = await _context.TeamMembers
+          .AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive);
+
+      var isLeader = await _context.TranslationTeams
+          .AnyAsync(t => t.TeamId == teamId && t.LeaderId == userId);
+
+      if (!isMember && !isLeader)
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only active team members can view permissions.");
+
       var permissions = await _context.TranslationPermissions
           .Where(p => p.TeamId == teamId)
           .OrderByDescending(p => p.PermissionId)
           .ToListAsync();
 
-      var dtos = new List<TranslationPermissionDto>();
+      var dtos = new List<TranslationPermissionResponse>();
       foreach (var p in permissions)
       {
         dtos.Add(await MapToDtoAsync(p));
@@ -202,21 +215,26 @@ namespace Application.Services.Translation
       return dtos;
     }
 
-    public async Task<IEnumerable<TranslationPermissionDto>> GetCreatorPermissionsAsync(int userId)
+    public async Task<IEnumerable<TranslationPermissionResponse>> GetCreatorPermissionsAsync(int userId)
     {
       var creatorId = await _context.CreatorProfiles
           .Where(c => c.UserId == userId)
           .Select(c => c.CreatorId)
           .FirstOrDefaultAsync();
 
-      if (creatorId == 0) return new List<TranslationPermissionDto>();
+      if (creatorId == 0) return new List<TranslationPermissionResponse>();
+
+      var seriesIds = await _context.Series
+          .Where(s => s.CreatorId == creatorId)
+          .Select(s => s.SeriesId)
+          .ToListAsync();
 
       var permissions = await _context.TranslationPermissions
-          .Where(p => p.GrantedBy == userId || p.GrantedBy == creatorId)
+          .Where(p => seriesIds.Contains(p.SeriesId))
           .OrderByDescending(p => p.PermissionId)
           .ToListAsync();
 
-      var dtos = new List<TranslationPermissionDto>();
+      var dtos = new List<TranslationPermissionResponse>();
       foreach (var p in permissions)
       {
         dtos.Add(await MapToDtoAsync(p));
@@ -224,13 +242,13 @@ namespace Application.Services.Translation
       return dtos;
     }
 
-    private async Task<TranslationPermissionDto> MapToDtoAsync(TranslationPermission p)
+    private async Task<TranslationPermissionResponse> MapToDtoAsync(TranslationPermission p)
     {
       var seriesTitle = await _context.Series.Where(s => s.SeriesId == p.SeriesId).Select(s => s.Title).FirstOrDefaultAsync();
       var team = await _context.TranslationTeams.Where(t => t.TeamId == p.TeamId).FirstOrDefaultAsync();
       var language = await _context.Languages.Where(l => l.LanguageId == p.LanguageId).FirstOrDefaultAsync();
 
-      return new TranslationPermissionDto
+      return new TranslationPermissionResponse
       {
         PermissionId = p.PermissionId,
         SeriesId = p.SeriesId,

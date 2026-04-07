@@ -48,7 +48,7 @@ namespace Application.Services.Creator
           .Where(s => s.Creator.UserId == userId && s.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (seriesToday >= 5)
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             "Bạn đã đạt giới hạn 5 bộ truyện/ngày. Vui lòng quay lại ngày mai.");
 
       // 2. Check Title Duplicate
@@ -175,7 +175,7 @@ namespace Application.Services.Creator
           && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
       {
         var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
-        throw new InvalidOperationException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
             $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi chỉnh sửa lại.");
       }
 
@@ -323,7 +323,7 @@ namespace Application.Services.Creator
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -401,7 +401,7 @@ namespace Application.Services.Creator
       if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters.Any() ? s.Chapters.OrderByDescending(c => c.ChapterNumber).FirstOrDefault().PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -446,14 +446,19 @@ namespace Application.Services.Creator
     /// Lấy chi tiết thông tin một bộ truyện bao gồm Tác giả, Thể loại, Chương truyện (bao gồm bản dịch).
     /// Xác định xem bản dịch có phải là chính thức hay không dựa vào TranslationPermissions.
     /// </summary>
-    public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId)
+    public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null)
     {
       var series = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
           .Include(s => s.Chapters).ThenInclude(c => c.Team)
           .Include(s => s.Chapters).ThenInclude(c => c.Language)
+          .Include(s => s.Chapters).ThenInclude(c => c.Pages)
           .Include(s => s.Chapters).ThenInclude(c => c.Translations)
+              .ThenInclude(t => t.Language)
+          .Include(s => s.Chapters).ThenInclude(c => c.Translations)
+              .ThenInclude(t => t.Permission)
+                  .ThenInclude(p => p!.Team)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
       if (series == null) return null;
@@ -465,11 +470,117 @@ namespace Application.Services.Creator
           .ToListAsync();
       var grantedTeamIds = new HashSet<int>(grantedTeamIdsList);
 
+      var unlockedChapterIds = new HashSet<int>();
+      if (userId.HasValue && userId.Value > 0)
+      {
+        var chapterIds = series.Chapters.Select(c => c.ChapterId).ToList();
+        var unlockedList = await _context.ChapterUnlocks
+            .Where(u => u.UserId == userId.Value && chapterIds.Contains(u.ChapterId))
+            .Select(u => u.ChapterId)
+            .ToListAsync();
+        unlockedChapterIds = new HashSet<int>(unlockedList);
+      }
+
       // Detect original language from the first original chapter (TeamId == null)
       var firstOriginalChapter = series.Chapters
           .Where(c => c.TeamId == null && c.Language != null)
           .OrderBy(c => c.ChapterNumber)
           .FirstOrDefault();
+
+      // 1. Map original chapters (bản gốc) — PUBLISHED only
+      var chapterDtos = series.Chapters
+.Where(c => c.Status == ChapterStatus.PUBLISHED)
+.OrderByDescending(c => c.ChapterNumber)
+.Select(c =>
+{
+  var now = DateTime.UtcNow;
+  var effectiveLock = c.LockStatus;
+  if (effectiveLock == ChapterLockStatus.LOCKED
+            && c.UnlockTime.HasValue
+            && now >= c.UnlockTime.Value)
+  {
+    effectiveLock = ChapterLockStatus.UNLOCKED;
+  }
+
+  return new SeriesChapterDto
+  {
+    ChapterId = c.ChapterId,
+    Title = c.Title ?? "Untitled",
+    ChapterNumber = (int)c.ChapterNumber,
+    Price = c.UnlockPriceCoins ?? 0,
+    PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
+    ViewCount = c.ReadingHistories?.Count ?? 0,
+    GroupName = c.Team?.TeamName,
+    TeamId = c.TeamId,
+    IsOriginal = c.TeamId == null,
+    IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
+    LanguageCode = c.Language?.Code,
+    LanguageName = c.Language?.Name,
+    CommentCount = 0,
+    PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
+    IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId),
+    // ── THÊM 3 DÒNG NÀY ──
+    LockStatus = effectiveLock.ToString(),
+    UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
+    UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
+  };
+}).ToList();
+
+      // 2. Map PUBLISHED translations as additional entries
+      //    Each Translation maps to the same ChapterNumber so FE can group them together
+      var translationDtos = series.Chapters
+.SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
+  .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
+  .Select(t =>
+  {
+    // Tính effective lock của chapter gốc
+    var now = DateTime.UtcNow;
+    var effectiveLock = c.LockStatus;
+    if (effectiveLock == ChapterLockStatus.LOCKED
+              && c.UnlockTime.HasValue
+              && now >= c.UnlockTime.Value)
+    {
+      effectiveLock = ChapterLockStatus.UNLOCKED;
+    }
+
+    // TeamUnlockPrice chỉ có giá trị khi chapter gốc đang bị lock
+    var teamPrice = effectiveLock == ChapterLockStatus.LOCKED
+              ? (t.Permission?.Team?.DefaultUnlockPriceCoins ?? c.UnlockPriceCoins)
+              : null;
+
+    // isUnlocked: đã mua chapter gốc → mở tất cả translation
+    // hoặc đã mua đúng translation này
+    var isUnlocked = unlockedChapterIds.Contains(c.ChapterId);
+    // TODO: nếu muốn check per-translation unlock riêng, cần query ChapterUnlocks theo TranslationId
+
+    return new SeriesChapterDto
+    {
+      ChapterId = c.ChapterId,
+      TranslationId = t.TranslationId,
+      Title = c.Title ?? "Untitled",
+      ChapterNumber = (int)c.ChapterNumber,
+      Price = teamPrice ?? 0,           // giá hiển thị trên badge
+      PublishedAt = t.PublishedAt ?? DateTime.UtcNow,
+      ViewCount = 0,
+      GroupName = t.Permission?.Team?.TeamName,
+      TeamId = t.Permission?.TeamId,
+      IsOriginal = false,
+      IsOfficialTranslation = t.IsOfficial
+                  || (t.Permission?.TeamId != null && grantedTeamIds.Contains(t.Permission.TeamId)),
+      LanguageCode = t.Language?.Code,
+      LanguageName = t.Language?.Name,
+      CommentCount = 0,
+      // ── NEW fields ──
+      LockStatus = effectiveLock.ToString(),
+      TeamUnlockPrice = teamPrice,
+      UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
+      IsUnlockedByUser = isUnlocked,
+    };
+  }))
+.ToList();
+
+      // Merge both lists
+      chapterDtos.AddRange(translationDtos);
 
       return new SeriesDetailDto
       {
@@ -488,25 +599,7 @@ namespace Application.Services.Creator
         CreatorName = series.Creator.PenName,
         Genres = series.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
         OriginalLanguage = firstOriginalChapter?.Language?.Code,
-        Chapters = series.Chapters
-              .Where(c => c.Status == ChapterStatus.PUBLISHED)
-              .OrderByDescending(c => c.ChapterNumber)
-              .Select(c => new SeriesChapterDto
-              {
-                ChapterId = c.ChapterId,
-                Title = c.Title ?? "Untitled",
-                ChapterNumber = (int)c.ChapterNumber,
-                Price = c.UnlockPriceCoins ?? 0,
-                PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-                ViewCount = c.ReadingHistories?.Count ?? 0,
-                GroupName = c.Team?.TeamName,
-                TeamId = c.TeamId,
-                IsOriginal = c.TeamId == null,
-                IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-                LanguageCode = c.Language?.Code,
-                LanguageName = c.Language?.Name,
-                CommentCount = 0
-              }).ToList()
+        Chapters = chapterDtos
       };
     }
 
@@ -825,8 +918,8 @@ namespace Application.Services.Creator
       catch (Exception ex)
       {
         _logger.LogError(ex, "Lỗi khi xóa truyện {SeriesId}", seriesId);
-        throw new InvalidOperationException(
-            "Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau.", ex);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
+            $"Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau. {ex.Message}");
       }
     }
 

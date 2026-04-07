@@ -259,7 +259,13 @@ namespace Infrastructure.Migrations
                     b.Property<decimal>("CoinsPaid")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<int>("TransactionId")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("TransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TranslationId")
                         .HasColumnType("int");
 
                     b.Property<string>("UnlockSource")
@@ -274,7 +280,10 @@ namespace Infrastructure.Migrations
                     b.HasIndex("ChapterId");
 
                     b.HasIndex("TransactionId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[TransactionId] IS NOT NULL");
+
+                    b.HasIndex("TranslationId");
 
                     b.HasIndex("UserId");
 
@@ -324,12 +333,15 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHidden")
                         .HasColumnType("bit");
 
                     b.Property<int?>("ParentCommentId")
@@ -365,6 +377,17 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CreatorId"));
 
+                    b.Property<int?>("DefaultFreeAfterDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DefaultUnlockPriceCoins")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("FreeAfterEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("HideRevenue")
                         .HasColumnType("bit");
 
@@ -385,6 +408,11 @@ namespace Infrastructure.Migrations
 
                     b.Property<decimal>("TotalRevenue")
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<bool>("UnlockEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -650,6 +678,84 @@ namespace Infrastructure.Migrations
                     b.ToTable("Notification", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.Property<int>("LayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LayerId"));
+
+                    b.Property<int?>("AdjustedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AdjustmentCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Height")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsUserAdjusted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OriginalText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("auto");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("vi");
+
+                    b.Property<string>("TranslatedText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TranslationProvider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Google");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("Width")
+                        .HasColumnType("float");
+
+                    b.Property<double>("X")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("float");
+
+                    b.HasKey("LayerId");
+
+                    b.HasIndex("PageId", "SourceLanguage", "TargetLanguage", "TranslationProvider")
+                        .HasDatabaseName("IX_PageTextLayer_Cache");
+
+                    b.ToTable("PageTextLayer", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Rating", b =>
                 {
                     b.Property<int>("RatingId")
@@ -810,7 +916,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("CoverImageUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -819,7 +925,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("LanguageScore")
                         .HasColumnType("int");
@@ -895,37 +1001,46 @@ namespace Infrastructure.Migrations
                     b.ToTable("SeriesGenre", (string)null);
                 });
 
-            modelBuilder.Entity("Domain.Entities.SystemSetting", b =>
+            modelBuilder.Entity("Domain.Entities.SystemConfigs", b =>
                 {
-                    b.Property<int>("SettingId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SettingId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Key")
+                    b.Property<string>("BlacklistWordsJson")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(MAX)");
+
+                    b.Property<decimal>("ExchangeRateCoinToVnd")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TranslationAuthorCommissionPercent")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
 
-                    b.HasKey("SettingId");
+                    b.Property<decimal>("WithdrawalFeePercent")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.HasIndex("Key")
-                        .IsUnique();
+                    b.Property<decimal>("WithdrawalMaxCoins")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.ToTable("SystemSetting", (string)null);
+                    b.Property<decimal>("WithdrawalMinCoins")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("SystemConfigs", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.TeamGenre", b =>
@@ -1054,6 +1169,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LeftAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1128,6 +1246,9 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TranslationId"));
 
+                    b.Property<string>("AiScoresJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ChapterId")
                         .HasColumnType("int");
 
@@ -1153,7 +1274,7 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("PermissionId")
+                    b.Property<int?>("PermissionId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("PublishedAt")
@@ -1163,6 +1284,9 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
+
                     b.HasKey("TranslationId");
 
                     b.HasIndex("ChapterId");
@@ -1170,6 +1294,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("LanguageId");
 
                     b.HasIndex("PermissionId");
+
+                    b.HasIndex("TeamId");
 
                     b.ToTable("Translation", (string)null);
                 });
@@ -1288,16 +1414,22 @@ namespace Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeamId"));
 
                     b.Property<string>("AvatarUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BannerUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Certificates")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("DefaultFreeAfterDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DefaultUnlockPriceCoins")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -1310,6 +1442,9 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Facebook")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("FreeAfterEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsMonetizationEnabled")
                         .HasColumnType("bit");
@@ -1356,6 +1491,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("TrustScore")
                         .HasColumnType("int");
+
+                    b.Property<bool>("UnlockEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1476,19 +1614,21 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BannerUrl")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Bio")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("CannotUpload")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DisplayAvatar")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -1528,7 +1668,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("TrustScore")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -1763,13 +1905,13 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("BankAccountInfo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(MAX)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime2");
@@ -1897,8 +2039,11 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Transaction", "Transaction")
                         .WithOne("ChapterUnlock")
                         .HasForeignKey("Domain.Entities.ChapterUnlock", "TransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Translation", "Translation")
+                        .WithMany()
+                        .HasForeignKey("TranslationId");
 
                     b.HasOne("Domain.Entities.User", "User")
                         .WithMany()
@@ -1909,6 +2054,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("Chapter");
 
                     b.Navigation("Transaction");
+
+                    b.Navigation("Translation");
 
                     b.Navigation("User");
                 });
@@ -2004,6 +2151,17 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Domain.Entities.PageTextLayer", b =>
+                {
+                    b.HasOne("Domain.Entities.ChapterPage", "Page")
+                        .WithMany("TextLayers")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
             modelBuilder.Entity("Domain.Entities.Rating", b =>
                 {
                     b.HasOne("Domain.Entities.Series", "Series")
@@ -2096,6 +2254,16 @@ namespace Infrastructure.Migrations
                     b.Navigation("Genre");
 
                     b.Navigation("Series");
+                });
+
+            modelBuilder.Entity("Domain.Entities.SystemConfigs", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("Domain.Entities.TeamGenre", b =>
@@ -2225,14 +2393,20 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.TranslationPermission", "Permission")
                         .WithMany("Translations")
                         .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.TranslationTeam", "Team")
+                        .WithMany("Translations")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Chapter");
 
                     b.Navigation("Language");
 
                     b.Navigation("Permission");
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("Domain.Entities.TranslationCredit", b =>
@@ -2485,6 +2659,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("Translations");
                 });
 
+            modelBuilder.Entity("Domain.Entities.ChapterPage", b =>
+                {
+                    b.Navigation("TextLayers");
+                });
+
             modelBuilder.Entity("Domain.Entities.Comment", b =>
                 {
                     b.Navigation("Replies");
@@ -2572,6 +2751,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("TeamMembers");
 
                     b.Navigation("TranslationPermissions");
+
+                    b.Navigation("Translations");
 
                     b.Navigation("TrustScoreHistories");
                 });

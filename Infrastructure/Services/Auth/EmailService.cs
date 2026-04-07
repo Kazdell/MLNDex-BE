@@ -24,8 +24,8 @@ namespace Infrastructure.Services.Auth
     {
       var message = new MimeMessage();
       message.From.Add(new MailboxAddress(
-          _config["EmailSettings:SenderName"],
-          _config["EmailSettings:SenderEmail"]));
+          _config["EmailSettings:SenderName"] ?? "MLNDex",
+          _config["EmailSettings:SenderEmail"] ?? "no-reply@mlndex.com"));
       message.To.Add(MailboxAddress.Parse(toEmail));
       message.Subject = "Mã xác thực tài khoản";
 
@@ -49,8 +49,8 @@ namespace Infrastructure.Services.Auth
           SecureSocketOptions.StartTls);
 
       await smtp.AuthenticateAsync(
-          _config["EmailSettings:SenderEmail"],
-          _config["EmailSettings:Password"]);
+          _config["EmailSettings:SenderEmail"] ?? "",
+          _config["EmailSettings:Password"] ?? "");
 
       await smtp.SendAsync(message);
       await smtp.DisconnectAsync(true);

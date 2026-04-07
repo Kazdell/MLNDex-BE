@@ -1,10 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -13,9 +14,18 @@
 		<PackageReference Include="MailKit" Version="4.15.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
+		<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260330" />
+		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
+		<PackageReference Include="OpenCvSharp4.runtime.linux-x64" Version="4.10.0.20240717" />
 		<PackageReference Include="payOS" Version="2.0.1" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
 		<PackageReference Include="Tesseract" Version="5.2.0" />
+		<!-- Thay thế Tesseract bằng PaddleOCR (Chuẩn Enterprise - C# Native) -->
+		<PackageReference Include="Sdcb.PaddleInference.runtime.linux-x64.openblas" Version="3.0.0.51" />
+		<PackageReference Include="Sdcb.PaddleInference.runtime.win64.mkl" Version="2.5.1" />
+		<PackageReference Include="Sdcb.PaddleOCR" Version="3.0.0" />
+		<PackageReference Include="Sdcb.PaddleOCR.Models.Online" Version="3.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -23,13 +33,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Adapters\OCR\tessdata\vie.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\vie.traineddata</TargetPath>
-		</None>
-		<None Update="Adapters\OCR\tessdata\eng.traineddata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<TargetPath>tessdata\eng.traineddata</TargetPath>
+		<None Update="Adapters\OCR\tessdata\*.traineddata">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<TargetPath>tessdata\%(Filename)%(Extension)</TargetPath>
 		</None>
 		<None Update="x64\*.dll">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>

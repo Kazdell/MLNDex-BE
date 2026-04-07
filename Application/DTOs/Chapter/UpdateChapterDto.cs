@@ -1,3 +1,4 @@
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,11 @@ namespace Application.DTOs.Chapter
     public string? PageLayoutJson { get; set; }
     // Comma-separated list of existing page IDs to retain. Pages not in this list will be deleted.
     public string? RetainedPageIds { get; set; }
+
+    // ── Unlock settings — all nullable so omitting them = "don't change" ──
+    public ChapterLockStatus? LockStatus { get; set; }
+    public int? UnlockPriceCoins { get; set; }
+    public int? FreeAfterDays { get; set; }
+    public DateTime? UnlockTime { get; set; } // fallback if FreeAfterDays not used
   }
 }

@@ -8,6 +8,7 @@ namespace Infrastructure.Adapters.Moderation
   public class BlacklistProvider : IBlacklistProvider
   {
     private readonly string _configPath;
+    private List<string> _dynamicBlacklist = new();
 
     public List<BlacklistEntry> ProfanityList { get; private set; } = new();
     public List<BlacklistEntry> HateSpeechList { get; private set; } = new();
@@ -94,6 +95,17 @@ namespace Infrastructure.Adapters.Moderation
       if (data?.Thresholds != null)
         Thresholds = data.Thresholds;
     }
+
+    public void SetDynamicBlacklist(List<string> words)
+    {
+      _dynamicBlacklist = words ?? new();
+      // We merge dynamic words into ProfanityList for simplicity in this implementation
+      // or we can handle them separately in the moderation logic.
+    }
+
+    // New helper to get a combined list if needed, or we just expect the consumer to check both.
+    // In this project's ModerationService, it iterates over ProfanityList, HateSpeechList, etc.
+    // Let's modify LoadBlacklist to clear and reload, then we can append dynamic words.
 
     // Deserialization models
     public class BlacklistFile

@@ -32,36 +32,47 @@ namespace mlndex_backend.Middleware
     {
       context.Response.ContentType = "application/json";
 
-      ApiResponse<object> response;
+      ApiResponse<object?> response;
       int statusCode;
 
       switch (exception)
       {
+        case Application.Exceptions.AppException appEx:
+          statusCode = appEx.StatusCode;
+          response = new ApiResponse<object?>(false, appEx.Message, null, appEx.ErrorCode);
+          break;
+
         case UnauthorizedAccessException:
           statusCode = (int)HttpStatusCode.Unauthorized;
-          response = new ApiResponse<object>(false, "Unauthorized", null, ErrorCodes.UNAUTHORIZED);
+          response = new ApiResponse<object?>(false, "Unauthorized", null, ErrorCodes.UNAUTHORIZED);
           break;
 
         case KeyNotFoundException:
           statusCode = (int)HttpStatusCode.NotFound;
-          response = new ApiResponse<object>(false, "Resource not found", null, ErrorCodes.NOT_FOUND);
+          response = new ApiResponse<object?>(false, "Resource not found", null, ErrorCodes.NOT_FOUND);
           break;
 
         case DbUpdateException:
           statusCode = (int)HttpStatusCode.Conflict;
-          //response = new ApiResponse<object>(false, "Database update error", null, ErrorCodes.DB_ERROR);
-          response = new ApiResponse<object>(false, $"Database update error {exception.Message}", null, ErrorCodes.DB_ERROR);
+          //response = new ApiResponse<object?>(false, "Database update error", null, ErrorCodes.DB_ERROR);
+          response = new ApiResponse<object?>(false, $"Database update error: {exception.Message}", null, ErrorCodes.DB_ERROR);
+          break;
+
+        case ArgumentNullException:
+        case ArgumentException:
+          statusCode = (int)HttpStatusCode.BadRequest;
+          response = new ApiResponse<object?>(false, $"Invalid argument: {exception.Message}", null, ErrorCodes.INVALID_INPUT);
           break;
 
         case InvalidOperationException:
           statusCode = (int)HttpStatusCode.BadRequest;
-          //response = new ApiResponse<object>(false, "Invalid operation", null, ErrorCodes.INVALID_INPUT);
-          response = new ApiResponse<object>(false, $"Invalid operation: {exception.Message}", null, ErrorCodes.INVALID_INPUT);
+          //response = new ApiResponse<object?>(false, "Invalid operation", null, ErrorCodes.INVALID_INPUT);
+          response = new ApiResponse<object?>(false, $"Invalid operation: {exception.Message}", null, ErrorCodes.INVALID_INPUT);
           break;
 
         default:
           statusCode = (int)HttpStatusCode.InternalServerError;
-          response = new ApiResponse<object>(false, $"An unexpected error occurred {exception.Message}. StackTrace: {exception.StackTrace}", null, ErrorCodes.INTERNAL_SERVER_ERROR);
+          response = new ApiResponse<object?>(false, "An unexpected error occurred", null, ErrorCodes.INTERNAL_SERVER_ERROR);
           break;
       }
 

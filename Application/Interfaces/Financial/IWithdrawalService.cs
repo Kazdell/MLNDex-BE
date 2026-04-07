@@ -17,5 +17,10 @@ namespace Application.Interfaces.Financial
         WithdrawalDecisionRequest request,
         CancellationToken cancellationToken = default
     );
+    Task<WithdrawalReviewItemDto> RequestAsync(
+        int creatorId,
+        CreateWithdrawalRequestDto dto,
+        CancellationToken cancellationToken = default
+    );
   }
 }

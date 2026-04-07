@@ -28,6 +28,7 @@ namespace Application.DTOs.Community
     public string Content { get; set; } = string.Empty;
     public int? ParentCommentId { get; set; }
     public bool IsDeleted { get; set; }
+    public bool IsHidden { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public List<CommentDto> Replies { get; set; } = new();

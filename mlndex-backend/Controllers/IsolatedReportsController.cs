@@ -54,16 +54,25 @@ namespace mlndex_backend.Controllers
 
     /// <summary>Lấy danh sách các báo cáo đang chờ xử lý (Moderator).</summary>
     [HttpGet("/api/isolated-moderator/reports")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> GetPendingReports([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
       var reports = await _reportService.GetPendingReportsAsync(page, limit);
       return Ok(new { Data = reports });
     }
 
+    /// <summary>Lấy thống kê báo cáo (Moderator).</summary>
+    [HttpGet("/api/isolated-moderator/reports/stats")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
+    public async Task<IActionResult> GetStats()
+    {
+      var stats = await _reportService.GetReportStatsAsync();
+      return Ok(stats);
+    }
+
     /// <summary>Xử lý một báo cáo (Moderator).</summary>
     [HttpPost("/api/isolated-moderator/reports/{id}/resolve")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> ResolveReport(int id, [FromBody] ResolvePlagiarismReportRequest request)
     {
       var modId = GetCurrentUserId();
@@ -82,7 +91,7 @@ namespace mlndex_backend.Controllers
 
     /// <summary>So sánh side-by-side (Moderator).</summary>
     [HttpGet("/api/isolated-moderator/reports/{id}/compare-data")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> GetCompareData(int id, [FromQuery] int referenceTranslationId)
     {
       try
@@ -102,7 +111,7 @@ namespace mlndex_backend.Controllers
 
     /// <summary>Admin phục hồi điểm uy tín cho User/Team.</summary>
     [HttpPost("/api/isolated-moderator/trust-score/restore")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> RestoreTrustScore([FromBody] RestoreTrustScoreRequest request)
     {
       var modId = GetCurrentUserId();
@@ -144,7 +153,7 @@ namespace mlndex_backend.Controllers
 
     /// <summary>Moderator xem danh sách kháng cáo chờ xử lý.</summary>
     [HttpGet("/api/isolated-moderator/appeals")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> GetPendingAppeals([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
       var appeals = await _trustScoreService.GetPendingAppealsAsync(page, limit);
@@ -153,7 +162,7 @@ namespace mlndex_backend.Controllers
 
     /// <summary>Moderator duyệt/từ chối đơn kháng cáo.</summary>
     [HttpPost("/api/isolated-moderator/appeals/{id}/review")]
-    [Authorize(Roles = "Moderator,Admin")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
     public async Task<IActionResult> ReviewAppeal(int id, [FromBody] ReviewAppealRequest request)
     {
       var modId = GetCurrentUserId();

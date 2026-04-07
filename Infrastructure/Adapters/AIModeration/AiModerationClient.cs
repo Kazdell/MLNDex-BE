@@ -21,7 +21,7 @@ namespace Infrastructure.Adapters.AIModeration
     public AiModerationClient(IConfiguration configuration, ILogger<AiModerationClient> logger)
     {
       var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new InvalidOperationException("Chưa cấu hình OpenAI:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình OpenAI:ApiKey trong appsettings");
 
       _httpClient = new HttpClient
       {
@@ -236,17 +236,38 @@ namespace Infrastructure.Adapters.AIModeration
     private async Task<List<(Dictionary<string, double> Scores, bool Flagged)>> ModerateBatchImagesAsync(
         List<string> imageUrls)
     {
-      // Build multi-input request: each image is a separate input item
-      var inputItems = imageUrls.Select(url => new Dictionary<string, object>
+      var inputItems = new List<object>();
+      using var localHttpClient = new HttpClient();
+
+      foreach (var url in imageUrls)
       {
-        ["type"] = "image_url",
-        ["image_url"] = new { url }
-      }).ToArray();
+        string finalUrl = url;
+        if (url.Contains("localhost") || url.Contains("127.0.0.1"))
+        {
+          try
+          {
+            var bytes = await localHttpClient.GetByteArrayAsync(url);
+            var base64 = Convert.ToBase64String(bytes);
+            // Assuming jpeg for generic local files, OpenAI can usually infer it from the base64 content
+            finalUrl = $"data:image/jpeg;base64,{base64}";
+          }
+          catch (Exception ex)
+          {
+            _logger.LogWarning(ex, "[HybridScan] Lỗi khi tải ảnh local để convert sang base64: {Url}", url);
+          }
+        }
+
+        inputItems.Add(new Dictionary<string, object>
+        {
+          ["type"] = "image_url",
+          ["image_url"] = new { url = finalUrl }
+        });
+      }
 
       var requestBody = new
       {
         model = "omni-moderation-latest",
-        input = inputItems
+        input = inputItems.ToArray()
       };
 
       var json = JsonSerializer.Serialize(requestBody);
@@ -258,11 +279,28 @@ namespace Infrastructure.Adapters.AIModeration
       return ParseMultipleResults(responseBody);
     }
 
+
     /// <summary>
     /// Send a single image for moderation.
     /// </summary>
     private async Task<(Dictionary<string, double> Scores, bool Flagged)> ModerateOneImageAsync(string imageUrl)
     {
+      string finalUrl = imageUrl;
+      if (imageUrl.Contains("localhost") || imageUrl.Contains("127.0.0.1"))
+      {
+        try
+        {
+          using var localHttpClient = new HttpClient();
+          var bytes = await localHttpClient.GetByteArrayAsync(imageUrl);
+          var base64 = Convert.ToBase64String(bytes);
+          finalUrl = $"data:image/jpeg;base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+          _logger.LogWarning(ex, "[HybridScan] Lỗi khi tải ảnh local để convert sang base64: {Url}", imageUrl);
+        }
+      }
+
       var requestBody = new
       {
         model = "omni-moderation-latest",
@@ -271,7 +309,7 @@ namespace Infrastructure.Adapters.AIModeration
                     new
                     {
                         type      = "image_url",
-                        image_url = new { url = imageUrl }
+                        image_url = new { url = finalUrl }
                     }
                 }
       };

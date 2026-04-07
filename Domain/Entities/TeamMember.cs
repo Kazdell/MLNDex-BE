@@ -14,6 +14,7 @@ namespace Domain.Entities
     public TeamMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
     public bool IsActive { get; set; }
+    public DateTime? LeftAt { get; set; }
 
     // Navigation
     public TranslationTeam TranslationTeam { get; set; } = null!;

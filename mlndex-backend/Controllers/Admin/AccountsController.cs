@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace mlndex_backend.Controllers.Admin
 {
   [Route("api/admin/accounts")]
-  [Authorize(Roles = "ADMIN")]
+  [Authorize(Roles = "ADMIN,MODERATOR")]
   public class AccountsController : BaseController
   {
     private readonly IAccountModerationService _service;
@@ -30,44 +30,45 @@ namespace mlndex_backend.Controllers.Admin
       var id = GetUserId();
       var moderatorId = id != 0 ? id : 1;
 
-            try
-            {
-                var result = await _service.ApplyAsync(
-                    userId,
-                    moderatorId,
-                    request,
-                    cancellationToken
-                );
-                return OkResponse(result);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFoundResponse(ex.Message);
-            }
-        }
-
-        [HttpPut("{userId:int}/roles")]
-        public async Task<IActionResult> UpdateRoles(
-            int userId,
-            [FromBody] UpdateUserRolesRequest request,
-            CancellationToken cancellationToken
-        )
-        {
-            if (!ModelState.IsValid)
-                return BadRequestResponse("Invalid payload");
-
-            try
-            {
-                var result = await _service.UpdateRolesAsync(userId, request, cancellationToken);
-                if (!result)
-                    return NotFoundResponse("User không tồn tại.");
-
-                return OkResponse<object?>(null, "Đã cập nhật vai trò người dùng.");
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse(ex.Message);
-            }
-        }
+      try
+      {
+        var result = await _service.ApplyAsync(
+            userId,
+            moderatorId,
+            request,
+            cancellationToken
+        );
+        return OkResponse(result);
+      }
+      catch (KeyNotFoundException ex)
+      {
+        return NotFoundResponse(ex.Message);
+      }
     }
+
+    [HttpPut("{userId:int}/roles")]
+    public async Task<IActionResult> UpdateRoles(
+        int userId,
+        [FromBody] UpdateUserRolesRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+      if (!ModelState.IsValid)
+        return BadRequestResponse("Invalid payload");
+
+      try
+      {
+        var moderatorId = GetUserId();
+        var result = await _service.UpdateRolesAsync(userId, moderatorId, request, cancellationToken);
+        if (!result)
+          return NotFoundResponse("User không tồn tại.");
+
+        return OkResponse<object?>(null, "Đã cập nhật vai trò người dùng.");
+      }
+      catch (Exception ex)
+      {
+        return ErrorResponse(ex.Message);
+      }
+    }
+  }
 }

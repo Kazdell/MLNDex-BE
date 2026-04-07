@@ -30,6 +30,14 @@ namespace Application.DTOs.Financial
     public string? Note { get; set; }
   }
 
+  public class CreateWithdrawalRequestDto
+  {
+    public decimal AmountCoins { get; set; }
+    public string BankName { get; set; } = null!;
+    public string AccountNumber { get; set; } = null!;
+    public string AccountName { get; set; } = null!;
+  }
+
   public class WithdrawalReviewListResponse
   {
     public List<WithdrawalReviewItemDto> Items { get; set; } = new();

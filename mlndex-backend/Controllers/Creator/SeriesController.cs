@@ -100,7 +100,7 @@ namespace mlndex_backend.Controllers.Creator
       try
       {
         await _service.UpdateStatusAsync(id, userId, request.Status, ct);
-        return OkResponse<object>(null, "Cập nhật trạng thái thành công.");
+        return OkResponse<object?>(null, "Cập nhật trạng thái thành công.");
       }
       catch (Exception ex)
       {
@@ -143,7 +143,14 @@ namespace mlndex_backend.Controllers.Creator
     [HttpGet("{id}")]
     public async Task<IActionResult> GetSeriesDetails(int id)
     {
-      var result = await _service.GetSeriesDetailsAsync(id);
+      int? userId = null;
+      if (User.Identity?.IsAuthenticated == true)
+      {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(claim, out var parsedId)) userId = parsedId;
+      }
+
+      var result = await _service.GetSeriesDetailsAsync(id, userId);
       if (result == null)
         return NotFoundResponse("Series not found.");
 

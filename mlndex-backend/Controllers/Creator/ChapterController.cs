@@ -1,21 +1,22 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
-using Application.Interfaces.VIP;
+using Application.Services.Creator;
+using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Creator;
 
 [ApiController]
 [Route("api")]
-[Authorize(Roles = "CREATOR,ADMIN")]
+[Authorize(Roles = "CREATOR,ADMIN,READER")]
 public class ChapterController : BaseController
 {
   private readonly IChapterService _service;
   private readonly IMlndexDbContext _db;
-  private readonly IVipService _vipService;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
@@ -23,9 +24,9 @@ public class ChapterController : BaseController
   {
     _service = service;
     _db = db;
-	_vipService = vipService;
-	}
-
+  }
+  
+  [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpPost("creator/chapters/create")]
   [RequestSizeLimit(300 * 1024 * 1024)]
   public async Task<IActionResult> Create(
@@ -34,6 +35,9 @@ public class ChapterController : BaseController
       [FromForm] string? title,
       [FromForm] int? languageId,
       [FromForm] IFormFileCollection pages,
+      [FromForm] string? lockStatus,
+      [FromForm] int? unlockPriceCoins,
+      [FromForm] int? freeAfterDays,
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
@@ -58,6 +62,11 @@ public class ChapterController : BaseController
     }
 
     // 2. Build DTO — Creator upload: no TeamId
+    ChapterLockStatus? parsedLock = null;
+    if (!string.IsNullOrEmpty(lockStatus) &&
+        Enum.TryParse<ChapterLockStatus>(lockStatus, true, out var lockEnum))
+      parsedLock = lockEnum;
+
     var dto = new CreateChapterDto
     {
       SeriesId = seriesId,
@@ -65,6 +74,9 @@ public class ChapterController : BaseController
       Title = title,
       LanguageId = languageId,
       TeamId = null,
+      LockStatus = parsedLock,
+      UnlockPriceCoins = unlockPriceCoins,
+      FreeAfterDays = freeAfterDays,
       Pages = pages.Select((file, index) => new UploadPageDto
       {
         FileStream = file.OpenReadStream(),
@@ -92,10 +104,28 @@ public class ChapterController : BaseController
   [HttpGet("chapters/{id:int}")]
   public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
   {
+    int? userId = null;
+    var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+              ?? User.FindFirst("sub")?.Value;
+    if (int.TryParse(claim, out var parsed))
+      userId = parsed;
+
+    // Lấy translationId từ query string nếu có (?translationId=123)
+    int? translationId = null;
+    if (Request.Query.TryGetValue("translationId", out var tidVal)
+        && int.TryParse(tidVal, out var tid))
+    {
+      translationId = tid;
+    }
+
     try
     {
-      var result = await _service.GetChapterDetailAsync(id, cancellationToken);
-      if (result == null) return NotFoundResponse("Không tìm thấy chương truyện.");
+      var result = await _service.GetChapterDetailAsync(
+          id,
+          userId,
+          translationId,                  // int? — có thể null
+          cancellationToken);             // named arg tránh nhầm slot
+      if (result == null) return NotFoundResponse("Không tìm thấy chương này.");
       return OkResponse(result);
     }
     catch (Exception ex)
@@ -104,44 +134,7 @@ public class ChapterController : BaseController
     }
   }
 
-  [HttpGet("chapters/{chapterId:int}/moderation-status")]
-  public async Task<IActionResult> GetModerationStatus(
-  int chapterId, CancellationToken cancellationToken)
-  {
-    try
-    {
-      var result = await _service.GetModerationStatusAsync(chapterId, cancellationToken);
-      return OkResponse(result);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
-  }
-
-  [HttpPost("chapters/{chapterId:int}/moderation-retry")]
-  public async Task<IActionResult> RetryModeration(
-      int chapterId, CancellationToken cancellationToken)
-  {
-    try
-    {
-      await _service.RetryModerationAsync(chapterId, cancellationToken);
-      return OkResponse<object>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
-    }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
-    catch (InvalidOperationException ex)
-    {
-      return BadRequestResponse(ex.Message);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
-  }
-
+  [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpGet("creator/series/{seriesId:int}/chapters")]
   public async Task<IActionResult> GetBySeries(int seriesId, CancellationToken cancellationToken)
   {
@@ -167,6 +160,7 @@ public class ChapterController : BaseController
     }
   }
 
+  [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpGet("creator/chapters/{id:int}/edit")]
   public async Task<IActionResult> GetForEdit(int id, CancellationToken cancellationToken)
   {
@@ -188,6 +182,8 @@ public class ChapterController : BaseController
       return ErrorResponse(ex.Message);
     }
   }
+
+  [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpPut("creator/chapters/{id:int}")]
   [RequestSizeLimit(300 * 1024 * 1024)]
   public async Task<IActionResult> Update(
@@ -199,6 +195,9 @@ public class ChapterController : BaseController
       [FromForm] int? teamId,
       [FromForm] string? retainedPageIds,
       [FromForm] IFormFileCollection? pages,
+      [FromForm] string? lockStatus,
+      [FromForm] int? unlockPriceCoins,
+      [FromForm] int? freeAfterDays,
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
@@ -221,6 +220,13 @@ public class ChapterController : BaseController
       }
     }
 
+    ChapterLockStatus? parsedLockStatus = null;
+    if (!string.IsNullOrEmpty(lockStatus) &&
+        Enum.TryParse<ChapterLockStatus>(lockStatus, ignoreCase: true, out var lockEnum))
+    {
+      parsedLockStatus = lockEnum;
+    }
+
     var dto = new UpdateChapterDto
     {
       SeriesId = seriesId,
@@ -228,6 +234,10 @@ public class ChapterController : BaseController
       Title = title,
       LanguageId = languageId,
       RetainedPageIds = retainedPageIds,
+      // ✅ Gán vào DTO
+      LockStatus = parsedLockStatus,
+      UnlockPriceCoins = unlockPriceCoins,
+      FreeAfterDays = freeAfterDays,
     };
 
     var newPages = pages?.Select((file, index) => new UploadPageDto
@@ -260,4 +270,86 @@ public class ChapterController : BaseController
     }
   }
 
+  [Authorize(Roles = "CREATOR,ADMIN")]
+  [HttpPatch("creator/chapters/{chapterId:int}/lock")]
+  public async Task<IActionResult> UpdateLockStatus(
+  int chapterId,
+  [FromBody] UpdateChapterLockDto dto,
+  CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      var result = await _service.UpdateChapterLockStatusAsync(chapterId, userId, dto, cancellationToken);
+      return OkResponse(result, "Cập nhật trạng thái khóa thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequestResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
+
+  [HttpPost("chapters/{chapterId:int}/unlock")]
+  public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Vui lòng đăng nhập.");
+
+    try
+    {
+      var result = await _service.UnlockAsync(userId, chapterId, ct);
+      return OkResponse(result, "Mở khóa chương thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequestResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
+
+  [HttpDelete("creator/chapters/{id:int}")]
+  public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      await _service.DeleteAsync(id, userId, cancellationToken);
+      return OkResponse((object?)null, "Xóa chương thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
 }

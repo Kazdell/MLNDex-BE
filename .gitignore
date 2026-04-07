@@ -215,3 +215,15 @@ global.json
 AGENTS.md
 CLAUDE.md
 .claude/
+
+# Generated API files
+swagger.json
+response.json
+
+# Build logs & obsolete folders
+build_output*.txt
+server_log.txt
+WebAPI/
+
+# ONNX AI Model binary files (large, each dev downloads manually)
+Infrastructure/Adapters/OCR/models/*.onnx

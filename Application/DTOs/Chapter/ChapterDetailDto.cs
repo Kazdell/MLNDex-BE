@@ -10,6 +10,7 @@ namespace Application.DTOs.Chapter
     public int SeriesId { get; set; }
     public string? SeriesTitle { get; set; }
     public string? UploaderName { get; set; }
+    public int? CreatorUserId { get; set; }
     public string? TranslatorTeamName { get; set; }
     public float ChapterNumber { get; set; }
     public string? Title { get; set; }
@@ -21,14 +22,30 @@ namespace Application.DTOs.Chapter
     public string? Language { get; set; }
     public string? ModerationReason { get; set; }
 
-    // Added for Translation Ecosystem 
-    // These fields will have data if this Chapter is a Translation
+    // ── Unlock settings ───────────────────────────────────────────────
+    public string LockStatus { get; set; } = "UNLOCKED";
+    public bool IsUnlockedByUser { get; set; } = false;
+    public int? UnlockPriceCoins { get; set; }
+    public DateTime? UnlockTime { get; set; }
+    public int? TeamUnlockPrice { get; set; }
+    public CreatorUnlockDefaultsDto? CreatorDefaults { get; set; }
+
+
+    // ── Translation Ecosystem ─────────────────────────────────────────
     public bool IsTranslation { get; set; }
     public bool IsOfficial { get; set; }
     public bool IsOutdated { get; set; }
     public bool IsOrphan { get; set; }
     public List<TranslationCreditDetailDto>? TranslationCredits { get; set; }
     public List<JointTeamDetailDto>? JointTeams { get; set; }
+  }
+
+  public class CreatorUnlockDefaultsDto
+  {
+    public bool UnlockEnabled { get; set; }
+    public int? DefaultUnlockPriceCoins { get; set; }
+    public bool FreeAfterEnabled { get; set; }
+    public int? DefaultFreeAfterDays { get; set; }
   }
 
   public class TranslationCreditDetailDto

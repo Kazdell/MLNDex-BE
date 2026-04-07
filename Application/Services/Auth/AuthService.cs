@@ -72,18 +72,9 @@ namespace Application.Services.Auth
 				IsActive = true,
 				CreatedAt = DateTime.UtcNow
 			};
-			//_context.Users.Add(user);
-			//await _context.SaveChangesAsync();
-			try
-			{
-				_context.Users.Add(user);
-				await _context.SaveChangesAsync();
-			}
-			catch (DbUpdateException ex)
-			{
-				// Log ra inner exception thật sự
-				throw new Exception($"DB Error: {ex.InnerException?.Message ?? ex.Message}");
-			}
+			_context.Users.Add(user);
+			await _context.SaveChangesAsync();
+			
 			await CreateDefaultUserDataAsync(user);
 
 			// 6. Gửi OTP

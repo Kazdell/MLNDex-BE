@@ -22,6 +22,23 @@ namespace Application.Services.User
 
     public async Task<bool> UpdateHistoryAsync(int userId, ReadingHistoryUpdateDto dto, CancellationToken cancellationToken = default)
     {
+      // ── Resolve chapterId: could be a real ChapterId or a TranslationId ──
+      var resolvedChapterId = dto.ChapterId;
+      var chapterExists = await _db.Chapters.AnyAsync(c => c.ChapterId == dto.ChapterId, cancellationToken);
+      if (!chapterExists)
+      {
+        // Fallback: check if it's a TranslationId and resolve to real ChapterId
+        var translation = await _db.Translations
+            .Where(t => t.TranslationId == dto.ChapterId)
+            .Select(t => t.ChapterId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (translation > 0)
+          resolvedChapterId = translation;
+        else
+          return false; // Neither a valid Chapter nor Translation
+      }
+
       var history = await _db.ReadingHistories
           .FirstOrDefaultAsync(h => h.UserId == userId && h.SeriesId == dto.SeriesId, cancellationToken);
 
@@ -31,7 +48,7 @@ namespace Application.Services.User
         {
           UserId = userId,
           SeriesId = dto.SeriesId,
-          LastChapterId = dto.ChapterId,
+          LastChapterId = resolvedChapterId,
           LastPageNumber = dto.PageNumber,
           LastReadAt = DateTime.UtcNow
         };
@@ -39,7 +56,7 @@ namespace Application.Services.User
       }
       else
       {
-        history.LastChapterId = dto.ChapterId;
+        history.LastChapterId = resolvedChapterId;
         history.LastPageNumber = dto.PageNumber;
         history.LastReadAt = DateTime.UtcNow;
       }

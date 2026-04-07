@@ -101,7 +101,14 @@ namespace Application.DTOs.Creator
     public string? LanguageName { get; set; }    // "Tiếng Việt", "日本語"...
     public string? UploaderName { get; set; }    // Uploader display name
     public int CommentCount { get; set; }
+    public int PageCount { get; set; }
     public bool IsOfficialTranslation { get; set; } // If it's a translation and has official permission
+    public bool IsUnlockedByUser { get; set; }
+    public int? TranslationId { get; set; }
+    public string LockStatus { get; set; } = "UNLOCKED";
+    public int? UnlockPriceCoins { get; set; }
+    public DateTime? UnlockTime { get; set; }
+    public int? TeamUnlockPrice { get; set; }
   }
 
   public class SeriesSearchRequest

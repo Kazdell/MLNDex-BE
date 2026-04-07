@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Application.DTOs.Translation;
+using Application.DTOs.Translation.Requests;
+using Application.DTOs.Translation.Responses;
 using Application.Interfaces.Translation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +21,9 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     // Create a new translation team.
+    [Authorize]
     [HttpPost]
-    public async Task<IActionResult> CreateTeam([FromBody] CreateTranslationTeamDto dto)
+    public async Task<IActionResult> CreateTeam([FromBody] CreateTranslationTeamRequest dto)
     {
       try
       {
@@ -36,14 +38,14 @@ namespace mlndex_backend.Controllers.Translation
 
     // List all translation teams.
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TranslationTeamDto>>> GetAllTeams()
+    public async Task<ActionResult<IEnumerable<TranslationTeamResponse>>> GetAllTeams()
     {
       var teams = await _service.GetAllTeamsAsync();
       return Ok(teams);
     }
 
     [HttpGet("{id}/members")]
-    public async Task<ActionResult<IEnumerable<TeamMemberDetailDto>>> GetMembers(int id)
+    public async Task<ActionResult<IEnumerable<TeamMemberDetailResponse>>> GetMembers(int id)
     {
       var members = await _service.GetTeamMembersAsync(id);
       return Ok(members);
@@ -64,7 +66,6 @@ namespace mlndex_backend.Controllers.Translation
       }
       catch (Exception ex)
       {
-        System.IO.File.WriteAllText("C:/Users/ACER/Downloads/MLNDex/error.txt", ex.ToString());
         return BadRequestResponse(ex.ToString());
       }
     }
@@ -72,7 +73,7 @@ namespace mlndex_backend.Controllers.Translation
     // Update team details (Leader only).
     [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTeam(int id, [FromBody] UpdateTranslationTeamDto dto)
+    public async Task<IActionResult> UpdateTeam(int id, [FromBody] UpdateTranslationTeamRequest dto)
     {
       try
       {
@@ -95,6 +96,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     // Disband a translation team (Leader only).
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DisbandTeam(int id)
     {
@@ -113,7 +115,7 @@ namespace mlndex_backend.Controllers.Translation
 
     [Authorize]
     [HttpPost("{id}/invitations")]
-    public async Task<IActionResult> InviteMember(int id, [FromBody] InviteTeamMemberDto dto)
+    public async Task<IActionResult> InviteMember(int id, [FromBody] InviteTeamMemberRequest dto)
     {
       try
       {
@@ -178,7 +180,7 @@ namespace mlndex_backend.Controllers.Translation
 
     [Authorize]
     [HttpPost("{id}/join-requests")]
-    public async Task<IActionResult> RequestToJoin(int id, [FromBody] JoinTeamRequestDto dto)
+    public async Task<IActionResult> RequestToJoin(int id, [FromBody] JoinTeamRequest dto)
     {
       try
       {
@@ -240,6 +242,7 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     // Remove a member from the team.
+    [Authorize]
     [HttpDelete("{id}/members/{userId}")]
     public async Task<IActionResult> RemoveMember(int id, int userId)
     {
@@ -255,9 +258,27 @@ namespace mlndex_backend.Controllers.Translation
       }
     }
 
+    // Member voluntarily leaves the team.
+    [Authorize]
+    [HttpPost("{id}/leave")]
+    public async Task<IActionResult> LeaveTeam(int id)
+    {
+      try
+      {
+        var success = await _service.LeaveTeamAsync(id);
+        if (!success) return NotFoundResponse("You are not a member of this team.");
+        return OkResponse("Successfully left the team.");
+      }
+      catch (Exception ex)
+      {
+        return BadRequestResponse(ex.Message);
+      }
+    }
+
     // Assign a role to a team member.
+    [Authorize]
     [HttpPut("{id}/members/{userId}/role")]
-    public async Task<IActionResult> AssignRole(int id, int userId, [FromBody] AssignTeamMemberRoleDto dto)
+    public async Task<IActionResult> AssignRole(int id, int userId, [FromBody] AssignTeamMemberRoleRequest dto)
     {
       try
       {

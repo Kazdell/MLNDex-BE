@@ -20,42 +20,48 @@ namespace Application.Services.Moderation
         CancellationToken cancellationToken = default
     )
     {
-      var moderatorRoleId = await GetModeratorRoleId(cancellationToken);
+      var adminRole = RoleName.ADMIN.ToString();
+      var modRole = RoleName.MODERATOR.ToString();
 
-      var query = _context
-          .UserRoles.Include(ur => ur.User)
-          .Where(ur => ur.RoleId == moderatorRoleId)
+      // Fetch users who have either MODERATOR or ADMIN role
+      var query = _context.Users
+          .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+          .Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == RoleName.ADMIN || ur.Role.RoleName == RoleName.MODERATOR))
           .AsQueryable();
 
       if (!string.IsNullOrWhiteSpace(request.Keyword))
       {
         var keyword = request.Keyword.Trim();
-        query = query.Where(ur =>
-            ur.User.Username.Contains(keyword) || ur.User.Email.Contains(keyword)
+        query = query.Where(u =>
+            u.Username.Contains(keyword) || u.Email.Contains(keyword) || (u.DisplayName != null && u.DisplayName.Contains(keyword))
         );
       }
 
       if (request.IsActive.HasValue)
       {
-        query = query.Where(ur => ur.User.IsActive == request.IsActive.Value);
+        query = query.Where(u => u.IsActive == request.IsActive.Value);
       }
 
       var total = await query.CountAsync(cancellationToken);
 
-      var items = await query
-          .OrderByDescending(ur => ur.AssignedAt)
+      var users = await query
+          .OrderByDescending(u => u.CreatedAt) // Or any logic
           .Skip((request.Page - 1) * request.PageSize)
           .Take(request.PageSize)
-          .Select(ur => new ModeratorDto
-          {
-            UserId = ur.UserId,
-            Username = ur.User.Username,
-            Email = ur.User.Email,
-            DisplayName = ur.User.DisplayName,
-            IsActive = ur.User.IsActive,
-            AssignedAt = ur.AssignedAt,
-          })
           .ToListAsync(cancellationToken);
+
+      var items = users.Select(u => new ModeratorDto
+      {
+        UserId = u.UserId,
+        Username = u.Username,
+        Email = u.Email,
+        DisplayName = u.DisplayName,
+        IsActive = u.IsActive,
+        AssignedAt = u.UserRoles.Where(ur => ur.Role.RoleName == RoleName.ADMIN || ur.Role.RoleName == RoleName.MODERATOR)
+                             .Max(ur => ur.AssignedAt),
+        Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+      }).ToList();
 
       return new ModeratorListResponse
       {
@@ -118,20 +124,36 @@ namespace Application.Services.Moderation
       };
     }
 
-    public async Task RemoveAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(int userId, int moderatorId, CancellationToken cancellationToken = default)
     {
-      var moderatorRoleId = await GetModeratorRoleId(cancellationToken);
+      if (userId == moderatorId)
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự gỡ bỏ quyền hạn của chính mình. Hãy nhờ một Admin khác.");
 
-      var userRole =
-          await _context.UserRoles.FirstOrDefaultAsync(
-              ur => ur.UserId == userId && ur.RoleId == moderatorRoleId,
-              cancellationToken
-          )
-          ?? throw new KeyNotFoundException(
-              "Người dùng không phải moderator hoặc không tồn tại."
-          );
+      var user = await _context.Users
+          .Include(u => u.UserRoles)
+          .ThenInclude(ur => ur.Role)
+          .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
+          ?? throw new KeyNotFoundException("Người dùng không tồn tại.");
 
-      _context.UserRoles.Remove(userRole);
+      var staffRoles = user.UserRoles
+          .Where(ur => ur.Role.RoleName == RoleName.ADMIN || ur.Role.RoleName == RoleName.MODERATOR)
+          .ToList();
+
+      if (!staffRoles.Any())
+        throw new KeyNotFoundException("Người dùng không phải moderator hoặc admin.");
+
+      // Security Check: Minimum 1 Admin
+      if (staffRoles.Any(ur => ur.Role.RoleName == RoleName.ADMIN))
+      {
+        var adminRoleId = staffRoles.First(ur => ur.Role.RoleName == RoleName.ADMIN).RoleId;
+        var otherAdminsCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == adminRoleId && ur.UserId != userId, cancellationToken);
+        if (otherAdminsCount == 0)
+        {
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ Admin cuối cùng.");
+        }
+      }
+
+      _context.UserRoles.RemoveRange(staffRoles);
       await _context.SaveChangesAsync(cancellationToken);
     }
 
