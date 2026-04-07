@@ -300,8 +300,11 @@ namespace Application.Tests.Services.Translation
       db.TranslationPermissions.Add(new TranslationPermission { GrantedBy = 456, PermissionId = 99, SeriesId = 10, TeamId = t1, LanguageId = 1, Status = TranslationPermissionStatus.DENIED });
       await db.SaveChangesAsync();
 
-      var result = await CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true });
-      result.Status.Should().Be("GRANTED");
+      var service = new TranslationPermissionService(db, _mockUserContext.Object, _mockNotificationService.Object);
+      var dto = new RequestPermissionDto { TeamId = 1, SeriesId = 10, LanguageId = 1, Note = "Retry" };
+
+      var ex = await Assert.ThrowsAsync<Exception>(() => service.RequestPermissionAsync(dto));
+      ex.Message.Should().Be("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
     }
 
     [Fact]
