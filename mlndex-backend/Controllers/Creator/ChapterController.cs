@@ -101,13 +101,15 @@ public class ChapterController : BaseController
 
   [AllowAnonymous]
   [HttpGet("chapters/{id:int}")]
-  public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById(
+    int id,
+    [FromQuery] int? translationId, // ASP.NET tự động lấy từ ?translationId=...
+    CancellationToken cancellationToken)
   {
+        // Lấy UserId từ Claims (giữ nguyên logic của bạn)
     int? userId = null;
-    var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-              ?? User.FindFirst("sub")?.Value;
-    if (int.TryParse(claim, out var parsed))
-      userId = parsed;
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (int.TryParse(claim, out var parsed)) userId = parsed;
 
     // Lấy translationId từ query string nếu có (?translationId=123)
     int? translationId = null;
