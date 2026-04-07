@@ -21,7 +21,7 @@ public class ChapterController : BaseController
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-  public ChapterController(IChapterService service, IMlndexDbContext db)
+  public ChapterController(IChapterService service, IMlndexDbContext db, IVipService vipService)
   {
     _service = service;
     _db = db;
