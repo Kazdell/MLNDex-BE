@@ -129,6 +129,10 @@ public class TopUpService : ITopUpService
   public async Task<TopUpInitResponseDto> InitiateAsync(int userId, CreateTopUpRequestDto request)
   {
     var method = request.PaymentMethod.ToUpper();
+    if (method == "MOMO" || method == "VNPAY")
+    {
+      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Phương thức thanh toán {method} hiện tại chưa được hỗ trợ.");
+    }
 
     var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
         ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");

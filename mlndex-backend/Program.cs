@@ -193,6 +193,7 @@ namespace mlndex_backend
 
       // System Services — SystemConfigService now uses DbContext
       builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+      builder.Services.AddScoped<ILanguageService, LanguageService>();
 
       // Increase timeout
       builder.Services.Configure<KestrelServerOptions>(options =>
