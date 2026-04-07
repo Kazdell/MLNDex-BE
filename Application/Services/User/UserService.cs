@@ -103,13 +103,13 @@ namespace Application.Services.User
     {
       return await _context.VipPlans
           .Where(p => p.IsActive)
-          .OrderBy(p => p.PriceVnd)
+          .OrderBy(p => p.PriceCoins)
           .Select(p => new VipPlanDto
           {
             PlanId = p.PlanId,
             Name = p.Name,
             Description = p.Description,
-            PriceVnd = p.PriceVnd,
+            PriceCoins = p.PriceCoins,
             DurationDays = p.DurationDays,
             AutoUnlockChapter = p.AutoUnlockChapter,
             IsActive = p.IsActive

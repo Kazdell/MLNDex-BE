@@ -1,5 +1,6 @@
 ﻿using Application.DTOs.Payment;
 using Application.DTOs.Request;
+using Application.DTOs.System;
 
 namespace Application.Interfaces;
 
@@ -12,7 +13,7 @@ public interface ITopUpService
 	/// Lấy tỉ lệ quy đổi hiện tại từ DB.
 	/// Frontend gọi để preview coins realtime khi user nhập số tiền.
 	/// </summary>
-	Task<CoinRateResponseDto> GetCoinRateAsync();
+	Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Lấy danh sách gói coin đang active.
