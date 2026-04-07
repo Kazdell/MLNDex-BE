@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace Domain.Entities
 {
-  public class ChapterPage
-  {
-    public int PageId { get; set; }
-    public int ChapterId { get; set; }
-    public int PageNumber { get; set; }
-    public string ImageUrl { get; set; } = null!;
+	public class ChapterPage
+	{
+		public int PageId { get; set; }
+		public int ChapterId { get; set; }
+		public int PageNumber { get; set; }
+		public string ImageUrl { get; set; } = null!;
 
-    // Navigation
-    public Chapter Chapter { get; set; } = null!;
-    public ICollection<PageTextLayer> TextLayers { get; set; } = new List<PageTextLayer>();
-  }
+		// Navigation
+		public Chapter Chapter { get; set; } = null!;
+		public ICollection<PageTextLayer> TextLayers { get; set; } = new List<PageTextLayer>();
+	}
 }

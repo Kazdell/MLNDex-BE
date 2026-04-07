@@ -32,8 +32,9 @@ namespace Domain.Entities
     CHAPTER_UNLOCK,
     WITHDRAWAL,
     REFUND,
-    BONUS
-  }
+    BONUS,
+    VIP_PURCHASE
+	}
 
   public enum TransactionStatus
   {

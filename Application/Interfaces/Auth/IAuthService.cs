@@ -8,17 +8,17 @@ using System.Threading.Tasks;
 
 namespace Application.Interfaces.Auth
 {
-  public interface IAuthService
-  {
-    Task<ServiceResult> RegisterAsync(RegisterDto dto);
-    Task<ServiceResult> VerifyEmailOtpAsync(VerifyOtpDto dto);
-    Task<AuthResponseDto?> LoginAsync(LoginDto dto);
-    Task<AuthResponseDto?> RefreshAsync(TokenApiDto tokenApiDto);
-    Task<ServiceResult> LogoutAsync(string token);
-    Task<ServiceResult> ForgotPasswordAsync(string email);
-    Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword);
-    Task<ServiceResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
-    Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto);
-    Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto);
-  }
+	public interface IAuthService
+	{
+		Task<ServiceResult> RegisterAsync(RegisterDto dto);
+		Task<ServiceResult> VerifyEmailOtpAsync(VerifyOtpDto dto);
+		Task<AuthResponseDto?> LoginAsync(LoginDto dto);
+		Task<AuthResponseDto?> RefreshAsync(TokenApiDto tokenApiDto);
+		Task<ServiceResult> LogoutAsync(string token);
+		Task<ServiceResult> ForgotPasswordAsync(string email);
+		Task<ServiceResult> ResetPasswordAsync(string email, string otpCode, string newPassword);
+		Task<ServiceResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+		Task<AuthResponseDto?> GoogleLoginAsync(GoogleLoginDto dto);
+		Task<AuthResponseDto?> FacebookLoginAsync(FacebookLoginDto dto);
+	}
 }

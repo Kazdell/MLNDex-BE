@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 
 namespace Application.Services.Creator
 {
-  // Application/Services/Creator/ChapterService.cs
   public class ChapterService : IChapterService
   {
     private readonly IMlndexDbContext _db;

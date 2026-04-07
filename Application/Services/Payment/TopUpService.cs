@@ -64,6 +64,7 @@ public class TopUpService : ITopUpService
         })
         .ToListAsync();
   }
+
   // Thêm ví mới nếu người dùng chưa có ví.
   public async Task<WalletResponseDto> GetWalletAsync(int userId)
   {
@@ -123,8 +124,6 @@ public class TopUpService : ITopUpService
       PageSize = pageSize
     };
   }
-
-
 
   public async Task<TopUpInitResponseDto> InitiateAsync(int userId, CreateTopUpRequestDto request)
   {
@@ -223,8 +222,6 @@ public class TopUpService : ITopUpService
     var callback = await gateway.ParseAndVerifyCallbackAsync(dto);
     return await ProcessCallbackAsync(callback);
   }
-
-
 
   private async Task<TopUpCallbackResponseDto> ProcessCallbackAsync(PaymentCallbackDto callback)
   {
