@@ -1095,28 +1095,39 @@ namespace Application.Services.Creator
             if (chapter == null)
                 throw new KeyNotFoundException("Không tìm thấy chương.");
 
-            // Verify ownership
             if (chapter.Series?.Creator?.UserId != userId)
                 throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
 
-            // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
-            // Let's assume it cascade deletes or we allow it. Here we just delete the images.
+            // ── 1. Xóa ChapterUnlock trước (có thể trỏ vào Translation hoặc Chapter) ──
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
 
-            foreach (var page in chapter.Pages)
+            // ── 2. Xóa Translation pages từ storage ──────────────────────────────────
+            if (chapter.Translations != null)
             {
-                if (!string.IsNullOrEmpty(page.ImageUrl))
-                    await _storage.DeleteAsync(page.ImageUrl, ct);
+                var translationIds = chapter.Translations.Select(t => t.TranslationId).ToList();
+                var transPages = await _db.TranslationPages
+                    .Where(p => translationIds.Contains(p.TranslationId))
+                    .ToListAsync(ct);
+                foreach (var tp in transPages)
+                    await _storage.DeleteAsync(tp.TranslationImageUrl, ct);
             }
 
+            // ── 3. Xóa Chapter pages từ storage ──────────────────────────────────────
+            foreach (var page in chapter.Pages)
+                if (!string.IsNullOrEmpty(page.ImageUrl))
+                    await _storage.DeleteAsync(page.ImageUrl, ct);
+
+            // ── 4. Cascade EF sẽ tự xóa: Translations, ChapterPages, ChapterText ─────
             _db.Chapters.Remove(chapter);
             await _db.SaveChangesAsync(ct);
 
             _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
         }
-
         public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
         {
-            // Verify team membership
             var isMember = await _db.TeamMembers
                 .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
 
@@ -1130,12 +1141,16 @@ namespace Application.Services.Creator
             if (chapter == null)
                 throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
 
-            // Delete images from cloud storage
+            // ── 1. Xóa ChapterUnlock trước ────────────────────────────────────────────
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
+
+            // ── 2. Xóa ảnh từ storage ────────────────────────────────────────────────
             foreach (var page in chapter.Pages)
-            {
                 if (!string.IsNullOrEmpty(page.ImageUrl))
                     await _storage.DeleteAsync(page.ImageUrl, ct);
-            }
 
             _db.Chapters.Remove(chapter);
             await _db.SaveChangesAsync(ct);

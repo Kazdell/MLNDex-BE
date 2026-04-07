@@ -4,6 +4,7 @@ using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    partial class MlndexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260407101806_FixChapterUnlockTranslationFK")]
+    partial class FixChapterUnlockTranslationFK
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2184,7 +2187,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Chapter", "LastChapter")
                         .WithMany("ReadingHistories")
                         .HasForeignKey("LastChapterId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Series", "Series")

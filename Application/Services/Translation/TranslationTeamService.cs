@@ -48,7 +48,7 @@ namespace Application.Services.Translation
         ReputationScore = 100,
         LockStatus = TeamLockStatus.ACTIVE,
         ModerationStatus = ModerationStatus.APPROVED,
-        IsMonetizationEnabled = false,
+        IsMonetizationEnabled = true,
         AvatarUrl = createDto.AvatarUrl,
         BannerUrl = createDto.BannerUrl,
         Facebook = createDto.Facebook,
