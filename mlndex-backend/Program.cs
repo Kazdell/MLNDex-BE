@@ -148,7 +148,8 @@ namespace mlndex_backend
       // Register multiple IOCRService implementations (Strategy Pattern)
       // ReaderTranslationService consumes IEnumerable<IOCRService>
       builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
-      builder.Services.AddScoped<IOCRService, TesseractOCRService>();
+      builder.Services.AddScoped<TesseractOCRService>();
+      builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
 
       // For backward compatibility (PageTranslationService, ModerationService) which expect single IOCRService,
       // the last one registered wins (TesseractOCRService). Or we can leave it as is if they just pick Tesseract.
