@@ -1,0 +1,6 @@
+# Generated test files
+BE_Function_TestCases_Generated.csv
+UTCID_Functions_Table.csv
+UTCID_Matrix_All_DecisionTable.csv
+cleanup_csv.ps1
+regenerate_decision_table.ps1
