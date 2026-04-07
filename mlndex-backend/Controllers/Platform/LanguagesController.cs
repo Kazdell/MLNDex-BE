@@ -2,7 +2,7 @@ using Application.Interfaces.System;
 using Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlndex_backend.Controllers
+namespace mlndex_backend.Controllers.Platform
 {
   [Route("api/[controller]")]
   public class LanguagesController : BaseController

@@ -1,8 +1,9 @@
 using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using mlndex_backend.Controllers;
 
-namespace mlndex_backend.Controllers;
+namespace mlndex_backend.Controllers.Moderation;
 
 /// <summary>
 /// Public moderation-status endpoints — accessible by ANY authenticated user
@@ -12,11 +13,11 @@ namespace mlndex_backend.Controllers;
 [ApiController]
 [Route("api")]
 [Authorize] // any authenticated user, no role restriction
-public class ModerationController : BaseController
+public class ChapterModerationStatusController : BaseController
 {
   private readonly IChapterService _service;
 
-  public ModerationController(IChapterService service)
+  public ChapterModerationStatusController(IChapterService service)
   {
     _service = service;
   }
