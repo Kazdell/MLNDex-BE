@@ -111,13 +111,6 @@ public class ChapterController : BaseController
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
         if (int.TryParse(claim, out var parsed)) userId = parsed;
 
-    // Lấy translationId từ query string nếu có (?translationId=123)
-    int? translationId = null;
-    if (Request.Query.TryGetValue("translationId", out var tidVal)
-        && int.TryParse(tidVal, out var tid))
-    {
-      translationId = tid;
-    }
 
     try
     {
