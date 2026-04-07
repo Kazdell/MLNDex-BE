@@ -44,5 +44,11 @@ namespace Application.DTOs.Common
     public const string TRANSLATION_NOT_FOUND = "TRANSLATION_NOT_FOUND";
     public const string CHAPTER_ALREADY_UNLOCKED = "CHAPTER_ALREADY_UNLOCKED";
     public const string CHAPTER_LOCKED = "CHAPTER_LOCKED";
+
+    // 🔹 VIP
+    public const string WALLET_NOT_FOUND = "WALLET_NOT_FOUND";
+    public const string SUBSCRIPTION_NOT_FOUND = "SUBSCRIPTION_NOT_FOUND";
+    public const string VIP_PACKAGE_NOT_FOUND = "VIP_PACKAGE_NOT_FOUND";
+    public const string INVALID_TRANSACTION = "INVALID_TRANSACTION";
   }
 }

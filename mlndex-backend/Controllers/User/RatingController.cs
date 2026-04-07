@@ -30,15 +30,8 @@ namespace mlndex_backend.Controllers.User
       var userId = CurrentUserId;
       if (userId == 0) return UnauthorizedResponse("Invalid user context");
 
-      try
-      {
-        var result = await _ratingService.UpsertRatingAsync(userId, dto, ct);
-        return OkResponse(result, "Rating saved successfully.");
-      }
-      catch (ArgumentException ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
+      var result = await _ratingService.UpsertRatingAsync(userId, dto, ct);
+      return OkResponse(result, "Rating saved successfully.");
     }
 
     /// <summary>

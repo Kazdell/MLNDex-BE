@@ -1,4 +1,4 @@
-﻿using Application.DTOs.VIP;
+using Application.DTOs.VIP;
 using Application.Interfaces.Data;
 using Application.Interfaces.VIP;
 using Domain.Entities;
@@ -84,16 +84,16 @@ namespace Application.Services.VIP
 			// 1. Validate plan
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == request.PlanId && p.IsActive)
-				?? throw new InvalidOperationException(
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND,
 					"Gói VIP không tồn tại hoặc đã ngừng hoạt động.");
 
 			// 2. Validate wallet
 			var wallet = await _context.Wallets
 				.FirstOrDefaultAsync(w => w.UserId == userId)
-				?? throw new InvalidOperationException("Wallet không tồn tại.");
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Wallet không tồn tại.");
 
 			if (wallet.CoinBalance < plan.PriceCoins)
-				throw new InvalidOperationException(
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INSUFFICIENT_BALANCE,
 					$"Không đủ coins. Cần {plan.PriceCoins} coins, " +
 					$"hiện có {wallet.CoinBalance} coins.");
 
@@ -163,10 +163,10 @@ namespace Application.Services.VIP
 				.Include(s => s.VipPlan)
 				.FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId
 									   && s.UserId == userId)
-				?? throw new InvalidOperationException("Subscription không tồn tại.");
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SUBSCRIPTION_NOT_FOUND, "Subscription không tồn tại.");
 
 			if (sub.Status != SubscriptionStatus.ACTIVE)
-				throw new InvalidOperationException(
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
 					"Chỉ có thể huỷ subscription đang ACTIVE.");
 
 			// Vẫn còn hiệu lực đến EndDate, chỉ tắt AutoRenew và đánh dấu CANCELLED
@@ -201,7 +201,7 @@ namespace Application.Services.VIP
 			var exists = await _context.VipPlans
 				.AnyAsync(p => p.Name == request.Name);
 			if (exists)
-				throw new InvalidOperationException(
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR,
 					$"Gói VIP tên '{request.Name}' đã tồn tại.");
 
 			var plan = new VipPlan
@@ -233,7 +233,7 @@ namespace Application.Services.VIP
 		{
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == planId)
-				?? throw new InvalidOperationException("Gói VIP không tồn tại.");
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại.");
 
 			// Chỉ cập nhật field nào admin gửi lên
 			if (request.Name != null) plan.Name = request.Name;
@@ -261,7 +261,7 @@ namespace Application.Services.VIP
 		{
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == planId)
-				?? throw new InvalidOperationException("Gói VIP không tồn tại.");
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại.");
 
 			// Không cho xoá nếu đang có user dùng gói này
 			var hasActiveSubs = await _context.VipSubscriptions
@@ -269,7 +269,7 @@ namespace Application.Services.VIP
 							&& s.Status == SubscriptionStatus.ACTIVE
 							&& s.EndDate > DateTime.UtcNow);
 			if (hasActiveSubs)
-				throw new InvalidOperationException(
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
 					"Không thể xoá gói VIP đang có user sử dụng. " +
 					"Hãy tắt IsActive thay vì xoá.");
 

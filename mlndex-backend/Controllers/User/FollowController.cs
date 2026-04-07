@@ -30,19 +30,8 @@ namespace mlndex_backend.Controllers.User
       var userId = CurrentUserId;
       if (userId == 0) return UnauthorizedResponse("Invalid user context");
 
-      try
-      {
-        var result = await _followService.FollowAsync(userId, dto, ct);
-        return OkResponse(result, "Followed successfully.");
-      }
-      catch (InvalidOperationException ex)
-      {
-        return ConflictResponse(ex.Message);
-      }
-      catch (ArgumentException ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
+      var result = await _followService.FollowAsync(userId, dto, ct);
+      return OkResponse(result, "Followed successfully.");
     }
 
     /// <summary>

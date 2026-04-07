@@ -20,7 +20,12 @@ namespace Application.Exceptions
             { ErrorCodes.CHAPTER_ALREADY_UNLOCKED, "Chương này đã được mở khóa từ trước." },
             { ErrorCodes.CHAPTER_LOCKED, "Chương này chưa được mở khóa." },
 
-            { ErrorCodes.OPERATION_NOT_ALLOWED, "Thao tác không được phép." }
+            { ErrorCodes.OPERATION_NOT_ALLOWED, "Thao tác không được phép." },
+
+            { ErrorCodes.WALLET_NOT_FOUND, "Ví không tồn tại." },
+            { ErrorCodes.SUBSCRIPTION_NOT_FOUND, "Gói đăng ký không tồn tại." },
+            { ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại." },
+            { ErrorCodes.INVALID_TRANSACTION, "Giao dịch không hợp lệ hoặc đã được xử lý." }
         };
 
     public static string GetMessage(string code)

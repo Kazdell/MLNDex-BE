@@ -35,23 +35,8 @@ public class TranslationChapterController : BaseController
     int userId = GetUserId();
     if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-    try
-    {
       var result = await _service.GetTeamTranslationsBySeriesAsync(teamId, seriesId, userId, cancellationToken);
       return OkResponse(result);
-    }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-      return UnauthorizedResponse(ex.Message);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
   }
 
   [HttpDelete("teams/{teamId:int}/chapters/{id:int}")]
@@ -60,22 +45,7 @@ public class TranslationChapterController : BaseController
     int userId = GetUserId();
     if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-    try
-    {
       await _service.DeleteTeamTranslationAsync(id, teamId, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương dịch thành công.");
-    }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-      return UnauthorizedResponse(ex.Message);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
   }
 }
