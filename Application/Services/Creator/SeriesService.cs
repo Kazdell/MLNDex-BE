@@ -470,15 +470,17 @@ namespace Application.Services.Creator
                 .ToListAsync();
             var grantedTeamIds = new HashSet<int>(grantedTeamIdsList);
 
-            var unlockedChapterIds = new HashSet<int>();
+            var userUnlocks = new List<(int ChapId, int? TransId)>();
+
             if (userId.HasValue && userId.Value > 0)
             {
                 var chapterIds = series.Chapters.Select(c => c.ChapterId).ToList();
-                var unlockedList = await _context.ChapterUnlocks
+                var unlockData = await _context.ChapterUnlocks
                     .Where(u => u.UserId == userId.Value && chapterIds.Contains(u.ChapterId))
-                    .Select(u => u.ChapterId)
+                    .Select(u => new { u.ChapterId, u.TranslationId })
                     .ToListAsync();
-                unlockedChapterIds = new HashSet<int>(unlockedList);
+
+                userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
             }
 
             // Detect original language from the first original chapter (TeamId == null)
@@ -518,7 +520,7 @@ namespace Application.Services.Creator
             LanguageName = c.Language?.Name,
             CommentCount = 0,
             PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
-            IsUnlockedByUser = unlockedChapterIds.Contains(c.ChapterId),
+            IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null),
             // ── THÊM 3 DÒNG NÀY ──
             LockStatus = effectiveLock.ToString(),
             UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
@@ -550,7 +552,9 @@ namespace Application.Services.Creator
 
             // isUnlocked: đã mua chapter gốc → mở tất cả translation
             // hoặc đã mua đúng translation này
-            var isUnlocked = unlockedChapterIds.Contains(c.ChapterId);
+            var isUnlocked = userUnlocks.Any(u => u.ChapId == c.ChapterId &&
+                 (u.TransId == null || u.TransId == t.TranslationId));
+
             // TODO: nếu muốn check per-translation unlock riêng, cần query ChapterUnlocks theo TranslationId
 
             return new SeriesChapterDto

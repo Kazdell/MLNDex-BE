@@ -707,6 +707,8 @@ namespace Infrastructure.Persistence.Data
                 e.ToTable("ChapterUnlock");
                 e.HasKey(x => x.UnlockId);
                 e.Property(x => x.UnlockId).UseIdentityColumn();
+                e.HasIndex(u => new { u.UserId, u.ChapterId, u.TranslationId })
+     .IsUnique();
                 e.Property(x => x.CoinsPaid).HasColumnType("decimal(10,2)").IsRequired();
                 e.Property(x => x.UnlockSource).HasConversion<string>().IsRequired();
 
@@ -779,7 +781,7 @@ namespace Infrastructure.Persistence.Data
                 e.HasOne(x => x.LastChapter)
                           .WithMany(c => c.ReadingHistories)
                           .HasForeignKey(x => x.LastChapterId)
-                          .OnDelete(DeleteBehavior.SetNull);
+                          .OnDelete(DeleteBehavior.Restrict);
             });
 
             // ====================================================

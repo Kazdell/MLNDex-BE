@@ -285,7 +285,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TranslationId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ChapterId", "TranslationId")
+                        .IsUnique()
+                        .HasFilter("[TranslationId] IS NOT NULL");
 
                     b.ToTable("ChapterUnlock", (string)null);
                 });

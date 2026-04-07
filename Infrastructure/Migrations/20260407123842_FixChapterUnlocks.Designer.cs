@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    [Migration("20260407102932_FixReadingHistoryLastChapterSetNull")]
-    partial class FixReadingHistoryLastChapterSetNull
+    [Migration("20260407123842_FixChapterUnlocks")]
+    partial class FixChapterUnlocks
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -288,7 +288,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TranslationId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ChapterId", "TranslationId")
+                        .IsUnique()
+                        .HasFilter("[TranslationId] IS NOT NULL");
 
                     b.ToTable("ChapterUnlock", (string)null);
                 });
@@ -1017,6 +1019,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(MAX)");
 
                     b.Property<decimal>("ExchangeRateCoinToVnd")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TranslationAuthorCommissionPercent")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")

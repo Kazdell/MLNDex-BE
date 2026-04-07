@@ -286,18 +286,22 @@ namespace Application.Services.Creator
                 if (userId.HasValue && effectiveLockStatus == ChapterLockStatus.LOCKED)
                 {
                     isUnlockedByUser = await _db.ChapterUnlocks
-                        .AnyAsync(u => u.ChapterId == chapterId
-                                    && u.UserId == userId.Value
-                                    && (
-                                        u.TranslationId == null                         // đã mua chapter gốc → mở tất cả
-                                        || (translationId.HasValue                      // hoặc đã mua đúng translation này
-                                            && u.TranslationId == translationId.Value)
-                                    ),
-                                  cancellationToken);
+     .AnyAsync(u => u.ChapterId == chapterId
+                 && u.UserId == userId.Value
+                 && (
+                     u.TranslationId == null // Có vé VIP
+                     || (translationId.HasValue && u.TranslationId == translationId.Value) // Hoặc đúng vé thường
+                 ), cancellationToken);
                 }
-
                 bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
-        && chapter.Series.Creator?.UserId == userId.Value;
+       && chapter.Series.Creator?.UserId == userId.Value;
+
+
+                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+                // Nếu đã mua (isUnlockedByUser) hoặc là Creator, thì status trả về PHẢI LÀ UNLOCKED
+                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+                                  ? ChapterLockStatus.UNLOCKED.ToString()
+                                  : ChapterLockStatus.LOCKED.ToString();
 
                 var dto = new ChapterDetailDto
                 {
@@ -312,7 +316,7 @@ namespace Application.Services.Creator
                     PrevChapterId = prevChapterId,
                     NextChapterId = nextChapterId,
                     Chapters = chapters,
-                    LockStatus = effectiveLockStatus.ToString(),
+                    LockStatus = finalStatus,
                     UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
                     UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
                     IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
@@ -1021,7 +1025,9 @@ namespace Application.Services.Creator
 
             // ── 4. Idempotency ─────────────────────────────────────────────────
             var alreadyUnlocked = await _db.ChapterUnlocks
-                .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId, ct);
+    .AnyAsync(u => u.ChapterId == chapterId
+              && u.UserId == userId
+              && u.TranslationId == null, ct);
             if (alreadyUnlocked)
                 throw new InvalidOperationException("Bạn đã mở khóa chương này rồi.");
 

@@ -34,8 +34,8 @@ public class ChapterController : BaseController
         [FromForm] string? title,
         [FromForm] int? languageId,
         [FromForm] IFormFileCollection pages,
-        [FromForm] string? lockStatus,      
-        [FromForm] int? unlockPriceCoins,    
+        [FromForm] string? lockStatus,
+        [FromForm] int? unlockPriceCoins,
         [FromForm] int? freeAfterDays,
         CancellationToken cancellationToken)
     {
@@ -73,7 +73,7 @@ public class ChapterController : BaseController
             Title = title,
             LanguageId = languageId,
             TeamId = null,
-            LockStatus = parsedLock,        
+            LockStatus = parsedLock,
             UnlockPriceCoins = unlockPriceCoins,
             FreeAfterDays = freeAfterDays,
             Pages = pages.Select((file, index) => new UploadPageDto
@@ -101,29 +101,19 @@ public class ChapterController : BaseController
 
     [AllowAnonymous]
     [HttpGet("chapters/{id:int}")]
-    public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById(
+    int id,
+    [FromQuery] int? translationId, // ASP.NET tự động lấy từ ?translationId=...
+    CancellationToken cancellationToken)
     {
+        // Lấy UserId từ Claims (giữ nguyên logic của bạn)
         int? userId = null;
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                  ?? User.FindFirst("sub")?.Value;
-        if (int.TryParse(claim, out var parsed))
-            userId = parsed;
-
-        // Lấy translationId từ query string nếu có (?translationId=123)
-        int? translationId = null;
-        if (Request.Query.TryGetValue("translationId", out var tidVal)
-            && int.TryParse(tidVal, out var tid))
-        {
-            translationId = tid;
-        }
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (int.TryParse(claim, out var parsed)) userId = parsed;
 
         try
         {
-            var result = await _service.GetChapterDetailAsync(
-                id,
-                userId,
-                translationId,                  // int? — có thể null
-                cancellationToken);             // named arg tránh nhầm slot
+            var result = await _service.GetChapterDetailAsync(id, userId, translationId, cancellationToken);
             if (result == null) return NotFoundResponse("Không tìm thấy chương này.");
             return OkResponse(result);
         }
@@ -327,28 +317,28 @@ public class ChapterController : BaseController
         }
     }
 
-  [HttpDelete("creator/chapters/{id:int}")]
-  public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
-  {
-    int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    [HttpDelete("creator/chapters/{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        int userId = GetUserId();
+        if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
 
-    try
-    {
-      await _service.DeleteAsync(id, userId, cancellationToken);
-      return OkResponse((object?)null, "Xóa chương thành công.");
+        try
+        {
+            await _service.DeleteAsync(id, userId, cancellationToken);
+            return OkResponse((object?)null, "Xóa chương thành công.");
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFoundResponse(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return UnauthorizedResponse(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex.Message);
+        }
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-      return UnauthorizedResponse(ex.Message);
-    }
-    catch (Exception ex)
-    {
-      return ErrorResponse(ex.Message);
-    }
-  }
 }
