@@ -662,7 +662,7 @@ namespace Application.Services.Translation
         );
 
       if (translation == null)
-        throw new KeyNotFoundException(
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, 
           "Không tìm thấy bản dịch hoặc bản dịch không thuộc về nhóm của bạn."
         );
 
@@ -683,7 +683,7 @@ namespace Application.Services.Translation
           .Include(t => t.Permission)
             .ThenInclude(p => p!.Team)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
-        ?? throw new KeyNotFoundException($"Không tìm thấy bản dịch {translationId}.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, $"Không tìm thấy bản dịch {translationId}.");
 
       var chapter =
         translation.Chapter
@@ -772,7 +772,7 @@ namespace Application.Services.Translation
       // ── 7. Kiểm tra ví ───────────────────────────────────────────────────
       var wallet =
         await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId, ct)
-        ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
         throw new Application.Exceptions.AppException(

@@ -40,7 +40,7 @@ namespace Application.Services.Creator
     {
       var creator = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Creator với UserId {userId} không tồn tại.");
 
       // 1. Rate Limit: Max 5 series/ngày
       var todayUtc = DateTime.UtcNow.Date;
@@ -54,7 +54,7 @@ namespace Application.Services.Creator
       // 2. Check Title Duplicate
       var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower(), cancellationToken);
       if (titleExists)
-        throw new ArgumentException("Tiêu đề truyện này đã tồn tại trên hệ thống.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE, "Tiêu đề truyện này đã tồn tại trên hệ thống.");
 
       // 1b. Check Description Duplicate
       if (!string.IsNullOrEmpty(dto.Description))
@@ -67,13 +67,13 @@ namespace Application.Services.Creator
       // 2. Check Blacklist for Title & Description
       var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-        throw new ArgumentException($"Tiêu đề vi phạm: {string.Join(", ", titleCheck.Reasons)}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm: {string.Join(", ", titleCheck.Reasons)}");
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
         var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-          throw new ArgumentException($"Mô tả chứa từ ngữ không phù hợp.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
       }
 
       string? imageUrl = null;
@@ -163,7 +163,7 @@ namespace Application.Services.Creator
           .Include(s => s.SeriesGenres)
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
 
       if (series.Creator.UserId != userId)
       {
@@ -180,7 +180,7 @@ namespace Application.Services.Creator
       }
 
       if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId, cancellationToken))
-        throw new ArgumentException("Tiêu đề mới đã tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE, "Tiêu đề mới đã tồn tại.");
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
@@ -190,13 +190,13 @@ namespace Application.Services.Creator
 
       var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-        throw new ArgumentException($"Tiêu đề vi phạm.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm.");
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
         var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-          throw new ArgumentException($"Mô tả chứa từ ngữ không phù hợp.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
       }
 
       string? newImageUrl = null;
@@ -282,7 +282,7 @@ namespace Application.Services.Creator
     {
       var creator = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Creator với UserId {userId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Creator với UserId {userId} không tồn tại.");
 
       var series = await _context.Series
           .Where(s => s.CreatorId == creator.CreatorId)
@@ -822,13 +822,13 @@ namespace Application.Services.Creator
       var series = await _context.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
 
       if (series.Creator.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
 
       if (!Enum.TryParse<SeriesStatus>(status, true, out var newStatus))
-        throw new ArgumentException($"Trạng thái '{status}' không hợp lệ. Chấp nhận: ONGOING, COMPLETED, HALTED, DROPPED.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Trạng thái '{status}' không hợp lệ. Chấp nhận: ONGOING, COMPLETED, HALTED, DROPPED.");
 
       series.Status = newStatus;
       series.UpdatedAt = DateTime.UtcNow;
@@ -844,7 +844,7 @@ namespace Application.Services.Creator
           .Include(s => s.Chapters).ThenInclude(c => c.Pages)
           .Include(s => s.SeriesGenres)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
 
       if (series.Creator.UserId != userId)
       {

@@ -49,7 +49,7 @@ namespace Application.Services.Creator
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
 
       var series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
-      if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
+      if (series == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
 
       // ── 2. Rate Limit: Max 10 chapters/ngày ─────────────────────────
       var todayUtc = DateTime.UtcNow.Date;
@@ -573,7 +573,7 @@ int chapterId, CancellationToken ct = default)
     {
       var chapter = await _db.Chapters
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}.");
 
       // Block retry if chapter is currently being processed
       // But allow if queue is PENDING but chapter already has a result (stale entry from old code)
@@ -626,7 +626,7 @@ int chapterId, CancellationToken ct = default)
       var series = await _db.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, ct)
-          ?? throw new KeyNotFoundException("Series không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
 
       if (series.Creator.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xem chapters của series này.");
@@ -663,7 +663,7 @@ int chapterId, CancellationToken ct = default)
       // Check if series exists
       var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
       if (!seriesExists)
-        throw new KeyNotFoundException("Series không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
 
       return await _db.Chapters
           .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
@@ -772,7 +772,7 @@ int chapterId, CancellationToken ct = default)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chương {chapterId}.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chương {chapterId}.");
 
       // Ownership check
       if (chapter.Series?.Creator?.UserId != userId)
@@ -958,7 +958,7 @@ int chapterId, CancellationToken ct = default)
       var chapter = await _db.Chapters
           .Include(c => c.Series)
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException("Chapter không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Chapter không tồn tại.");
 
       // 2. Chỉ creator sở hữu series mới được chỉnh
       var creator = await _db.CreatorProfiles
@@ -1005,7 +1005,7 @@ int userId, int chapterId, CancellationToken ct = default)
       var chapter = await _db.Chapters
           .Include(c => c.Series)
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}.");
 
       // ── 2. Must be published ───────────────────────────────────────────
       if (chapter.Status != ChapterStatus.PUBLISHED)
@@ -1041,7 +1041,7 @@ int userId, int chapterId, CancellationToken ct = default)
       // ── 6. Load wallet ─────────────────────────────────────────────────
       var wallet = await _db.Wallets
           .FirstOrDefaultAsync(w => w.UserId == userId, ct)
-          ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < price)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
@@ -1100,7 +1100,7 @@ int userId, int chapterId, CancellationToken ct = default)
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Không tìm thấy chương.");
 
       if (chapter.Series?.Creator?.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
@@ -1146,7 +1146,7 @@ int userId, int chapterId, CancellationToken ct = default)
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
 
       if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
 
             // ── 1. Xóa ChapterUnlock trước ────────────────────────────────────────────
             var unlocks = await _db.ChapterUnlocks

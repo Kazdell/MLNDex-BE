@@ -53,10 +53,7 @@ public class ChapterModerationStatusController : BaseController
       await _service.RetryModerationAsync(chapterId, cancellationToken);
       return OkResponse<object?>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (InvalidOperationException ex)
     {
       return BadRequestResponse(ex.Message);

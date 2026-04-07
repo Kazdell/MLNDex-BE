@@ -105,7 +105,7 @@ namespace Application.Services.Financial
           await _context
               .WithdrawalRequests.Include(w => w.Creator)
               .FirstOrDefaultAsync(w => w.WithdrawalId == withdrawalId, cancellationToken)
-          ?? throw new KeyNotFoundException($"Withdrawal {withdrawalId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WITHDRAWAL_NOT_FOUND, $"Withdrawal {withdrawalId} không tồn tại.");
 
       if (
           entity.Status == WithdrawalStatus.COMPLETED
@@ -158,13 +158,13 @@ namespace Application.Services.Financial
 
       // 1. Validate limits
       if (dto.AmountCoins < config.WithdrawalMinCoins)
-        throw new ArgumentException($"Số tiền rút tối thiểu là {config.WithdrawalMinCoins} coins.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền rút tối thiểu là {config.WithdrawalMinCoins} coins.");
       if (config.WithdrawalMaxCoins > 0 && dto.AmountCoins > config.WithdrawalMaxCoins)
-        throw new ArgumentException($"Số tiền rút tối đa là {config.WithdrawalMaxCoins} coins.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền rút tối đa là {config.WithdrawalMaxCoins} coins.");
 
       // 2. Check wallet balance
       var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == creatorId, cancellationToken)
-          ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
 
       if (wallet.CoinBalance < dto.AmountCoins)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Số dư không đủ để thực hiện yêu cầu này.");

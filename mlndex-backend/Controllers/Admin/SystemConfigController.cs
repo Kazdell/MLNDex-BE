@@ -32,16 +32,9 @@ namespace mlndex_backend.Controllers.Admin
     {
       if (!ModelState.IsValid)
         return BadRequestResponse("Invalid payload");
-      try
-      {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var updated = await _service.UpdateAsync(dto, userId, cancellationToken);
-        return OkResponse(updated, "Updated");
-      }
-      catch (ArgumentException ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
+      var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+      var updated = await _service.UpdateAsync(dto, userId, cancellationToken);
+      return OkResponse(updated, "Updated");
     }
 
     /// <summary>Preview coins sẽ nhận khi nhập số VND.</summary>

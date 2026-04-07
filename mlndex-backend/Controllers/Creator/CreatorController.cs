@@ -47,15 +47,9 @@ namespace mlndex_backend.Controllers.Creator
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
 
-      try
-      {
         var settings = await _creatorService.GetUnlockSettingsAsync(userId, ct);
         return OkResponse(settings, "Lấy cấu hình mở khóa thành công.");
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFound(new ApiResponse<string>(false, ex.Message));
-      }
+
     }
 
     /// <summary>

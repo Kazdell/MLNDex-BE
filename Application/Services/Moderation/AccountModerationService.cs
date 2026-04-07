@@ -24,7 +24,7 @@ namespace Application.Services.Moderation
     {
       var user =
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException("User không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
 
       if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");

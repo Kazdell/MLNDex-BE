@@ -33,7 +33,7 @@ namespace Application.Services.ReportSystem
       if (request.TargetType == TrustScoreTargetType.User)
       {
         var user = await _context.Users.FindAsync(new object[] { request.TargetId }, ct);
-        if (user == null) throw new KeyNotFoundException("User không tồn tại.");
+        if (user == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
 
         int oldScore = user.TrustScore;
         user.TrustScore += request.ScoreToRestore;
@@ -66,7 +66,7 @@ namespace Application.Services.ReportSystem
       else // Team
       {
         var team = await _context.TranslationTeams.FindAsync(new object[] { request.TargetId }, ct);
-        if (team == null) throw new KeyNotFoundException("Team không tồn tại.");
+        if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TEAM_NOT_FOUND, "Team không tồn tại.");
 
         int oldScore = team.TrustScore;
         team.TrustScore += request.ScoreToRestore;
@@ -103,7 +103,7 @@ namespace Application.Services.ReportSystem
     public async Task<AppealDto> CreateAppealAsync(int userId, CreateAppealRequest request, CancellationToken ct = default)
     {
       var user = await _context.Users.FindAsync(new object[] { userId }, ct);
-      if (user == null) throw new KeyNotFoundException("User không tồn tại.");
+      if (user == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
 
       // Check for existing pending appeal
       var existingAppeal = await _context.Appeals
@@ -133,7 +133,7 @@ namespace Application.Services.ReportSystem
           .Include(a => a.User)
           .FirstOrDefaultAsync(a => a.AppealId == appealId, ct);
 
-      if (appeal == null) throw new KeyNotFoundException("Appeal không tồn tại.");
+      if (appeal == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.APPEAL_NOT_FOUND, "Appeal không tồn tại.");
       if (appeal.Status != AppealStatus.Pending)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Appeal đã được xử lý.");
 

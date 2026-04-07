@@ -39,19 +39,8 @@ namespace mlndex_backend.Controllers.Admin
       if (!ModelState.IsValid)
         return BadRequestResponse("Invalid payload");
 
-      try
-      {
         var result = await _service.DecideAsync(id, request, cancellationToken);
         return OkResponse(result, "Updated");
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
-      catch (InvalidOperationException ex)
-      {
-        return ConflictResponse(ex.Message);
-      }
     }
   }
 }

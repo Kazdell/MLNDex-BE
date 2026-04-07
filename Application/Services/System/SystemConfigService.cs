@@ -85,7 +85,7 @@ namespace Application.Services.System
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "System config not found");
 
       if (amountVnd <= 0)
-        throw new ArgumentException("Amount must be greater than 0");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_CONFIG_VALUE, "Amount must be greater than 0");
 
       return (long)Math.Floor(amountVnd / config.ExchangeRateCoinToVnd);
     }
@@ -94,7 +94,7 @@ namespace Application.Services.System
     {
       if (dto.WithdrawalMaxCoins > 0 && dto.WithdrawalMinCoins > dto.WithdrawalMaxCoins)
       {
-        throw new ArgumentException("WithdrawalMinCoins cannot be greater than WithdrawalMaxCoins");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_CONFIG_VALUE, "WithdrawalMinCoins cannot be greater than WithdrawalMaxCoins");
       }
     }
   }

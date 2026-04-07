@@ -69,7 +69,7 @@ namespace Application.Services.AIModeration
           .Include(c => c.Series) // Lấy Series để biết AgeRating
               .ThenInclude(s => s.Creator) // Lấy Creator để biết ReputationScore
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}");
 
       _logger.LogInformation("Chạy AI kiểm duyệt chapter {ChapterId} (Rating: {Rating})", chapterId, chapter.Series.AgeRating);
 
@@ -252,7 +252,7 @@ namespace Application.Services.AIModeration
       var series = await _db.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId)
-          ?? throw new KeyNotFoundException($"Không tìm thấy series {seriesId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Không tìm thấy series {seriesId}");
 
       _logger.LogInformation("Chạy AI kiểm duyệt Series {SeriesId} (Rating: {Rating})", seriesId, series.AgeRating);
 
@@ -395,7 +395,7 @@ namespace Application.Services.AIModeration
               .ThenInclude(p => p!.Team)
               .ThenInclude(t => t!.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId)
-          ?? throw new KeyNotFoundException($"Không tìm thấy translation {translationId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, $"Không tìm thấy translation {translationId}");
 
       _logger.LogInformation("Chạy AI kiểm duyệt translation {TranslationId} (Rating: {Rating})", translationId, translation.Chapter.Series.AgeRating);
 
@@ -579,7 +579,7 @@ namespace Application.Services.AIModeration
     {
       var chapter = await _db.Chapters
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}");
 
       // Chỉ cho appeal khi đang bị Flagged
       if (chapter.ModerationStatus != ModerationStatus.REJECTED)

@@ -22,29 +22,11 @@ namespace mlndex_backend.Controllers.Creator
     [HttpPost]
     public async Task<IActionResult> RequestWithdrawal([FromBody] CreateWithdrawalRequestDto dto)
     {
-      var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-      if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out var userId))
-      {
-        return Unauthorized();
-      }
+      var userId = GetUserId();
+      if (userId == 0) return UnauthorizedResponse();
 
-      try
-      {
-        var result = await _withdrawalService.RequestAsync(userId, dto);
-        return Ok(new { success = true, data = result });
-      }
-      catch (ArgumentException ex)
-      {
-        return BadRequest(new { success = false, message = ex.Message });
-      }
-      catch (InvalidOperationException ex)
-      {
-        return BadRequest(new { success = false, message = ex.Message });
-      }
-      catch (Exception)
-      {
-        return StatusCode(500, new { success = false, message = "Đã có lỗi xảy ra khi xử lý yêu cầu." });
-      }
+      var result = await _withdrawalService.RequestAsync(userId, dto);
+      return OkResponse(result, "Thành công");
     }
   }
 }

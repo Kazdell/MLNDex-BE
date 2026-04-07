@@ -140,10 +140,7 @@ public class ChapterController : BaseController
       var result = await _service.GetBySeriesAsync(seriesId, userId, cancellationToken);
       return OkResponse(result);
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -246,10 +243,7 @@ public class ChapterController : BaseController
       var result = await _service.UpdateAsync(id, userId, dto, newPages, cancellationToken);
       return OkResponse(result, "Cập nhật chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -279,10 +273,7 @@ public class ChapterController : BaseController
       var result = await _service.UpdateChapterLockStatusAsync(chapterId, userId, dto, cancellationToken);
       return OkResponse(result, "Cập nhật trạng thái khóa thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -308,10 +299,7 @@ public class ChapterController : BaseController
       var result = await _service.UnlockAsync(userId, chapterId, ct);
       return OkResponse(result, "Mở khóa chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (InvalidOperationException ex)
     {
       return BadRequestResponse(ex.Message);
@@ -333,10 +321,7 @@ public class ChapterController : BaseController
       await _service.DeleteAsync(id, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);

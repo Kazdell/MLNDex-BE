@@ -143,7 +143,7 @@ public class TopUpService : ITopUpService
     {
       var package = await _context.CoinPackages
           .FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
-          ?? throw new KeyNotFoundException("Gói coin không tồn tại hoặc đã ngừng bán.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại hoặc đã ngừng bán.");
       amountVnd = (long)package.PriceVnd;
       coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
     }
@@ -151,15 +151,15 @@ public class TopUpService : ITopUpService
     {
       amountVnd = request.CustomAmountVnd!.Value;
       if (amountVnd < (long)rate.WithdrawalMinCoins)
-        throw new ArgumentException($"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
       if (amountVnd > (long)rate.WithdrawalMaxCoins)
-        throw new ArgumentException($"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
       coinsWillReceive = (long)Math.Floor(amountVnd / rate.ExchangeRateCoinToVnd);
     }
 
     var wallet = await _context.Wallets
         .FirstOrDefaultAsync(w => w.UserId == userId)
-        ?? throw new KeyNotFoundException("Không tìm thấy ví của user.");
+        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của user.");
 
     var txnRef = GenerateOrderCode().ToString();
     var expiredAt = DateTime.UtcNow.AddMinutes(15);

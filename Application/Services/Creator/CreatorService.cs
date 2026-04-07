@@ -114,7 +114,7 @@ namespace Application.Services.Creator
       if (settings == null)
       {
         // You might want to use your custom Exception type here
-        throw new KeyNotFoundException($"Creator profile for User {userId} not found.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Creator profile for User {userId} not found.");
       }
 
       return settings;

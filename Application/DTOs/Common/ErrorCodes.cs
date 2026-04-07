@@ -39,11 +39,35 @@ namespace Application.DTOs.Common
     public const string INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE";
     public const string OPERATION_NOT_ALLOWED = "OPERATION_NOT_ALLOWED";
 
-    // 🔹 Translation & Unlock
+    // 🔹 Payment & Financial
+    public const string COIN_PACKAGE_NOT_FOUND = "COIN_PACKAGE_NOT_FOUND";
+    public const string INVALID_WITHDRAWAL_AMOUNT = "INVALID_WITHDRAWAL_AMOUNT";
+    public const string WITHDRAWAL_NOT_FOUND = "WITHDRAWAL_NOT_FOUND";
+
+    // 🔹 Moderation & Report
+    public const string REPORT_NOT_FOUND = "REPORT_NOT_FOUND";
+    public const string MODERATION_QUEUE_NOT_FOUND = "MODERATION_QUEUE_NOT_FOUND";
+    public const string MODERATOR_NOT_FOUND = "MODERATOR_NOT_FOUND";
+    public const string INVALID_MODERATOR_ACTION = "INVALID_MODERATOR_ACTION";
+    public const string APPEAL_NOT_FOUND = "APPEAL_NOT_FOUND";
+
+    // 🔹 System
+    public const string INVALID_CONFIG_VALUE = "INVALID_CONFIG_VALUE";
+
+    // 🔹 Translation & Teams
+    public const string TEAM_NOT_FOUND = "TEAM_NOT_FOUND";
+    public const string NOT_TEAM_MEMBER = "NOT_TEAM_MEMBER";
+    public const string INVITATION_NOT_FOUND = "INVITATION_NOT_FOUND";
     public const string DUPLICATE_TRANSLATION_TEAM = "DUPLICATE_TRANSLATION_TEAM";
     public const string TRANSLATION_NOT_FOUND = "TRANSLATION_NOT_FOUND";
     public const string CHAPTER_ALREADY_UNLOCKED = "CHAPTER_ALREADY_UNLOCKED";
     public const string CHAPTER_LOCKED = "CHAPTER_LOCKED";
+
+    // 🔹 Creator & Series
+    public const string SERIES_NOT_FOUND = "SERIES_NOT_FOUND";
+    public const string CHAPTER_NOT_FOUND = "CHAPTER_NOT_FOUND";
+    public const string DUPLICATE_SERIES_TITLE = "DUPLICATE_SERIES_TITLE";
+    public const string PROHIBITED_CONTENT = "PROHIBITED_CONTENT";
 
     // 🔹 VIP
     public const string WALLET_NOT_FOUND = "WALLET_NOT_FOUND";
