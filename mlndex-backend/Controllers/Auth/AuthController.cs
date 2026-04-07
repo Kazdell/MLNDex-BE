@@ -100,17 +100,6 @@ namespace mlndex_backend.Controllers.Auth
       return OkResponse(result, "Đăng nhập Facebook thành công.");
     }
 
-    // POST /api/auth/facebook
-    [HttpPost("facebook")]
-    public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginDto dto)
-    {
-      if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
-
-      var result = await _authService.FacebookLoginAsync(dto);
-      if (result == null)
-        return UnauthorizedResponse("Facebook token không hợp lệ.");
-
     // POST /api/auth/refresh
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)

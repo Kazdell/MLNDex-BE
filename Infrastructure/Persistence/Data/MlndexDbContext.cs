@@ -177,7 +177,7 @@ namespace Infrastructure.Persistence.Data
         e.Property(x => x.PlanId).UseIdentityColumn();
         e.Property(x => x.Name).HasMaxLength(25).IsRequired();
         e.Property(x => x.Description).HasMaxLength(255);
-        e.Property(x => x.PriceVnd).HasColumnType("decimal(10,2)").IsRequired();
+        e.Property(x => x.PriceCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.DurationDays).IsRequired();
         e.Property(x => x.AutoUnlockChapter).IsRequired();
         e.Property(x => x.IsActive).IsRequired();
