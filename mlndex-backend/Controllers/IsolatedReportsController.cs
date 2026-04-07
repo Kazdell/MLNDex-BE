@@ -61,6 +61,15 @@ namespace mlndex_backend.Controllers
       return Ok(new { Data = reports });
     }
 
+    /// <summary>Lấy thống kê báo cáo (Moderator).</summary>
+    [HttpGet("/api/isolated-moderator/reports/stats")]
+    [Authorize(Roles = "MODERATOR,ADMIN")]
+    public async Task<IActionResult> GetStats()
+    {
+      var stats = await _reportService.GetReportStatsAsync();
+      return Ok(stats);
+    }
+
     /// <summary>Xử lý một báo cáo (Moderator).</summary>
     [HttpPost("/api/isolated-moderator/reports/{id}/resolve")]
     [Authorize(Roles = "MODERATOR,ADMIN")]
