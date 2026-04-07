@@ -9,7 +9,6 @@ using FluentAssertions;
 using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-
 using Application.Tests.Shared;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;

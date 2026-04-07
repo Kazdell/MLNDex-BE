@@ -15,7 +15,6 @@ using Application.Interfaces.System;
 using Application.Interfaces.Translation;
 using Application.Interfaces.User;
 using Application.Interfaces.VIP;
-using Application.Interfaces.OCR;
 using Application.Services;
 using Application.Services.AIModeration;
 using Application.Services.Auth;
@@ -32,7 +31,7 @@ using Application.Services.VIP;
 using Infrastructure.Adapters.AIModeration;
 using Infrastructure.Adapters.Cloudinary;
 using Infrastructure.Adapters.Moderation;
-using Infrastructure.Adapters.Tesseract;
+//using Infrastructure.Adapters.Tesseract;
 using Infrastructure.BackgroundJobs.VIP;
 using Infrastructure.Services.OCR;
 using Infrastructure.Adapters.Translation;
@@ -264,10 +263,10 @@ namespace mlndex_backend
 				options.AddPolicy("AllowSpecificOrigin", policy =>
 				{
 					policy
-									  .WithOrigins(allowedOrigins.ToArray())
-									  .AllowAnyHeader()
-									  .AllowAnyMethod()
-									  .AllowCredentials();
+					.WithOrigins(allowedOrigins.ToArray())
+					.AllowAnyHeader()
+					.AllowAnyMethod()
+					.AllowCredentials();
 				});
 			});
 

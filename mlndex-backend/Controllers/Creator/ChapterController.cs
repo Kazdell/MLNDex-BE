@@ -1,6 +1,7 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
+using Application.Interfaces.VIP;
 using Application.Services.Creator;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,7 @@ public class ChapterController : BaseController
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-  public ChapterController(IChapterService service, IMlndexDbContext db, IVipService vipService)
+  public ChapterController(IChapterService service, IMlndexDbContext db)
   {
     _service = service;
     _db = db;
