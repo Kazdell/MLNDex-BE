@@ -10,8 +10,8 @@ namespace Application.DTOs.Translation.Responses
   {
     public int TranslationId { get; set; }
     public int ChapterId { get; set; }
-    public decimal CoinsSpent { get; set; }   // was int
-    public decimal NewCoinBalance { get; set; }   // was int
+    public decimal CoinsSpent { get; set; }
+    public decimal NewCoinBalance { get; set; }
     public string Message { get; set; } = string.Empty;
   }
 }

@@ -289,15 +289,20 @@ CancellationToken cancellationToken = default)
               .AnyAsync(u => u.ChapterId == chapterId
                           && u.UserId == userId.Value
                           && (
-                              u.TranslationId == null                         // đã mua chapter gốc → mở tất cả
-                              || (translationId.HasValue                      // hoặc đã mua đúng translation này
-                                  && u.TranslationId == translationId.Value)
+                              u.TranslationId == null // đã mua chapter gốc → mở tất cả
+                              || (translationId.HasValue && u.TranslationId == translationId.Value) // hoặc đã mua đúng translation này
                           ),
                         cancellationToken);
         }
-
         bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
 && chapter.Series.Creator?.UserId == userId.Value;
+
+
+                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+                // Nếu đã mua (isUnlockedByUser) hoặc là Creator, thì status trả về PHẢI LÀ UNLOCKED
+                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+                                  ? ChapterLockStatus.UNLOCKED.ToString()
+                                  : ChapterLockStatus.LOCKED.ToString();
 
         var dto = new ChapterDetailDto
         {
@@ -312,7 +317,7 @@ CancellationToken cancellationToken = default)
           PrevChapterId = prevChapterId,
           NextChapterId = nextChapterId,
           Chapters = chapters,
-          LockStatus = effectiveLockStatus.ToString(),
+                    LockStatus = finalStatus,
           UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
           UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
           IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
@@ -1021,7 +1026,9 @@ int userId, int chapterId, CancellationToken ct = default)
 
       // ── 4. Idempotency ─────────────────────────────────────────────────
       var alreadyUnlocked = await _db.ChapterUnlocks
-          .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId, ct);
+    .AnyAsync(u => u.ChapterId == chapterId
+              && u.UserId == userId
+              && u.TranslationId == null, ct);
       if (alreadyUnlocked)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã mở khóa chương này rồi.");
 
@@ -1095,28 +1102,39 @@ int userId, int chapterId, CancellationToken ct = default)
       if (chapter == null)
         throw new KeyNotFoundException("Không tìm thấy chương.");
 
-      // Verify ownership
       if (chapter.Series?.Creator?.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
 
-      // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
-      // Let's assume it cascade deletes or we allow it. Here we just delete the images.
+            // ── 1. Xóa ChapterUnlock trước (có thể trỏ vào Translation hoặc Chapter) ──
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
 
-      foreach (var page in chapter.Pages)
+            // ── 2. Xóa Translation pages từ storage ──────────────────────────────────
+            if (chapter.Translations != null)
       {
-        if (!string.IsNullOrEmpty(page.ImageUrl))
-          await _storage.DeleteAsync(page.ImageUrl, ct);
+                var translationIds = chapter.Translations.Select(t => t.TranslationId).ToList();
+                var transPages = await _db.TranslationPages
+                    .Where(p => translationIds.Contains(p.TranslationId))
+                    .ToListAsync(ct);
+                foreach (var tp in transPages)
+                    await _storage.DeleteAsync(tp.TranslationImageUrl, ct);
       }
 
+            // ── 3. Xóa Chapter pages từ storage ──────────────────────────────────────
+            foreach (var page in chapter.Pages)
+                if (!string.IsNullOrEmpty(page.ImageUrl))
+                    await _storage.DeleteAsync(page.ImageUrl, ct);
+
+            // ── 4. Cascade EF sẽ tự xóa: Translations, ChapterPages, ChapterText ─────
       _db.Chapters.Remove(chapter);
       await _db.SaveChangesAsync(ct);
 
       _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
     }
-
     public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
     {
-      // Verify team membership
       var isMember = await _db.TeamMembers
           .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
 
@@ -1130,12 +1148,16 @@ int userId, int chapterId, CancellationToken ct = default)
       if (chapter == null)
         throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
 
-      // Delete images from cloud storage
+            // ── 1. Xóa ChapterUnlock trước ────────────────────────────────────────────
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
+
+            // ── 2. Xóa ảnh từ storage ────────────────────────────────────────────────
       foreach (var page in chapter.Pages)
-      {
         if (!string.IsNullOrEmpty(page.ImageUrl))
           await _storage.DeleteAsync(page.ImageUrl, ct);
-      }
 
       _db.Chapters.Remove(chapter);
       await _db.SaveChangesAsync(ct);

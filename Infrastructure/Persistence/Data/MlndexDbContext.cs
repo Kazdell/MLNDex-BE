@@ -539,7 +539,7 @@ namespace Infrastructure.Persistence.Data
         e.HasOne(x => x.Chapter)
                         .WithMany(c => c.Translations)
                         .HasForeignKey(x => x.ChapterId)
-                        .OnDelete(DeleteBehavior.Restrict);
+                          .OnDelete(DeleteBehavior.Cascade);
 
         e.HasOne(x => x.Permission)
                         .WithMany(p => p.Translations)
@@ -707,6 +707,8 @@ namespace Infrastructure.Persistence.Data
         e.ToTable("ChapterUnlock");
         e.HasKey(x => x.UnlockId);
         e.Property(x => x.UnlockId).UseIdentityColumn();
+                e.HasIndex(u => new { u.UserId, u.ChapterId, u.TranslationId })
+     .IsUnique();
         e.Property(x => x.CoinsPaid).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.UnlockSource).HasConversion<string>().IsRequired();
 
@@ -724,6 +726,11 @@ namespace Infrastructure.Persistence.Data
                         .WithOne(t => t.ChapterUnlock)
                         .HasForeignKey<ChapterUnlock>(x => x.TransactionId)
                         .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.Translation)
+        .WithMany()
+        .HasForeignKey(x => x.TranslationId)
+        .OnDelete(DeleteBehavior.SetNull)
+        .IsRequired(false);
       });
 
       // ====================================================
