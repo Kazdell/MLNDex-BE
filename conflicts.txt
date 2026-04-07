@@ -1,0 +1,16 @@
+Application/DTOs/Chapter/ChapterDetailDto.cs
+Application/DTOs/Creator/SeriesDTOs.cs
+Application/DTOs/Translation/Responses/TranslationResponses.cs
+Application/DTOs/Translation/Responses/UnlockTranslationResponseDto.cs
+Application/Interfaces/Creator/IChapterService.cs
+Application/Interfaces/Translation/ITranslationService.cs
+Application/Services/Creator/ChapterService.cs
+Application/Services/Creator/SeriesService.cs
+Application/Services/Translation/TranslationService.cs
+Domain/Entities/ChapterUnlock.cs
+Domain/Entities/TranslationTeam.cs
+Infrastructure/Migrations/20260405163428_AddTranslationToChapterUnlock.cs
+Infrastructure/Migrations/MlndexDbContextModelSnapshot.cs
+Infrastructure/Persistence/Data/MlndexDbContext.cs
+mlndex-backend/Controllers/Creator/ChapterController.cs
+mlndex-backend/Controllers/Translation/TranslationsController.cs

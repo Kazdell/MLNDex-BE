@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Domain.Entities
 {
   public class ChapterUnlock
-  {
+{
     public int UnlockId { get; set; }
     public int ChapterId { get; set; }
     public int UserId { get; set; }

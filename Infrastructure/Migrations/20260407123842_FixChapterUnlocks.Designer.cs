@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(MlndexDbContext))]
-    [Migration("20260405163428_AddTranslationToChapterUnlock")]
-    partial class AddTranslationToChapterUnlock
+    [Migration("20260407123842_FixChapterUnlocks")]
+    partial class FixChapterUnlocks
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -288,7 +288,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TranslationId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ChapterId", "TranslationId")
+                        .IsUnique()
+                        .HasFilter("[TranslationId] IS NOT NULL");
 
                     b.ToTable("ChapterUnlock", (string)null);
                 });
@@ -1017,6 +1019,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(MAX)");
 
                     b.Property<decimal>("ExchangeRateCoinToVnd")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TranslationAuthorCommissionPercent")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -2043,7 +2048,8 @@ namespace Infrastructure.Migrations
 
                     b.HasOne("Domain.Entities.Translation", "Translation")
                         .WithMany()
-                        .HasForeignKey("TranslationId");
+                        .HasForeignKey("TranslationId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Entities.User", "User")
                         .WithMany()
@@ -2186,7 +2192,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Chapter", "LastChapter")
                         .WithMany("ReadingHistories")
                         .HasForeignKey("LastChapterId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.SetNull)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Series", "Series")
@@ -2381,7 +2387,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Chapter", "Chapter")
                         .WithMany("Translations")
                         .HasForeignKey("ChapterId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Language", "Language")
