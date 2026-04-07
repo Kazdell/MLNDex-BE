@@ -6,23 +6,23 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace mlndex_backend.Controllers.Auth
 {
-  [ApiController]
-  [Route("api/auth")]
-  public class AuthController : BaseController
-  {
-    private readonly IAuthService _authService;
+	[ApiController]
+	[Route("api/auth")]
+	public class AuthController : BaseController
+	{
+		private readonly IAuthService _authService;
 
-    public AuthController(IAuthService authService)
-    {
-      _authService = authService;
-    }
+		public AuthController(IAuthService authService)
+		{
+			_authService = authService;
+		}
 
-    // POST /api/auth/register
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
-    {
-      if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+		// POST /api/auth/register
+		[HttpPost("register")]
+		public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
       var result = await _authService.RegisterAsync(dto);
       return result.Success
@@ -30,12 +30,12 @@ namespace mlndex_backend.Controllers.Auth
           : BadRequestResponse(result.Message);
     }
 
-    // POST /api/auth/verify-otp
-    [HttpPost("verify-otp")]
-    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
-    {
-      if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+		// POST /api/auth/verify-otp
+		[HttpPost("verify-otp")]
+		public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
       var result = await _authService.VerifyEmailOtpAsync(dto);
       return result.Success
@@ -43,28 +43,28 @@ namespace mlndex_backend.Controllers.Auth
           : BadRequestResponse(result.Message);
     }
 
-    // POST /api/auth/login
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
-    {
-      if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+		// POST /api/auth/login
+		[HttpPost("login")]
+		public async Task<IActionResult> Login([FromBody] LoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
-      var result = await _authService.LoginAsync(dto);
-      if (result == null)
-        return UnauthorizedResponse("Email/password không đúng hoặc chưa xác thực email.");
+			var result = await _authService.LoginAsync(dto);
+			if (result == null)
+				return UnauthorizedResponse("Email/password không đúng hoặc chưa xác thực email.");
 
-      return OkResponse(result, "Đăng nhập thành công.");
-    }
+			return OkResponse(result, "Đăng nhập thành công.");
+		}
 
-    // POST /api/auth/logout
-    [HttpPost("logout")]
-    [Authorize]
-    public async Task<IActionResult> Logout()
-    {
-      var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-      if (string.IsNullOrEmpty(token))
-        return BadRequestResponse("Token không hợp lệ.");
+		// POST /api/auth/logout
+		[HttpPost("logout")]
+		[Authorize]
+		public async Task<IActionResult> Logout()
+		{
+			var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+			if (string.IsNullOrEmpty(token))
+				return BadRequestResponse("Token không hợp lệ.");
 
       var result = await _authService.LogoutAsync(token);
       return result.Success
@@ -100,7 +100,16 @@ namespace mlndex_backend.Controllers.Auth
       return OkResponse(result, "Đăng nhập Facebook thành công.");
     }
 
+    // POST /api/auth/facebook
+    [HttpPost("facebook")]
+    public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginDto dto)
+    {
+      if (!ModelState.IsValid)
+        return BadRequestResponse("Dữ liệu không hợp lệ.");
 
+      var result = await _authService.FacebookLoginAsync(dto);
+      if (result == null)
+        return UnauthorizedResponse("Facebook token không hợp lệ.");
 
     // POST /api/auth/refresh
     [HttpPost("refresh")]

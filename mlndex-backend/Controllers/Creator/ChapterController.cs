@@ -220,6 +220,81 @@ public class ChapterController : BaseController
     {
       parsedLockStatus = lockEnum;
     }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequestResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
+
+  [Authorize(Roles = "CREATOR,ADMIN")]
+  [HttpPatch("creator/chapters/{chapterId:int}/lock")]
+  public async Task<IActionResult> UpdateLockStatus(
+  int chapterId,
+  [FromBody] UpdateChapterLockDto dto,
+  CancellationToken cancellationToken)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+
+    try
+    {
+      var result = await _service.UpdateChapterLockStatusAsync(chapterId, userId, dto, cancellationToken);
+      return OkResponse(result, "Cập nhật trạng thái khóa thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return UnauthorizedResponse(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequestResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
+
+  [HttpPost("chapters/{chapterId:int}/unlock")]
+  public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
+  {
+    int userId = GetUserId();
+    if (userId == 0) return UnauthorizedResponse("Vui lòng đăng nhập.");
+
+    try
+    {
+      var result = await _service.UnlockAsync(userId, chapterId, ct);
+      return OkResponse(result, "Mở khóa chương thành công.");
+    }
+    catch (KeyNotFoundException ex)
+    {
+      return NotFoundResponse(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequestResponse(ex.Message);
+    }
+    catch (Exception ex)
+    {
+      return ErrorResponse(ex.Message);
+    }
+  }
 
     var dto = new UpdateChapterDto
     {

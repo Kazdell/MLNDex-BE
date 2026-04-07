@@ -201,7 +201,17 @@ public class TopUpService : ITopUpService
     };
   }
 
+    // Người dùng cancel hoặc error
+    transaction.Status = TransactionStatus.FAILED;
+    await _context.SaveChangesAsync();
 
+    return new TopUpCallbackResponseDto
+    {
+      TxnRef = callback.TxnRef,
+      Status = "failed",
+      Message = $"Thanh toán thất bại hoặc bị huỷ."
+    };
+  }
 
   public async Task<TopUpCallbackResponseDto> HandlePayOsWebhookAsync(PayOsWebhookData webhookData)
   {
@@ -224,7 +234,18 @@ public class TopUpService : ITopUpService
     return await ProcessCallbackAsync(callback);
   }
 
+    _logger.LogInformation("[TopUp] Completed. TxnRef={TxnRef} Coins={Coins} UserId={UserId}",
+        txnRef, transaction.AmountCoins, transaction.UserId);
 
+    return new TopUpCallbackResponseDto
+    {
+      TxnRef = txnRef,
+      Status = "success",
+      CoinsAdded = (long)transaction.AmountCoins,
+      NewBalance = wallet.CoinBalance,
+      Message = $"Nạp thành công {transaction.AmountCoins:N0} coins."
+    };
+  }
 
   private async Task<TopUpCallbackResponseDto> ProcessCallbackAsync(PaymentCallbackDto callback)
   {

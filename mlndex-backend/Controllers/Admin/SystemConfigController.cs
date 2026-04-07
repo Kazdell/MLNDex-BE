@@ -12,17 +12,17 @@ namespace mlndex_backend.Controllers.Admin
   {
     private readonly ISystemConfigService _service;
 
-    public SystemConfigController(ISystemConfigService service)
-    {
-      _service = service;
-    }
+		public SystemConfigController(ISystemConfigService service)
+		{
+			_service = service;
+		}
 
-    [HttpGet]
-    public async Task<IActionResult> Get(CancellationToken cancellationToken)
-    {
-      var config = await _service.GetAsync(cancellationToken);
-      return OkResponse(config);
-    }
+		[HttpGet]
+		public async Task<IActionResult> Get(CancellationToken cancellationToken)
+		{
+			var config = await _service.GetAsync(cancellationToken);
+			return OkResponse(config);
+		}
 
     [HttpPut]
     public async Task<IActionResult> Update(

@@ -50,6 +50,6 @@ namespace Application.Interfaces.Data
     DbSet<Appeal> Appeals { get; set; }
     DbSet<SystemConfigs> SystemConfigs { get; set; }
 
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-  }
+		Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+	}
 }
