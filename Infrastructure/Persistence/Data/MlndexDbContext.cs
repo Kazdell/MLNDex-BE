@@ -99,8 +99,8 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.BannerUrl);
 				e.Property(x => x.Bio);
 				e.Property(x => x.IsActive).IsRequired();
-				e.Property(x => x.TrustScore).HasDefaultValue(100);
-				e.Property(x => x.CannotUpload).HasDefaultValue(false);
+				e.Property(x => x.TrustScore).IsRequired();
+				e.Property(x => x.CannotUpload).IsRequired();
 			});
 
       // ====================================================
@@ -303,7 +303,7 @@ namespace Infrastructure.Persistence.Data
 				e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
 				e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
 				e.Property(x => x.ReputationScore).IsRequired();
-				e.Property(x => x.TrustScore).HasDefaultValue(100);
+				e.Property(x => x.TrustScore).IsRequired();
 				e.Property(x => x.LockStatus)
 								.HasConversion<string>()
 								.IsRequired();
