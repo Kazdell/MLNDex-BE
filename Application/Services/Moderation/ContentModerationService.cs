@@ -29,7 +29,7 @@ namespace Application.Services.Moderation
           await _context.ModerationQueues.FirstOrDefaultAsync(
               q => q.QueueId == queueId,
               cancellationToken
-          ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
+          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Queue item không tồn tại.");
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Queue đã được xử lý.");
@@ -98,7 +98,7 @@ namespace Application.Services.Moderation
               await _context.Series.FirstOrDefaultAsync(
                   s => s.SeriesId == queue.ContentId,
                   cancellationToken
-              ) ?? throw new KeyNotFoundException("Series không tồn tại.");
+              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
           series.ModerationStatus = status;
           break;
         case ModerationQueueContentType.CHAPTER:
@@ -106,7 +106,7 @@ namespace Application.Services.Moderation
               await _context.Chapters.FirstOrDefaultAsync(
                   c => c.ChapterId == queue.ContentId,
                   cancellationToken
-              ) ?? throw new KeyNotFoundException("Chapter không tồn tại.");
+              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Chapter không tồn tại.");
           chapter.ModerationStatus = status;
           // Auto-publish when approved, keep DRAFT otherwise
           if (status == ModerationStatus.APPROVED)
@@ -124,7 +124,7 @@ namespace Application.Services.Moderation
               await _context.Translations.FirstOrDefaultAsync(
                   t => t.TranslationId == queue.ContentId,
                   cancellationToken
-              ) ?? throw new KeyNotFoundException("Translation không tồn tại.");
+              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Translation không tồn tại.");
           translation.ModerationStatus = status;
           break;
         default:

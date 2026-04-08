@@ -26,7 +26,7 @@ namespace Application.Services.Moderation
           await _context.ModerationQueues.FirstOrDefaultAsync(
               q => q.QueueId == queueId,
               cancellationToken
-          ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
+          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Queue item không tồn tại.");
 
       var targetUserId =
           await ResolveTargetUserId(queue, cancellationToken)

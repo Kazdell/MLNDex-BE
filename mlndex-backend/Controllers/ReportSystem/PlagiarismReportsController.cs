@@ -50,10 +50,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _reportService.ResolveReportAsync(id, userId, request);
         return Ok(result);
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFound(new { message = ex.Message });
-      }
+
       catch (InvalidOperationException ex)
       {
         return BadRequest(new { message = ex.Message });
@@ -69,10 +66,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
         return Ok(result);
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFound(new { message = ex.Message });
-      }
+
       catch (InvalidOperationException ex)
       {
         return BadRequest(new { message = ex.Message });

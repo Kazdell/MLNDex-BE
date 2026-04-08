@@ -1,5 +1,6 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
+using Application.Interfaces.Financial;
 using Application.Interfaces.Data;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -14,16 +15,19 @@ namespace mlndex_backend.Controllers.Creator;
 public class ChapterController : BaseController
 {
   private readonly IChapterService _service;
+  private readonly IContentUnlockService _contentUnlockService;
   private readonly IMlndexDbContext _db;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-  public ChapterController(IChapterService service, IMlndexDbContext db, IVipService vipService)
+  private readonly Application.Interfaces.AIModeration.IModerationService _moderationService;
+  public ChapterController(IChapterService service, IContentUnlockService contentUnlockService, Application.Interfaces.AIModeration.IModerationService moderationService, IMlndexDbContext db)
   {
     _service = service;
+    _contentUnlockService = contentUnlockService;
+    _moderationService = moderationService;
     _db = db;
   }
-  
   [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpPost("creator/chapters/create")]
   [RequestSizeLimit(300 * 1024 * 1024)]
@@ -100,21 +104,16 @@ public class ChapterController : BaseController
 
   [AllowAnonymous]
   [HttpGet("chapters/{id:int}")]
-  public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById(
+    int id,
+    [FromQuery] int? translationId, // ASP.NET tự động lấy từ ?translationId=...
+    CancellationToken cancellationToken)
   {
+        // Lấy UserId từ Claims (giữ nguyên logic của bạn)
     int? userId = null;
-    var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-              ?? User.FindFirst("sub")?.Value;
-    if (int.TryParse(claim, out var parsed))
-      userId = parsed;
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (int.TryParse(claim, out var parsed)) userId = parsed;
 
-    // Lấy translationId từ query string nếu có (?translationId=123)
-    int? translationId = null;
-    if (Request.Query.TryGetValue("translationId", out var tidVal)
-        && int.TryParse(tidVal, out var tid))
-    {
-      translationId = tid;
-    }
 
     try
     {
@@ -144,10 +143,7 @@ public class ChapterController : BaseController
       var result = await _service.GetBySeriesAsync(seriesId, userId, cancellationToken);
       return OkResponse(result);
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -250,10 +246,7 @@ public class ChapterController : BaseController
       var result = await _service.UpdateAsync(id, userId, dto, newPages, cancellationToken);
       return OkResponse(result, "Cập nhật chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -283,10 +276,7 @@ public class ChapterController : BaseController
       var result = await _service.UpdateChapterLockStatusAsync(chapterId, userId, dto, cancellationToken);
       return OkResponse(result, "Cập nhật trạng thái khóa thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -309,13 +299,10 @@ public class ChapterController : BaseController
 
     try
     {
-      var result = await _service.UnlockAsync(userId, chapterId, ct);
+      var result = await _contentUnlockService.UnlockChapterAsync(userId, chapterId, ct);
       return OkResponse(result, "Mở khóa chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (InvalidOperationException ex)
     {
       return BadRequestResponse(ex.Message);
@@ -337,10 +324,7 @@ public class ChapterController : BaseController
       await _service.DeleteAsync(id, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương thành công.");
     }
-    catch (KeyNotFoundException ex)
-    {
-      return NotFoundResponse(ex.Message);
-    }
+
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);

@@ -35,31 +35,19 @@ namespace mlndex_backend.Controllers.Admin
       if (!ModelState.IsValid)
         return BadRequestResponse("Invalid payload");
 
-      try
-      {
         var result = await _service.AssignAsync(request.UserId, cancellationToken);
         return OkResponse(result, "Moderator assigned");
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
     }
 
     [HttpDelete("{userId:int}")]
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Remove(int userId, CancellationToken cancellationToken)
     {
-      try
-      {
         var moderatorId = GetUserId();
         await _service.RemoveAsync(userId, moderatorId, cancellationToken);
         return OkResponse<object?>(null, "Moderator removed");
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
     }
   }
 }

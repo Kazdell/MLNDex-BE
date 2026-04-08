@@ -47,10 +47,7 @@ namespace mlndex_backend.Controllers.Admin
         );
         return OkResponse(result, "Updated");
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
       catch (InvalidOperationException ex)
       {
         return ConflictResponse(ex.Message);
@@ -81,10 +78,7 @@ namespace mlndex_backend.Controllers.Admin
         );
         return OkResponse(result, "Updated");
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
       catch (InvalidOperationException ex)
       {
         return ConflictResponse(ex.Message);
@@ -115,10 +109,7 @@ namespace mlndex_backend.Controllers.Admin
         );
         return OkResponse(result, "Feedback sent");
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
       catch (InvalidOperationException ex)
       {
         return ConflictResponse(ex.Message);

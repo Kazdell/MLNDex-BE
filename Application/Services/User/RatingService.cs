@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.User;
 using Application.Interfaces.Data;
 using Application.Interfaces.User;
@@ -22,11 +24,11 @@ namespace Application.Services.User
     public async Task<RatingResponseDto> UpsertRatingAsync(int userId, RatingRequestDto dto, CancellationToken ct = default)
     {
       if (dto.Score < 1 || dto.Score > 5)
-        throw new ArgumentException("Score must be between 1 and 5.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_INPUT, "Score must be between 1 and 5.");
 
       // Check series exists
       var series = await _db.Series.FindAsync(new object[] { dto.SeriesId }, ct)
-          ?? throw new ArgumentException("Series not found.");
+          ?? throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
       var existing = await _db.Ratings
           .FirstOrDefaultAsync(r => r.UserId == userId && r.SeriesId == dto.SeriesId, ct);

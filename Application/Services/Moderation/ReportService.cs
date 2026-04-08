@@ -125,7 +125,7 @@ namespace Application.Services.Moderation
               .FirstOrDefaultAsync(
                   q => q.QueueId == queueId,
                   cancellationToken
-              ) ?? throw new KeyNotFoundException("Queue item không tồn tại.");
+              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Queue item không tồn tại.");
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
       {

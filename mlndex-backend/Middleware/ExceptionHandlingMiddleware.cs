@@ -58,17 +58,7 @@ namespace mlndex_backend.Middleware
           response = new ApiResponse<object?>(false, $"Database update error: {exception.Message}", null, ErrorCodes.DB_ERROR);
           break;
 
-        case ArgumentNullException:
-        case ArgumentException:
-          statusCode = (int)HttpStatusCode.BadRequest;
-          response = new ApiResponse<object?>(false, $"Invalid argument: {exception.Message}", null, ErrorCodes.INVALID_INPUT);
-          break;
 
-        case InvalidOperationException:
-          statusCode = (int)HttpStatusCode.BadRequest;
-          //response = new ApiResponse<object?>(false, "Invalid operation", null, ErrorCodes.INVALID_INPUT);
-          response = new ApiResponse<object?>(false, $"Invalid operation: {exception.Message}", null, ErrorCodes.INVALID_INPUT);
-          break;
 
         default:
           statusCode = (int)HttpStatusCode.InternalServerError;

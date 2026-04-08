@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +38,7 @@ namespace Application.Services.ReportSystem
     {
       var user = await _context.Users.FindAsync(new object[] { reporterId }, cancellationToken);
       if (user == null)
-        throw new KeyNotFoundException("User không tồn tại.");
+        throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       var report = new Report
       {
@@ -103,7 +105,7 @@ namespace Application.Services.ReportSystem
           .FirstOrDefaultAsync(r => r.ReportId == reportId, cancellationToken);
 
       if (report == null)
-        throw new KeyNotFoundException("Report không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại.");
 
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Report đã được xử lý.");
@@ -156,7 +158,7 @@ namespace Application.Services.ReportSystem
     public async Task<CompareTranslationResponse> GetCompareDataAsync(int reportId, int referenceTranslationId, CancellationToken cancellationToken = default)
     {
       var report = await _context.Reports.FindAsync(new object[] { reportId }, cancellationToken);
-      if (report == null) throw new KeyNotFoundException("Report không tồn tại");
+      if (report == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại");
 
       if (report.ContentType != ReportTargetType.ChapterTranslation)
       {
@@ -179,7 +181,7 @@ namespace Application.Services.ReportSystem
 
       if (reportedTranslation == null || referenceTranslation == null)
       {
-        throw new KeyNotFoundException("Một trong hai bản dịch không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Một trong hai bản dịch không tồn tại.");
       }
 
       return new CompareTranslationResponse

@@ -309,7 +309,7 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<decimal>("PriceVnd")
+                    b.Property<decimal>("PriceCoins")
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("PackageId");
@@ -1815,7 +1815,7 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(25)
                         .HasColumnType("nvarchar(25)");
 
-                    b.Property<decimal>("PriceVnd")
+                    b.Property<decimal>("PriceCoins")
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("PlanId");

@@ -1,11 +1,19 @@
+using Application.Interfaces.System;
 using Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlndex_backend.Controllers
+namespace mlndex_backend.Controllers.Platform
 {
   [Route("api/[controller]")]
   public class LanguagesController : BaseController
   {
+    private readonly ILanguageService _languageService;
+
+    public LanguagesController(ILanguageService languageService)
+    {
+      _languageService = languageService;
+    }
+
     /// <summary>
     /// Get all supported languages.
     /// Used by frontend to populate language dropdowns dynamically.
@@ -13,7 +21,7 @@ namespace mlndex_backend.Controllers
     [HttpGet]
     public IActionResult GetAll()
     {
-      return OkResponse(SupportedLanguages.All);
+      return OkResponse(_languageService.GetAllSupportedLanguages());
     }
 
     /// <summary>
@@ -25,7 +33,7 @@ namespace mlndex_backend.Controllers
       if (string.IsNullOrWhiteSpace(language))
         return BadRequestResponse("Language parameter is required.");
 
-      var info = SupportedLanguages.GetByCodeOrName(language);
+      var info = _languageService.ValidateLanguage(language);
       if (info == null)
         return NotFoundResponse($"Language '{language}' is not supported.");
 

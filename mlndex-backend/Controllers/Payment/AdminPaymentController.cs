@@ -9,14 +9,16 @@ namespace mlndex_backend.Controllers.Payment;
 [Authorize(Roles = "Admin, ADMIN")]
 public class AdminPaymentController : BaseController
 {
-	private readonly ICoinPackageService _coinPackageService;
+  private readonly ICoinPackageService _coinPackageService;
+  //private readonly ICoinRateService _coinRateService;
 
-	public AdminPaymentController(
-		ICoinPackageService coinPackageService
-		)
-	{
-		_coinPackageService = coinPackageService;
-	}
+  public AdminPaymentController(
+      ICoinPackageService coinPackageService
+      )
+  {
+    _coinPackageService = coinPackageService;
+    //_coinRateService = coinRateService;
+  }
 
   // ════════════════════════════════════════════════════════
   // COIN PACKAGE
@@ -63,11 +65,11 @@ public class AdminPaymentController : BaseController
     return OkResponse(result, "Cập nhật gói coin thành công.");
   }
 
-	/// <summary>Vô hiệu hoá gói coin (soft delete).</summary>
-	[HttpDelete("packages/{id}")]
-	public async Task<IActionResult> DeactivatePackage(int id)
-	{
-		await _coinPackageService.DeactivateAsync(id);
-		return OkResponse<object?>(null!, "Vô hiệu hoá gói coin thành công.");
-	}
+  /// <summary>Vô hiệu hoá gói coin (soft delete).</summary>
+  [HttpDelete("packages/{id}")]
+  public async Task<IActionResult> DeactivatePackage(int id)
+  {
+    await _coinPackageService.DeactivateAsync(id);
+    return OkResponse<object?>(null!, "Vô hiệu hoá gói coin thành công.");
+  }
 }

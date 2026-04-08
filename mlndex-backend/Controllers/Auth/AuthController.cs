@@ -24,11 +24,11 @@ namespace mlndex_backend.Controllers.Auth
 			if (!ModelState.IsValid)
 				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
-			var result = await _authService.RegisterAsync(dto);
-			return result.Success
-				? OkResponse<object?>(null, result.Message)
-				: BadRequestResponse(result.Message);
-		}
+      var result = await _authService.RegisterAsync(dto);
+      return result.Success
+          ? OkResponse<object?>(null, result.Message)
+          : BadRequestResponse(result.Message);
+    }
 
 		// POST /api/auth/verify-otp
 		[HttpPost("verify-otp")]
@@ -37,11 +37,11 @@ namespace mlndex_backend.Controllers.Auth
 			if (!ModelState.IsValid)
 				return BadRequestResponse("Dữ liệu không hợp lệ.");
 
-			var result = await _authService.VerifyEmailOtpAsync(dto);
-			return result.Success
-				? OkResponse<object?>(null, result.Message)
-				: BadRequestResponse(result.Message);
-		}
+      var result = await _authService.VerifyEmailOtpAsync(dto);
+      return result.Success
+          ? OkResponse<object?>(null, result.Message)
+          : BadRequestResponse(result.Message);
+    }
 
 		// POST /api/auth/login
 		[HttpPost("login")]
@@ -66,11 +66,11 @@ namespace mlndex_backend.Controllers.Auth
 			if (string.IsNullOrEmpty(token))
 				return BadRequestResponse("Token không hợp lệ.");
 
-			var result = await _authService.LogoutAsync(token);
-			return result.Success
-				? OkResponse<object?>(null, result.Message)
-				: BadRequestResponse(result.Message);
-		}
+      var result = await _authService.LogoutAsync(token);
+      return result.Success
+          ? OkResponse<object?>(null, result.Message)
+          : BadRequestResponse(result.Message);
+    }
 
     // POST /api/auth/google
     [HttpPost("google")]

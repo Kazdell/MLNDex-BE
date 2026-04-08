@@ -20,6 +20,8 @@ namespace Application.Interfaces.AIModeration
     /// Tác giả yêu cầu moderator review lại sau khi bị AI flag.
     /// Tạo 1 record mới trong ModerationQueue.
     Task SubmitAppealAsync(int chapterId, int requestedByUserId, string appealReason);
+        Task<Application.DTOs.Chapter.ChapterModerationStatusDto> GetChapterModerationStatusAsync(int chapterId, CancellationToken ct = default);
+    Task RetryChapterModerationAsync(int chapterId, CancellationToken ct = default);
     Task<AiModerationResultDto?> GetResultAsync(int chapterId, CancellationToken ct = default);
     TextCheckResponse PreCheckText(TextCheckRequest request);
     OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request);

@@ -10,6 +10,12 @@ namespace Application.Interfaces;
 public interface ITopUpService
 {
   /// <summary>
+  /// Lấy tỉ lệ quy đổi hiện tại từ DB.
+  /// Frontend gọi để preview coins realtime khi user nhập số tiền.
+  /// </summary>
+  Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default);
+
+  /// <summary>
   /// Lấy danh sách gói coin đang active.
   /// Hiển thị ở trang /wallet để user chọn.
   /// </summary>
@@ -44,8 +50,8 @@ public interface ITopUpService
   /// </summary>
   Task<TopUpCallbackResponseDto> HandleVNPayCallbackAsync(VNPayCallbackDto dto);
 
-	/// <summary>
-	/// Bước 2c: Xử lý IPN từ MoMo.
-	/// </summary>
-	Task<TopUpCallbackResponseDto> HandleMoMoCallbackAsync(MoMoCallbackDto dto);
+  /// <summary>
+  /// Bước 2c: Xử lý IPN từ MoMo.
+  /// </summary>
+  Task<TopUpCallbackResponseDto> HandleMoMoCallbackAsync(MoMoCallbackDto dto);
 }

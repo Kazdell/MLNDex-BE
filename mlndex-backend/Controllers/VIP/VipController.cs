@@ -1,4 +1,4 @@
-﻿using Application.DTOs.VIP;
+using Application.DTOs.VIP;
 using Application.Interfaces.VIP;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -48,29 +48,15 @@ public class VipController : BaseController
 	[HttpPost("purchase")]
 	public async Task<IActionResult> Purchase([FromBody] PurchaseVipRequestDto request)
 	{
-		try
-		{
-			var result = await _vipService.PurchaseVipAsync(GetUserId(), request);
-			return OkResponse(result, "Mua VIP thành công.");
-		}
-		catch (InvalidOperationException ex)
-		{
-			return BadRequestResponse(ex.Message);
-		}
+		var result = await _vipService.PurchaseVipAsync(GetUserId(), request);
+		return OkResponse(result, "Mua VIP thành công.");
 	}
 
 	[HttpPost("subscription/{id}/cancel")]
 	public async Task<IActionResult> Cancel(int id)
 	{
-		try
-		{
-			var result = await _vipService.CancelSubscriptionAsync(GetUserId(), id);
-			return OkResponse(result, "Huỷ subscription thành công.");
-		}
-		catch (InvalidOperationException ex)
-		{
-			return BadRequestResponse(ex.Message);
-		}
+		var result = await _vipService.CancelSubscriptionAsync(GetUserId(), id);
+		return OkResponse(result, "Huỷ subscription thành công.");
 	}
 
 	[AllowAnonymous]
@@ -79,14 +65,7 @@ public class VipController : BaseController
 	{
 		int? userId = GetUserId() == 0 ? null : GetUserId();
 
-		try
-		{
-			var canRead = await _vipService.CanUserReadChapterAsync(id, userId, cancellationToken);
-			return OkResponse(new { canRead });
-		}
-		catch (Exception ex)
-		{
-			return ErrorResponse(ex.Message);
-		}
+		var canRead = await _vipService.CanUserReadChapterAsync(id, userId, cancellationToken);
+		return OkResponse(new { canRead });
 	}
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Controllers;
+using Application.Interfaces.Financial;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,9 +49,6 @@ namespace mlndex_backend.Controllers.Translation
         [FromForm] UploadTranslationFormRequest req,
         [FromForm] IFormFileCollection? pages)
     {
-      try
-      {
-
         // Guard: block upload if user trust score is depleted
         var currentUser = await _db.Users.FindAsync(GetUserId());
         if (currentUser?.CannotUpload == true)
@@ -90,11 +88,6 @@ namespace mlndex_backend.Controllers.Translation
 
         var translation = await _service.UploadTranslationAsync(dto);
         return CreatedAtAction(nameof(GetTranslationById), new { id = translation.TranslationId }, translation);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     // Get translation details by ID.
@@ -112,30 +105,16 @@ namespace mlndex_backend.Controllers.Translation
     [AllowAnonymous]
     public async Task<IActionResult> GetPageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService)
     {
-      try
-      {
         var layers = await pageTranslationService.GetPageTextLayerAsync(pageId);
         return OkResponse(layers);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     // Generate text layers for a specific page using AI OCR and Translation
     [HttpPost("page-layer/generate/{pageId}")]
     public async Task<IActionResult> GeneratePageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService, [FromQuery] string targetLanguage = "Vietnamese")
     {
-      try
-      {
         var layers = await pageTranslationService.GeneratePageTextLayerAsync(pageId, targetLanguage);
         return OkResponse(layers);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     // Get all translations by series ID.
@@ -160,35 +139,21 @@ namespace mlndex_backend.Controllers.Translation
     [HttpPut("{id}")]
     public async Task<IActionResult> EditTranslation(int id, [FromBody] EditTranslationRequest dto)
     {
-      try
-      {
         var currentUser = await _db.Users.FindAsync(GetUserId());
         if (currentUser?.CannotUpload == true)
           return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
         var translation = await _service.EditTranslationAsync(id, dto);
         return OkResponse(translation);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     // Delete a translation.
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTranslation(int id)
     {
-      try
-      {
         var success = await _service.DeleteTranslationAsync(id);
         if (!success) return NotFoundResponse("Translation not found or unauthorized.");
         return NoContent();
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     [HttpGet("{id}/moderation-status")]
@@ -239,17 +204,10 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{translationId:int}/unlock")]
-    public async Task<IActionResult> UnlockTranslation(int translationId, CancellationToken ct)
+    public async Task<IActionResult> UnlockTranslation(int translationId, [FromServices] IContentUnlockService contentUnlockService, CancellationToken ct)
     {
-      try
-      {
-        var result = await _service.UnlockAsync(GetUserId(), translationId, ct);
+        var result = await contentUnlockService.UnlockTranslationAsync(GetUserId(), translationId, ct);
         return OkResponse(result);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
 
@@ -257,30 +215,16 @@ namespace mlndex_backend.Controllers.Translation
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugModerate(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
-      try
-      {
         var result = await moderationService.RunTranslationModerationAsync(id);
         return OkResponse(new { message = "Moderation completed successfully.", result = result });
-      }
-      catch (Exception ex)
-      {
-        return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message, stackTrace = ex.StackTrace, innerException = ex.InnerException?.Message });
-      }
     }
 
     [HttpPost("{id}/debug-enqueue")]
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> DebugEnqueue(int id, [FromServices] Application.Interfaces.AIModeration.IModerationService moderationService)
     {
-      try
-      {
         await moderationService.EnqueueTranslationForModerationAsync(id);
         return OkResponse(new { message = "Translation enqueued for moderation successfully." });
-      }
-      catch (Exception ex)
-      {
-        return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message, stackTrace = ex.StackTrace, innerException = ex.InnerException?.Message });
-      }
     }
   }
 }
