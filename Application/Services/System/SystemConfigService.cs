@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.System;
 using Application.Interfaces.Data;
 using Application.Interfaces.System;
@@ -82,7 +84,7 @@ namespace Application.Services.System
     {
       var config = await _context.SystemConfigs.FirstOrDefaultAsync();
       if (config == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "System config not found");
+        throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
 
       if (amountVnd <= 0)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_CONFIG_VALUE, "Amount must be greater than 0");

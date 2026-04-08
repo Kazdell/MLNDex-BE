@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.Interfaces.Data;
 using Application.Interfaces.Payment;
@@ -61,7 +63,7 @@ public class CoinPackageService : ICoinPackageService
   public async Task<CoinPackageResponseDto> UpdateAsync(int packageId, UpdateCoinPackageDto dto)
   {
     var package = await _context.CoinPackages.FindAsync(packageId)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, $"Không tìm thấy gói coin ID={packageId}.");
+        ?? throw new AppException(ErrorCodes.COIN_PACKAGE_NOT_FOUND);
 
     if (dto.Name is not null) package.Name = dto.Name;
     if (dto.CoinAmount.HasValue) package.CoinAmount = dto.CoinAmount.Value;
@@ -79,7 +81,7 @@ public class CoinPackageService : ICoinPackageService
   public async Task DeactivateAsync(int packageId)
   {
     var package = await _context.CoinPackages.FindAsync(packageId)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, $"Không tìm thấy gói coin ID={packageId}.");
+        ?? throw new AppException(ErrorCodes.COIN_PACKAGE_NOT_FOUND);
 
     package.IsActive = false;
     await _context.SaveChangesAsync();

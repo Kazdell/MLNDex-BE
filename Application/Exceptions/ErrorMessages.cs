@@ -12,6 +12,10 @@ namespace Application.Exceptions
             { ErrorCodes.UNAUTHORIZED, "Không có quyền truy cập." },
             { ErrorCodes.FORBIDDEN, "Bị từ chối truy cập." },
             { ErrorCodes.NOT_FOUND, "Không tìm thấy dữ liệu." },
+            { ErrorCodes.USER_NOT_FOUND, "Người dùng không tồn tại." },
+            { ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại." },
+            { ErrorCodes.SERIES_NOT_FOUND, "Truyện không tồn tại." },
+            { ErrorCodes.SYSTEM_CONFIG_NOT_FOUND, "Chưa có cấu hình hệ thống nào được thiết lập." },
 
             { ErrorCodes.DUPLICATE_TRANSLATION_TEAM, "Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc." },
             { ErrorCodes.TRANSLATION_NOT_FOUND, "Bản dịch không tồn tại." },

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.VIP;
 using Application.Interfaces.Data;
 using Application.Interfaces.VIP;
@@ -90,7 +92,7 @@ namespace Application.Services.VIP
 			// 2. Validate wallet
 			var wallet = await _context.Wallets
 				.FirstOrDefaultAsync(w => w.UserId == userId)
-				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Wallet không tồn tại.");
+				?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
 			if (wallet.CoinBalance < plan.PriceCoins)
 				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INSUFFICIENT_BALANCE,
@@ -163,7 +165,7 @@ namespace Application.Services.VIP
 				.Include(s => s.VipPlan)
 				.FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId
 									   && s.UserId == userId)
-				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SUBSCRIPTION_NOT_FOUND, "Subscription không tồn tại.");
+				?? throw new AppException(ErrorCodes.SUBSCRIPTION_NOT_FOUND);
 
 			if (sub.Status != SubscriptionStatus.ACTIVE)
 				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
@@ -233,7 +235,7 @@ namespace Application.Services.VIP
 		{
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == planId)
-				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại.");
+				?? throw new AppException(ErrorCodes.VIP_PACKAGE_NOT_FOUND);
 
 			// Chỉ cập nhật field nào admin gửi lên
 			if (request.Name != null) plan.Name = request.Name;
@@ -261,7 +263,7 @@ namespace Application.Services.VIP
 		{
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == planId)
-				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại.");
+				?? throw new AppException(ErrorCodes.VIP_PACKAGE_NOT_FOUND);
 
 			// Không cho xoá nếu đang có user dùng gói này
 			var hasActiveSubs = await _context.VipSubscriptions

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.DTOs.Request;
 using Application.DTOs.System;
@@ -34,7 +36,7 @@ public class TopUpService : ITopUpService
   public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
   {
     var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
+        ?? throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
 
     return new SystemConfigDto
     {
@@ -135,7 +137,7 @@ public class TopUpService : ITopUpService
     }
 
     var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
+        ?? throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
 
     long amountVnd;
     long coinsWillReceive;
@@ -159,7 +161,7 @@ public class TopUpService : ITopUpService
 
     var wallet = await _context.Wallets
         .FirstOrDefaultAsync(w => w.UserId == userId)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của user.");
+        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     var txnRef = GenerateOrderCode().ToString();
     var expiredAt = DateTime.UtcNow.AddMinutes(15);
@@ -303,7 +305,7 @@ public class TopUpService : ITopUpService
   private async Task<TopUpCallbackResponseDto> CompleteTopUpAsync(Transaction transaction, string txnRef)
   {
     var wallet = await _context.Wallets.FindAsync(transaction.WalletId)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không tìm thấy ví.");
+        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     wallet.CoinBalance += transaction.AmountCoins;
     wallet.TotalEarned += transaction.AmountCoins;

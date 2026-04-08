@@ -53,6 +53,7 @@ namespace Application.DTOs.Common
 
     // 🔹 System
     public const string INVALID_CONFIG_VALUE = "INVALID_CONFIG_VALUE";
+    public const string SYSTEM_CONFIG_NOT_FOUND = "SYSTEM_CONFIG_NOT_FOUND";
 
     // 🔹 Translation & Teams
     public const string TEAM_NOT_FOUND = "TEAM_NOT_FOUND";

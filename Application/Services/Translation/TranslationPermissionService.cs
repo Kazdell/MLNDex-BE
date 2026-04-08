@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation.Requests;
@@ -37,7 +39,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId);
 
       if (series == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Series not found.");
+        throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
       var creatorProfile = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);

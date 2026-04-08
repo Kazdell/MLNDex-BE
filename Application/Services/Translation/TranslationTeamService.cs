@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Notification;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
@@ -592,7 +594,7 @@ namespace Application.Services.Translation
       if (roleDto.Role == TeamMemberRole.LEADER) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên.");
 
       var member = await _context.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == targetUserId);
-      if (member == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Member not found.");
+      if (member == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       member.Role = roleDto.Role;
       await _context.SaveChangesAsync();

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.AIModeration;
 using Application.DTOs.Chapter;
 using Application.Interfaces.AIModeration;
@@ -1041,7 +1043,7 @@ int userId, int chapterId, CancellationToken ct = default)
       // ── 6. Load wallet ─────────────────────────────────────────────────
       var wallet = await _db.Wallets
           .FirstOrDefaultAsync(w => w.UserId == userId, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
+          ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
       if (wallet.CoinBalance < price)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,

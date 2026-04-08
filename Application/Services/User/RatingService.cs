@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.User;
 using Application.Interfaces.Data;
 using Application.Interfaces.User;
@@ -26,7 +28,7 @@ namespace Application.Services.User
 
       // Check series exists
       var series = await _db.Series.FindAsync(new object[] { dto.SeriesId }, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.NOT_FOUND, "Series not found.");
+          ?? throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
       var existing = await _db.Ratings
           .FirstOrDefaultAsync(r => r.UserId == userId && r.SeriesId == dto.SeriesId, ct);

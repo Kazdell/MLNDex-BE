@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Community;
 using Application.Interfaces.Community;
 using Application.Interfaces.Data;
@@ -57,7 +59,7 @@ namespace Application.Services.Community
 
       var user =
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
+          ?? throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       return new CommentDto
       {

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +35,7 @@ namespace Application.Services.ReportSystem
       if (request.TargetType == TrustScoreTargetType.User)
       {
         var user = await _context.Users.FindAsync(new object[] { request.TargetId }, ct);
-        if (user == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
+        if (user == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
         int oldScore = user.TrustScore;
         user.TrustScore += request.ScoreToRestore;
@@ -103,7 +105,7 @@ namespace Application.Services.ReportSystem
     public async Task<AppealDto> CreateAppealAsync(int userId, CreateAppealRequest request, CancellationToken ct = default)
     {
       var user = await _context.Users.FindAsync(new object[] { userId }, ct);
-      if (user == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
+      if (user == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       // Check for existing pending appeal
       var existingAppeal = await _context.Appeals

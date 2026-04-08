@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
 using Microsoft.AspNetCore.Authorization;
@@ -62,7 +64,7 @@ namespace mlndex_backend.Controllers.Moderation
     {
       if (file == null || file.Length == 0)
       {
-        return BadRequest("Vui lòng cung cấp file ảnh.");
+        throw new AppException(ErrorCodes.BAD_REQUEST, "Vui lòng cung cấp file ảnh.");
       }
 
       // Chuyển file sang byte array

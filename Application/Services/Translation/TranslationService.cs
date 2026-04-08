@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -683,7 +685,7 @@ namespace Application.Services.Translation
           .Include(t => t.Permission)
             .ThenInclude(p => p!.Team)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, $"Không tìm thấy bản dịch {translationId}.");
+        ?? throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
       var chapter =
         translation.Chapter
@@ -772,7 +774,7 @@ namespace Application.Services.Translation
       // ── 7. Kiểm tra ví ───────────────────────────────────────────────────
       var wallet =
         await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId, ct)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
+        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
       if (wallet.CoinBalance < price)
         throw new Application.Exceptions.AppException(

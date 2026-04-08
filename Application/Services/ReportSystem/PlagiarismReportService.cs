@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +38,7 @@ namespace Application.Services.ReportSystem
     {
       var user = await _context.Users.FindAsync(new object[] { reporterId }, cancellationToken);
       if (user == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "User không tồn tại.");
+        throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       var report = new Report
       {

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Financial;
 using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
@@ -164,7 +166,7 @@ namespace Application.Services.Financial
 
       // 2. Check wallet balance
       var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == creatorId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WALLET_NOT_FOUND, "Không tìm thấy ví của bạn.");
+          ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
       if (wallet.CoinBalance < dto.AmountCoins)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Số dư không đủ để thực hiện yêu cầu này.");
