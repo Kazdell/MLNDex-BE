@@ -8,38 +8,38 @@ namespace Application.DTOs.Common
 {
 	public static class ErrorCodes
 	{
-		// 🔹 Validation
+		//  Validation
 		public const string VALIDATION_ERROR = "VALIDATION_ERROR";
 		public const string INVALID_INPUT = "INVALID_INPUT";
 
-		// 🔹 Auth
+		//  Auth
 		public const string UNAUTHORIZED = "UNAUTHORIZED";
 		public const string FORBIDDEN = "FORBIDDEN";
 		public const string INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
 		public const string TOKEN_EXPIRED = "TOKEN_EXPIRED";
 		public const string INVALID_TOKEN = "INVALID_TOKEN";
 
-		// 🔹 User
+		//  User
 		public const string USER_NOT_FOUND = "USER_NOT_FOUND";
 		public const string USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS";
 
-		// 🔹 Data & Resource
+		//  Data & Resource
 		public const string NOT_FOUND = "NOT_FOUND";
 		public const string ALREADY_EXISTS = "ALREADY_EXISTS";
 		public const string CONFLICT = "CONFLICT";
 		public const string DB_ERROR = "DB_ERROR";
 
-		// 🔹 Server
+		//  Server
 		public const string INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
 		public const string BAD_REQUEST = "BAD_REQUEST";
 		public const string SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE";
 		public const string TIMEOUT = "TIMEOUT";
 
-    // 🔹 Business logic
+    //  Business logic
     public const string INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE";
     public const string OPERATION_NOT_ALLOWED = "OPERATION_NOT_ALLOWED";
 
-    // 🔹 Payment & Financial
+    //  Payment & Financial
     public const string COIN_PACKAGE_NOT_FOUND = "COIN_PACKAGE_NOT_FOUND";
     public const string INVALID_WITHDRAWAL_AMOUNT = "INVALID_WITHDRAWAL_AMOUNT";
     public const string WITHDRAWAL_NOT_FOUND = "WITHDRAWAL_NOT_FOUND";
@@ -53,18 +53,18 @@ namespace Application.DTOs.Common
     public const string TRANSLATION_PRICE_NOT_CONFIGURED = "TRANSLATION_PRICE_NOT_CONFIGURED";
     public const string INVALID_UNLOCK_PRICE = "INVALID_UNLOCK_PRICE";
 
-    // 🔹 Moderation & Report
+    //  Moderation & Report
     public const string REPORT_NOT_FOUND = "REPORT_NOT_FOUND";
     public const string MODERATION_QUEUE_NOT_FOUND = "MODERATION_QUEUE_NOT_FOUND";
     public const string MODERATOR_NOT_FOUND = "MODERATOR_NOT_FOUND";
     public const string INVALID_MODERATOR_ACTION = "INVALID_MODERATOR_ACTION";
     public const string APPEAL_NOT_FOUND = "APPEAL_NOT_FOUND";
 
-    // 🔹 System
+    //  System
     public const string INVALID_CONFIG_VALUE = "INVALID_CONFIG_VALUE";
     public const string SYSTEM_CONFIG_NOT_FOUND = "SYSTEM_CONFIG_NOT_FOUND";
 
-    // 🔹 Translation & Teams
+    //  Translation & Teams
     public const string TEAM_NOT_FOUND = "TEAM_NOT_FOUND";
     public const string NOT_TEAM_MEMBER = "NOT_TEAM_MEMBER";
     public const string INVITATION_NOT_FOUND = "INVITATION_NOT_FOUND";
@@ -89,7 +89,7 @@ namespace Application.DTOs.Common
     public const string CREATOR_ONLY_REVIEW = "CREATOR_ONLY_REVIEW";
     public const string TEAM_MEMBER_ONLY_VIEW = "TEAM_MEMBER_ONLY_VIEW";
 
-    // 🔹 Creator & Series
+    //  Creator & Series
     public const string SERIES_NOT_FOUND = "SERIES_NOT_FOUND";
     public const string CHAPTER_NOT_FOUND = "CHAPTER_NOT_FOUND";
     public const string DUPLICATE_SERIES_TITLE = "DUPLICATE_SERIES_TITLE";
@@ -99,7 +99,7 @@ namespace Application.DTOs.Common
     public const string CHAPTER_ALREADY_FREE = "CHAPTER_ALREADY_FREE";
     public const string CREATOR_NOT_FOUND = "CREATOR_NOT_FOUND";
 
-    // 🔹 VIP
+    //  VIP
     public const string WALLET_NOT_FOUND = "WALLET_NOT_FOUND";
     public const string SUBSCRIPTION_NOT_FOUND = "SUBSCRIPTION_NOT_FOUND";
     public const string VIP_PACKAGE_NOT_FOUND = "VIP_PACKAGE_NOT_FOUND";
