@@ -50,6 +50,7 @@ using mlndex_backend.Hubs;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 namespace mlndex_backend
 {
@@ -266,6 +267,21 @@ namespace mlndex_backend
               });
       });
 
+      builder.Services.AddRateLimiter(options =>
+      {
+          options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+              RateLimitPartition.GetFixedWindowLimiter(
+                  partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers.Host.ToString(),
+                  factory: _ => new FixedWindowRateLimiterOptions
+                  {
+                      AutoReplenishment = true,
+                      PermitLimit = 120,
+                      QueueLimit = 10,
+                      Window = TimeSpan.FromMinutes(1)
+                  }));
+          options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+      });
+
       var app = builder.Build();
 
       // Swagger enabled for all environments (Production + Development)
@@ -277,6 +293,7 @@ namespace mlndex_backend
       }
 
       app.UseGlobalExceptionHandling();
+      app.UseRateLimiter();
       app.UseCors("AllowSpecificOrigin");
       app.UseAuthentication();
       app.UseAuthorization();
