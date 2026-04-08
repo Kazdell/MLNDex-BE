@@ -15,7 +15,6 @@ namespace Application.Interfaces.Translation
     Task<bool> DeleteTranslationAsync(int translationId);
     Task<List<Application.DTOs.Chapter.ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(int teamId, int seriesId, int userId, global::System.Threading.CancellationToken ct = default);
     Task<bool> DeleteTeamTranslationAsync(int translationId, int teamId, int userId, global::System.Threading.CancellationToken ct = default);
-    Task<UnlockTranslationResponseDto> UnlockAsync(
-        int userId, int translationId, CancellationToken ct = default);
+
   }
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Controllers;
+using Application.Interfaces.Financial;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -203,9 +204,9 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [HttpPost("{translationId:int}/unlock")]
-    public async Task<IActionResult> UnlockTranslation(int translationId, CancellationToken ct)
+    public async Task<IActionResult> UnlockTranslation(int translationId, [FromServices] IContentUnlockService contentUnlockService, CancellationToken ct)
     {
-        var result = await _service.UnlockAsync(GetUserId(), translationId, ct);
+        var result = await contentUnlockService.UnlockTranslationAsync(GetUserId(), translationId, ct);
         return OkResponse(result);
     }
 

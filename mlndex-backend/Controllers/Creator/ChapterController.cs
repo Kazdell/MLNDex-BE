@@ -1,5 +1,6 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
+using Application.Interfaces.Financial;
 using Application.Interfaces.Data;
 using Application.Services.Creator;
 using Domain.Entities;
@@ -16,13 +17,17 @@ namespace mlndex_backend.Controllers.Creator;
 public class ChapterController : BaseController
 {
   private readonly IChapterService _service;
+  private readonly IContentUnlockService _contentUnlockService;
   private readonly IMlndexDbContext _db;
   private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
   private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB per file
 
-  public ChapterController(IChapterService service, IMlndexDbContext db)
+  private readonly Application.Interfaces.AIModeration.IModerationService _moderationService;
+  public ChapterController(IChapterService service, IContentUnlockService contentUnlockService, Application.Interfaces.AIModeration.IModerationService moderationService, IMlndexDbContext db)
   {
     _service = service;
+    _contentUnlockService = contentUnlockService;
+    _moderationService = moderationService;
     _db = db;
   }
   [Authorize(Roles = "CREATOR,ADMIN")]
@@ -296,7 +301,7 @@ public class ChapterController : BaseController
 
     try
     {
-      var result = await _service.UnlockAsync(userId, chapterId, ct);
+      var result = await _contentUnlockService.UnlockChapterAsync(userId, chapterId, ct);
       return OkResponse(result, "Mở khóa chương thành công.");
     }
 

@@ -15,9 +15,9 @@ namespace mlndex_backend.Controllers.Moderation;
 [Authorize] // any authenticated user, no role restriction
 public class ChapterModerationStatusController : BaseController
 {
-  private readonly IChapterService _service;
+  private readonly Application.Interfaces.AIModeration.IModerationService _service;
 
-  public ChapterModerationStatusController(IChapterService service)
+  public ChapterModerationStatusController(Application.Interfaces.AIModeration.IModerationService service)
   {
     _service = service;
   }
@@ -32,7 +32,7 @@ public class ChapterModerationStatusController : BaseController
   {
     try
     {
-      var result = await _service.GetModerationStatusAsync(chapterId, cancellationToken);
+      var result = await _service.GetChapterModerationStatusAsync(chapterId, cancellationToken);
       return OkResponse(result);
     }
     catch (Exception ex)
@@ -50,7 +50,7 @@ public class ChapterModerationStatusController : BaseController
   {
     try
     {
-      await _service.RetryModerationAsync(chapterId, cancellationToken);
+      await _service.RetryChapterModerationAsync(chapterId, cancellationToken);
       return OkResponse<object?>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
     }
 

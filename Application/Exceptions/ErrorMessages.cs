@@ -29,7 +29,40 @@ namespace Application.Exceptions
             { ErrorCodes.WALLET_NOT_FOUND, "Ví không tồn tại." },
             { ErrorCodes.SUBSCRIPTION_NOT_FOUND, "Gói đăng ký không tồn tại." },
             { ErrorCodes.VIP_PACKAGE_NOT_FOUND, "Gói VIP không tồn tại." },
-            { ErrorCodes.INVALID_TRANSACTION, "Giao dịch không hợp lệ hoặc đã được xử lý." }
+            { ErrorCodes.INVALID_TRANSACTION, "Giao dịch không hợp lệ hoặc đã được xử lý." },
+
+            { ErrorCodes.TEAM_NOT_FOUND, "Nhóm dịch không tồn tại." },
+            { ErrorCodes.CHAPTER_NOT_FOUND, "Chương truyện không tồn tại." },
+            { ErrorCodes.NOT_TEAM_MEMBER, "Bạn không phải là thành viên hoặc trưởng nhóm của nhóm dịch này." },
+            { ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND, "Không tìm thấy thông tin phân quyền dịch giả." },
+            { ErrorCodes.LANGUAGE_MISMATCH, "Ngôn ngữ được chọn không khớp với yêu cầu phân quyền gốc." },
+            { ErrorCodes.PERMISSION_NOT_VALID_FOR_SERIES, "Bản quyền dịch thuật không khớp với tựa truyện này." },
+            { ErrorCodes.TEAM_ID_REQUIRED_UNOFFICIAL, "Bắt buộc phải cung cấp thông tin nhóm cho bản dịch tự do." },
+            { ErrorCodes.TRANSLATION_RETRIEVE_FAILED, "Lỗi xẩy ra khi tải dữ liệu bản dịch." },
+            { ErrorCodes.MISSING_TRANSLATION_PERMISSION, "Lỗi dữ liệu: Ghi nhận phân quyền dịch bị khuyết thiếu." },
+            { ErrorCodes.UNAUTHORIZED_EDIT, "Bạn không có quyền chỉnh sửa bản dịch này." },
+            { ErrorCodes.UNAUTHORIZED_DELETE, "Bạn không có quyền xóa bản dịch này." },
+            { ErrorCodes.TRANSLATION_NOT_FOUND_OR_NOT_OWNER, "Không tìm thấy bản dịch hoặc bản dịch không thuộc thẩm quyền của bạn." },
+
+            { ErrorCodes.CHAPTER_PRICE_NOT_CONFIGURED, "Chương này chưa được cấu hình giá mở khóa." },
+            { ErrorCodes.INVALID_TRANSLATION_CHAPTER, "Bản dịch không liên kết với chương hợp lệ." },
+            { ErrorCodes.ORIGINAL_CHAPTER_FREE, "Chương gốc đang miễn phí, bản dịch này không cần mua." },
+            { ErrorCodes.ORIGINAL_CHAPTER_UNLOCKED, "Bạn đã mở khóa chương gốc nên có thể đọc tất cả bản dịch miễn phí." },
+            { ErrorCodes.TRANSLATION_ALREADY_UNLOCKED, "Bạn đã mua bản dịch này rồi." },
+            { ErrorCodes.TEAM_MONETIZATION_DISABLED, "Nhóm dịch này chưa bật tính năng kinh doanh." },
+            { ErrorCodes.TRANSLATION_PRICE_NOT_CONFIGURED, "Bản dịch này chưa được cấu hình giá mở khóa." },
+            { ErrorCodes.INVALID_UNLOCK_PRICE, "Giá mở khóa không hợp lệ." },
+            
+            { ErrorCodes.LANGUAGE_NOT_FOUND, "Ngôn ngữ không tồn tại." },
+            { ErrorCodes.PERMISSION_REQUEST_PENDING, "Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý." },
+            { ErrorCodes.PERMISSION_ALREADY_GRANTED, "Nhóm đã có quyền dịch chính thức cho bộ truyện này." },
+            { ErrorCodes.PERMISSION_REQUEST_NOT_FOUND, "Không tìm thấy yêu cầu phân quyền dịch." },
+            { ErrorCodes.CREATOR_ONLY_REVIEW, "Chỉ tính danh tác giả của bộ truyện mới được quyền duyệt phân quyền này." },
+            { ErrorCodes.TEAM_MEMBER_ONLY_VIEW, "Bạn phải là thành viên nhóm dịch để xem các yêu cầu này." },
+            
+            { ErrorCodes.CHAPTER_NOT_PUBLISHED, "Chương này chưa được phát hành." },
+            { ErrorCodes.CHAPTER_ALREADY_FREE, "Chương này đã miễn phí, không cần mở khóa." },
+            { ErrorCodes.CREATOR_NOT_FOUND, "Không tìm thấy hồ sơ tác giả." },
         };
 
     public static string GetMessage(string code)

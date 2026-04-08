@@ -1,3 +1,4 @@
+using Application.DTOs.Chapter;
 using Application.DTOs.AIModeration;
 using Application.DTOs.Moderation;
 using Application.Interfaces.AIModeration;
@@ -634,7 +635,136 @@ namespace Application.Services.AIModeration
     }
 
     // Pre-check text against blacklist with teencode normalization.
-    public TextCheckResponse PreCheckText(TextCheckRequest request)
+    public async Task<ChapterModerationStatusDto> GetChapterModerationStatusAsync(
+int chapterId, CancellationToken ct = default)
+    {
+      var job = await _db.ModerationQueues
+          .Where(q => q.ContentId == chapterId
+              && q.ContentType == ModerationQueueContentType.CHAPTER)
+          .OrderByDescending(q => q.FlaggedAt)
+          .FirstOrDefaultAsync(ct);
+
+      // ── Fallback: chapter đã có kết quả AI rồi (APPROVED/REJECTED) nhưng queue missing/stuck ──
+      if (job == null || (job.Status != QueueStatus.RESOLVED && job.Status != QueueStatus.IN_REVIEW))
+      {
+        var chapter = await _db.Chapters.FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+        if (chapter != null &&
+            (chapter.ModerationStatus == ModerationStatus.APPROVED || chapter.ModerationStatus == ModerationStatus.REJECTED))
+        {
+          // Return completed even if AiScoresJson is empty (e.g. old chapters)
+          AiModerationResultDto? result = null;
+          if (!string.IsNullOrEmpty(chapter.AiScoresJson))
+            result = await GetResultAsync(chapterId, ct);
+
+          return new ChapterModerationStatusDto
+          {
+            ChapterId = chapterId,
+            Status = "completed",
+            Flagged = result?.Flagged ?? (chapter.ModerationStatus == ModerationStatus.REJECTED),
+            FlaggedReason = result?.FlaggedReason,
+            CategoryScores = result?.CategoryScores ?? new Dictionary<string, double>(),
+            PerPageResults = result?.PerPageResults,
+          };
+        }
+
+        // No job AND no AI result → truly pending
+        if (job == null)
+          return new ChapterModerationStatusDto
+          {
+            ChapterId = chapterId,
+            Status = "pending"
+          };
+      }
+
+      // Tính queue position nếu đang pending
+      int? queuePos = null;
+      if (job.Status == QueueStatus.PENDING)
+      {
+        queuePos = await _db.ModerationQueues
+            .Where(q => q.Status == QueueStatus.PENDING
+                && (q.Priority == QueuePriority.HIGH && job.Priority != QueuePriority.HIGH
+                    || q.FlaggedAt < job.FlaggedAt))
+            .CountAsync(ct) + 1;
+      }
+
+      var status = job.Status switch
+      {
+        QueueStatus.PENDING => "pending",
+        QueueStatus.IN_REVIEW => "processing",
+        QueueStatus.RESOLVED => "completed",
+        QueueStatus.DISMISSED => "failed",
+        _ => "pending"
+      };
+
+      // Lấy kết quả AI nếu đã xong
+      AiModerationResultDto? result2 = null;
+      if (job.Status == QueueStatus.RESOLVED)
+        result2 = await GetResultAsync(chapterId, ct);
+
+      return new ChapterModerationStatusDto
+      {
+        ChapterId = chapterId,
+        Status = status,
+        QueuePos = queuePos,
+        Flagged = result2?.Flagged,
+        FlaggedReason = result2?.FlaggedReason,
+        CategoryScores = result2?.CategoryScores,
+        PerPageResults = result2?.PerPageResults,
+      };
+    }
+
+    public async Task RetryChapterModerationAsync(int chapterId, CancellationToken ct = default)
+    {
+      var chapter = await _db.Chapters
+          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}.");
+
+      // Block retry if chapter is currently being processed
+      // But allow if queue is PENDING but chapter already has a result (stale entry from old code)
+      var activeJob = await _db.ModerationQueues
+          .Where(q => q.ContentId == chapterId
+              && q.ContentType == ModerationQueueContentType.CHAPTER
+              && (q.Status == QueueStatus.PENDING || q.Status == QueueStatus.IN_REVIEW))
+          .FirstOrDefaultAsync(ct);
+
+      if (activeJob != null)
+      {
+        // Stale entry: queue stuck at PENDING but chapter already moderated → allow retry
+        var isStale = chapter.ModerationStatus == ModerationStatus.APPROVED
+                   || chapter.ModerationStatus == ModerationStatus.REJECTED;
+        if (!isStale)
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter đang trong hàng đợi hoặc đang được xử lý. Vui lòng đợi.");
+      }
+
+      // ── Retry Cooldown: 2 phút giữa 2 lần retry ──────────────────
+      var lastJob = await _db.ModerationQueues
+          .Where(q => q.ContentId == chapterId
+              && q.ContentType == ModerationQueueContentType.CHAPTER)
+          .OrderByDescending(q => q.FlaggedAt)
+          .FirstOrDefaultAsync(ct);
+
+      if (lastJob?.LastRetryAt.HasValue == true
+          && (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes < 2)
+      {
+        var remaining = 2 - (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes;
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
+            $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi thử lại.");
+      }
+
+      // Reset chapter status
+      chapter.ModerationStatus = ModerationStatus.PENDING;
+      chapter.Status = ChapterStatus.DRAFT;
+      await _db.SaveChangesAsync(ct);
+
+      // EnqueueChapterForModerationAsync handles: cleanup old entries → create new PENDING → signal worker
+      await EnqueueChapterForModerationAsync(chapterId, ct);
+
+      _logger.LogInformation(
+          "[ChapterService] ChapterId={ChapterId} đã được retry vào moderation queue.",
+          chapterId);
+    }
+
+        public TextCheckResponse PreCheckText(TextCheckRequest request)
     {
       var cleanedText = CleanText(request.Text);
       int penaltyScore = 0;

@@ -189,6 +189,7 @@ namespace mlndex_backend
       builder.Services.AddScoped<ITopUpService, TopUpService>();
       builder.Services.AddScoped<IPaymentGatewayService, PayOsGatewayService>();
       builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
+      builder.Services.AddScoped<IContentUnlockService, ContentUnlockService>();
 
 
       // System Services — SystemConfigService now uses DbContext
