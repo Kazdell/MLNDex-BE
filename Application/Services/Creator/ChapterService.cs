@@ -10,6 +10,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,7 @@ namespace Application.Services.Creator
     private readonly IMlndexDbContext _db;
     private readonly IStorageService _storage;
     private readonly ILogger<ChapterService> _logger;
+    private readonly IMemoryCache _cache;
     private readonly INotificationService _notificationService;
     private readonly IModerationService _moderationService;
 
@@ -32,13 +34,15 @@ namespace Application.Services.Creator
         IStorageService storage,
         ILogger<ChapterService> logger,
         INotificationService notificationService,
-        IModerationService moderationService)
+        IModerationService moderationService,
+        IMemoryCache cache)
     {
       _db = db;
       _storage = storage;
       _logger = logger;
       _notificationService = notificationService;
       _moderationService = moderationService;
+      _cache = cache;
     }
 
     public async Task<CreateChapterResponseDto> CreateAsync(
@@ -228,6 +232,18 @@ namespace Application.Services.Creator
 int chapterId, int? userId, int? translationId = null,
 CancellationToken cancellationToken = default)
     {
+      var cacheKey = $"ChapterDetails_{chapterId}_User_{userId ?? 0}";
+      return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+      {
+          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+      });
+    }
+
+    private async Task<ChapterDetailDto?> GetChapterDetailInternalAsync(
+int chapterId, int? userId, int? translationId = null,
+CancellationToken cancellationToken = default)
+    {
       {
 
         var chapter = await _db.Chapters
@@ -235,7 +251,7 @@ CancellationToken cancellationToken = default)
                 .ThenInclude(s => s.Creator)
             .Include(c => c.Team)
             .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-            .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+            .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
 
         // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
         if (chapter == null)
@@ -566,7 +582,7 @@ CancellationToken cancellationToken = default)
           .Include(c => c.Team)
           .Include(c => c.Pages.OrderBy(p => p.PageNumber))
           .Include(c => c.Language)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null) return null;
 
@@ -644,7 +660,7 @@ CancellationToken cancellationToken = default)
               .ThenInclude(s => s.Creator)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
           ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chương {chapterId}.");
 
       // Ownership check
@@ -830,7 +846,7 @@ CancellationToken cancellationToken = default)
       // 1. Load chapter + verify ownership through series → creator
       var chapter = await _db.Chapters
           .Include(c => c.Series)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
           ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Chapter không tồn tại.");
 
       // 2. Chỉ creator sở hữu series mới được chỉnh
@@ -878,7 +894,7 @@ CancellationToken cancellationToken = default)
               .ThenInclude(s => s.Creator)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Không tìm thấy chương.");
@@ -924,7 +940,7 @@ CancellationToken cancellationToken = default)
 
       var chapter = await _db.Chapters
           .Include(c => c.Pages)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
 
       if (chapter == null)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");

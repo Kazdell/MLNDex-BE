@@ -6,6 +6,7 @@ using Application.Interfaces.AIModeration;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Services.Creator
 {
@@ -15,17 +16,20 @@ namespace Application.Services.Creator
     private readonly IStorageService _storage;
     private readonly IModerationService _moderation;
     private readonly ILogger<SeriesService> _logger;
+    private readonly IMemoryCache _cache;
 
     public SeriesService(
         IMlndexDbContext context,
         IStorageService storage,
         IModerationService moderation,
-        ILogger<SeriesService> logger)
+        ILogger<SeriesService> logger,
+        IMemoryCache cache)
     {
       _context = context;
       _storage = storage;
       _moderation = moderation;
       _logger = logger;
+      _cache = cache;
     }
 
     /// <summary>
@@ -253,6 +257,9 @@ namespace Application.Services.Creator
 
         series.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
+        
+        _cache.Remove($"SeriesDetails_{seriesId}_User_0");
+        _cache.Remove($"SeriesDetails_{seriesId}_User_{userId}");
         await _moderation.EnqueueSeriesForModerationAsync(
             series.SeriesId, cancellationToken);
 
@@ -291,6 +298,8 @@ namespace Application.Services.Creator
           .Include(s => s.SeriesGenres)
           .ThenInclude(sg => sg.Genre)
           .OrderByDescending(s => s.CreatedAt)
+          .AsNoTracking()
+          .AsSplitQuery()
           .ToListAsync(cancellationToken);
 
       return series.Select(s => new SeriesListItemDto
@@ -315,6 +324,16 @@ namespace Application.Services.Creator
       }).ToList();
     }
     public async Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
+    {
+      var cacheKey = $"SeriesList_{sortBy}_{page}_{pageSize}";
+      return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+      {
+          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+          return await GetSeriesListInternalAsync(sortBy, page, pageSize);
+      }) ?? new PaginatedList<SeriesDto>();
+    }
+
+    private async Task<PaginatedList<SeriesDto>> GetSeriesListInternalAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
     {
       var query = _context.Series
           .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
@@ -345,6 +364,8 @@ namespace Application.Services.Creator
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
           .Where(s => ids.Contains(s.SeriesId))
+          .AsNoTracking()
+          .AsSplitQuery()
           .ToListAsync();
 
       // Preload granted team permissions for all series in this batch
@@ -423,6 +444,8 @@ namespace Application.Services.Creator
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
           .Where(s => ids.Contains(s.SeriesId))
+          .AsNoTracking()
+          .AsSplitQuery()
           .ToListAsync();
 
       // Preload granted team permissions for all series in this batch
@@ -448,6 +471,16 @@ namespace Application.Services.Creator
     /// </summary>
     public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null)
     {
+      var cacheKey = $"SeriesDetails_{seriesId}_User_{userId ?? 0}";
+      return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+      {
+          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+          return await GetSeriesDetailsInternalAsync(seriesId, userId);
+      });
+    }
+
+    private async Task<SeriesDetailDto?> GetSeriesDetailsInternalAsync(int seriesId, int? userId = null)
+    {
       var series = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
@@ -459,6 +492,8 @@ namespace Application.Services.Creator
           .Include(s => s.Chapters).ThenInclude(c => c.Translations)
               .ThenInclude(t => t.Permission)
                   .ThenInclude(p => p!.Team)
+          .AsNoTracking()
+          .AsSplitQuery()
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
       if (series == null) return null;
