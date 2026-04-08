@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.DTOs.Request;
 using Application.DTOs.System;
@@ -29,42 +31,22 @@ public class TopUpService : ITopUpService
     _logger = logger;
   }
 
-
-
-  public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
-  {
-    var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
-
-    return new SystemConfigDto
-    {
-      ExchangeRateCoinToVnd = config.ExchangeRateCoinToVnd,
-      WithdrawalFeePercent = config.WithdrawalFeePercent,
-      WithdrawalMinCoins = config.WithdrawalMinCoins,
-      WithdrawalMaxCoins = config.WithdrawalMaxCoins,
-      BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
-            ? new List<string>()
-            : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
-    };
-  }
-
   public async Task<List<CoinPackageResponseDto>> GetActivePackagesAsync()
   {
     return await _context.CoinPackages
         .Where(p => p.IsActive)
-        .OrderBy(p => p.PriceVnd)
+        .OrderBy(p => p.PriceCoins)
         .Select(p => new CoinPackageResponseDto
         {
           PackageId = p.PackageId,
           Name = p.Name,
-          PriceVnd = p.PriceVnd,
+          PriceCoins = p.PriceCoins,
           CoinAmount = p.CoinAmount,
           BonusCoins = p.BonusCoins,
           IsActive = p.IsActive
         })
         .ToListAsync();
   }
-
   // Thêm ví mới nếu người dùng chưa có ví.
   public async Task<WalletResponseDto> GetWalletAsync(int userId)
   {
@@ -125,12 +107,18 @@ public class TopUpService : ITopUpService
     };
   }
 
+
+
   public async Task<TopUpInitResponseDto> InitiateAsync(int userId, CreateTopUpRequestDto request)
   {
     var method = request.PaymentMethod.ToUpper();
+    if (method == "MOMO" || method == "VNPAY")
+    {
+      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Phương thức thanh toán {method} hiện tại chưa được hỗ trợ.");
+    }
 
     var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa có cấu hình hệ thống nào được thiết lập.");
+        ?? throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
 
     long amountVnd;
     long coinsWillReceive;
@@ -138,23 +126,23 @@ public class TopUpService : ITopUpService
     {
       var package = await _context.CoinPackages
           .FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
-          ?? throw new KeyNotFoundException("Gói coin không tồn tại hoặc đã ngừng bán.");
-      amountVnd = (long)package.PriceVnd;
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại hoặc đã ngừng bán.");
+      amountVnd = (long)package.PriceCoins;
       coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
     }
     else
     {
       amountVnd = request.CustomAmountVnd!.Value;
       if (amountVnd < (long)rate.WithdrawalMinCoins)
-        throw new ArgumentException($"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
       if (amountVnd > (long)rate.WithdrawalMaxCoins)
-        throw new ArgumentException($"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
       coinsWillReceive = (long)Math.Floor(amountVnd / rate.ExchangeRateCoinToVnd);
     }
 
     var wallet = await _context.Wallets
         .FirstOrDefaultAsync(w => w.UserId == userId)
-        ?? throw new KeyNotFoundException("Không tìm thấy ví của user.");
+        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     var txnRef = GenerateOrderCode().ToString();
     var expiredAt = DateTime.UtcNow.AddMinutes(15);
@@ -199,8 +187,6 @@ public class TopUpService : ITopUpService
       PaymentUrl = gatewayResult.PaymentUrl
     };
   }
-
-
 
   public async Task<TopUpCallbackResponseDto> HandlePayOsWebhookAsync(PayOsWebhookData webhookData)
   {
@@ -300,7 +286,7 @@ public class TopUpService : ITopUpService
   private async Task<TopUpCallbackResponseDto> CompleteTopUpAsync(Transaction transaction, string txnRef)
   {
     var wallet = await _context.Wallets.FindAsync(transaction.WalletId)
-        ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không tìm thấy ví.");
+        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     wallet.CoinBalance += transaction.AmountCoins;
     wallet.TotalEarned += transaction.AmountCoins;

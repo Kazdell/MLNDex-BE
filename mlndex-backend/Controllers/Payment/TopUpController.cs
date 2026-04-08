@@ -23,14 +23,6 @@ public class TopUpController : BaseController
   // Queries
   // ────────────────────────────────────────────────
 
-  /// <summary>Tỷ giá coin hiện tại — frontend preview realtime.</summary>
-  [HttpGet("rate")]
-  public async Task<IActionResult> GetCoinRate()
-  {
-    var rate = await _topUpService.GetCoinRateAsync();
-    return OkResponse(rate);
-  }
-
   /// <summary>Danh sách gói coin đang active.</summary>
   [HttpGet("packages")]
   public async Task<IActionResult> GetPackages()

@@ -30,8 +30,6 @@ namespace mlndex_backend.Controllers.Admin
       var id = GetUserId();
       var moderatorId = id != 0 ? id : 1;
 
-      try
-      {
         var result = await _service.ApplyAsync(
             userId,
             moderatorId,
@@ -39,11 +37,7 @@ namespace mlndex_backend.Controllers.Admin
             cancellationToken
         );
         return OkResponse(result);
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
     }
 
     [HttpPut("{userId:int}/roles")]

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
 using Application.DTOs.Translation.Requests;
@@ -25,29 +27,29 @@ namespace Application.Services.Translation
     public async Task<TranslationPermissionResponse> RequestPermissionAsync(RequestPermissionRequest dto)
     {
       var requesterId = _userContext.UserId;
-      if (requesterId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
+      if (requesterId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
 
       if (!isMember)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "You are not an active member of this translation team.");
+        throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
 
       var series = await _context.Series
           .FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId);
 
       if (series == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Series not found.");
+        throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
       var creatorProfile = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.CreatorId == series.CreatorId);
 
       if (creatorProfile == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Creator profile not found for this series.");
+        throw new AppException(ErrorCodes.CREATOR_NOT_FOUND);
 
       var language = await _context.Languages.FindAsync(dto.LanguageId);
       if (language == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Language not found.");
+        throw new AppException(ErrorCodes.LANGUAGE_NOT_FOUND);
 
       var existingPermission = await _context.TranslationPermissions
           .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
@@ -57,9 +59,9 @@ namespace Application.Services.Translation
       if (existingPermission != null)
       {
         if (existingPermission.Status == TranslationPermissionStatus.PENDING)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
+          throw new AppException(ErrorCodes.PERMISSION_REQUEST_PENDING);
         if (existingPermission.Status == TranslationPermissionStatus.GRANTED)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Nhóm đã có quyền dịch Official cho bộ truyện này.");
+          throw new AppException(ErrorCodes.PERMISSION_ALREADY_GRANTED);
 
         // Allow re-requests from DENIED, UNOFFICIAL, or REVOKED
         existingPermission.Status = dto.IsUnofficial ? TranslationPermissionStatus.UNOFFICIAL : TranslationPermissionStatus.PENDING;
@@ -116,14 +118,14 @@ namespace Application.Services.Translation
     public async Task<TranslationPermissionResponse> ReviewPermissionAsync(int permissionId, ReviewPermissionRequest dto)
     {
       var creatorId = _userContext.UserId;
-      if (creatorId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
+      if (creatorId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var permission = await _context.TranslationPermissions
           .Include(p => p.Series)
           .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
 
       if (permission == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Permission request not found.");
+        throw new AppException(ErrorCodes.PERMISSION_REQUEST_NOT_FOUND);
 
       var seriesCreatorUserId = await _context.CreatorProfiles
           .Where(c => c.CreatorId == permission.Series.CreatorId)
@@ -131,7 +133,7 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync();
 
       if (seriesCreatorUserId != creatorId)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only the creator of the series can review this translation request.");
+        throw new AppException(ErrorCodes.CREATOR_ONLY_REVIEW);
 
       if (dto.IsApproved)
       {
@@ -191,7 +193,7 @@ namespace Application.Services.Translation
     public async Task<IEnumerable<TranslationPermissionResponse>> GetTeamPermissionsAsync(int teamId)
     {
       var userId = _userContext.UserId;
-      if (userId == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Unauthorized access.");
+      if (userId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive);
@@ -200,7 +202,7 @@ namespace Application.Services.Translation
           .AnyAsync(t => t.TeamId == teamId && t.LeaderId == userId);
 
       if (!isMember && !isLeader)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Unauthorized. Only active team members can view permissions.");
+        throw new AppException(ErrorCodes.TEAM_MEMBER_ONLY_VIEW);
 
       var permissions = await _context.TranslationPermissions
           .Where(p => p.TeamId == teamId)

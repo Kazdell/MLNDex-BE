@@ -19,7 +19,7 @@ namespace Infrastructure.Migrations
                   .Annotation("SqlServer:Identity", "1, 1"),
             Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
             CoinAmount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-            PriceVnd = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+            PriceCoins = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
             BonusCoins = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
             IsActive = table.Column<bool>(type: "bit", nullable: false),
             CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -127,7 +127,7 @@ namespace Infrastructure.Migrations
                   .Annotation("SqlServer:Identity", "1, 1"),
             Name = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: false),
             Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-            PriceVnd = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+            PriceCoins = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
             DurationDays = table.Column<int>(type: "int", nullable: false),
             AutoUnlockChapter = table.Column<bool>(type: "bit", nullable: false),
             IsActive = table.Column<bool>(type: "bit", nullable: false)

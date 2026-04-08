@@ -23,7 +23,7 @@ namespace Application.Services.User
     public async Task<FollowResponseDto> FollowAsync(int userId, FollowRequestDto dto, CancellationToken ct = default)
     {
       if (!Enum.TryParse<FollowTargetType>(dto.TargetType, true, out var targetType))
-        throw new ArgumentException("Invalid TargetType. Must be SERIES, CREATOR, or TEAM.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_INPUT, "Invalid TargetType. Must be SERIES, CREATOR, or TEAM.");
 
       // Check if already following
       var existing = await _db.Follows

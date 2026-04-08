@@ -25,19 +25,12 @@ namespace mlndex_backend.Controllers.Translation
     [HttpPost("request")]
     public async Task<IActionResult> RequestPermission([FromBody] RequestPermissionRequest dto)
     {
-      try
-      {
         var currentUser = await _db.Users.FindAsync(GetUserId());
         if (currentUser?.CannotUpload == true)
           return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
         var permission = await _service.RequestPermissionAsync(dto);
         return OkResponse(permission);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     // Series creator reviews (Approve/Reject) a translation request.
@@ -45,48 +38,27 @@ namespace mlndex_backend.Controllers.Translation
     [HttpPut("{id}/status")]
     public async Task<IActionResult> ReviewPermission(int id, [FromBody] ReviewPermissionRequest dto)
     {
-      try
-      {
         var permission = await _service.ReviewPermissionAsync(id, dto);
         return OkResponse(permission);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     [Authorize]
     [HttpGet("team/{teamId}")]
     public async Task<IActionResult> GetTeamPermissions(int teamId)
     {
-      try
-      {
         var permissions = await _service.GetTeamPermissionsAsync(teamId);
         return OkResponse(permissions);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
 
     [Authorize]
     [HttpGet("creator")]
     public async Task<IActionResult> GetCreatorPermissions()
     {
-      try
-      {
         var userId = GetUserId();
         if (userId == 0) return UnauthorizedResponse();
 
         var permissions = await _service.GetCreatorPermissionsAsync(userId);
         return OkResponse(permissions);
-      }
-      catch (Exception ex)
-      {
-        return BadRequestResponse(ex.Message);
-      }
     }
   }
 }

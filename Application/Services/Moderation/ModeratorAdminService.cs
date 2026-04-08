@@ -79,7 +79,7 @@ namespace Application.Services.Moderation
     {
       var user =
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException($"User {userId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"User {userId} không tồn tại.");
 
       var moderatorRoleId = await GetModeratorRoleId(cancellationToken);
 
@@ -133,14 +133,14 @@ namespace Application.Services.Moderation
           .Include(u => u.UserRoles)
           .ThenInclude(ur => ur.Role)
           .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
-          ?? throw new KeyNotFoundException("Người dùng không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Người dùng không tồn tại.");
 
       var staffRoles = user.UserRoles
           .Where(ur => ur.Role.RoleName == RoleName.ADMIN || ur.Role.RoleName == RoleName.MODERATOR)
           .ToList();
 
       if (!staffRoles.Any())
-        throw new KeyNotFoundException("Người dùng không phải moderator hoặc admin.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATOR_NOT_FOUND, "Người dùng không phải moderator hoặc admin.");
 
       // Security Check: Minimum 1 Admin
       if (staffRoles.Any(ur => ur.Role.RoleName == RoleName.ADMIN))

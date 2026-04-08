@@ -32,15 +32,9 @@ namespace mlndex_backend.Controllers.Community
       if (userId == 0)
         return UnauthorizedResponse("Invalid user context");
 
-      try
-      {
         var result = await _service.CreateAsync(userId, request, cancellationToken);
         return OkResponse(result, "Created");
-      }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
     }
 
     [AllowAnonymous]
@@ -76,10 +70,7 @@ namespace mlndex_backend.Controllers.Community
         await _service.DeleteAsync(commentId, userId, cancellationToken);
         return OkResponse<object?>(null, "Deleted");
       }
-      catch (KeyNotFoundException ex)
-      {
-        return NotFoundResponse(ex.Message);
-      }
+
       catch (UnauthorizedAccessException ex)
       {
         return UnauthorizedResponse(ex.Message);

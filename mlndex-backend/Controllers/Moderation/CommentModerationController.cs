@@ -46,17 +46,9 @@ namespace mlndex_backend.Controllers.Moderation
         await _commentModerationService.UpdateStatusAsync(id, moderatorId, request.Action, cancellationToken);
         return NoContent();
       }
-      catch (KeyNotFoundException ex)
+      catch (Exception ex)
       {
-        return NotFound(new { message = ex.Message });
-      }
-      catch (ArgumentException ex)
-      {
-        return BadRequest(new { message = ex.Message });
-      }
-      catch (Exception)
-      {
-        return StatusCode(500, new { message = "Lỗi hệ thống khi cập nhật trạng thái bình luận." });
+        return StatusCode(500, new { message = "Lỗi hệ thống khi cập nhật trạng thái bình luận.", details = ex.Message });
       }
     }
 
@@ -76,13 +68,9 @@ namespace mlndex_backend.Controllers.Moderation
         await _commentModerationService.BulkUpdateStatusAsync(request.CommentIds, moderatorId, request.Action, cancellationToken);
         return NoContent();
       }
-      catch (ArgumentException ex)
+      catch (Exception ex)
       {
-        return BadRequest(new { message = ex.Message });
-      }
-      catch (Exception)
-      {
-        return StatusCode(500, new { message = "Lỗi hệ thống khi cập nhật trạng thái các bình luận." });
+        return StatusCode(500, new { message = "Lỗi hệ thống khi cập nhật trạng thái các bình luận.", details = ex.Message });
       }
     }
   }

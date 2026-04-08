@@ -6,7 +6,7 @@ using Application.Interfaces.ReportSystem;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlndex_backend.Controllers
+namespace mlndex_backend.Controllers.ReportSystem
 {
   [ApiController]
   [Route("api/[controller]")]

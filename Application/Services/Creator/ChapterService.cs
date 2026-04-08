@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.AIModeration;
 using Application.DTOs.Chapter;
 using Application.Interfaces.AIModeration;
@@ -8,6 +10,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,11 +19,13 @@ using System.Threading.Tasks;
 
 namespace Application.Services.Creator
 {
+  // Application/Services/Creator/ChapterService.cs
   public class ChapterService : IChapterService
   {
     private readonly IMlndexDbContext _db;
     private readonly IStorageService _storage;
     private readonly ILogger<ChapterService> _logger;
+    private readonly IMemoryCache _cache;
     private readonly INotificationService _notificationService;
     private readonly IModerationService _moderationService;
 
@@ -29,13 +34,15 @@ namespace Application.Services.Creator
         IStorageService storage,
         ILogger<ChapterService> logger,
         INotificationService notificationService,
-        IModerationService moderationService)
+        IModerationService moderationService,
+        IMemoryCache cache)
     {
       _db = db;
       _storage = storage;
       _logger = logger;
       _notificationService = notificationService;
       _moderationService = moderationService;
+      _cache = cache;
     }
 
     public async Task<CreateChapterResponseDto> CreateAsync(
@@ -48,7 +55,7 @@ namespace Application.Services.Creator
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
 
       var series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
-      if (series == null) throw new KeyNotFoundException($"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
+      if (series == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
 
       // ── 2. Rate Limit: Max 10 chapters/ngày ─────────────────────────
       var todayUtc = DateTime.UtcNow.Date;
@@ -225,6 +232,18 @@ namespace Application.Services.Creator
 int chapterId, int? userId, int? translationId = null,
 CancellationToken cancellationToken = default)
     {
+      var cacheKey = $"ChapterDetails_{chapterId}_User_{userId ?? 0}";
+      return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+      {
+          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+      });
+    }
+
+    private async Task<ChapterDetailDto?> GetChapterDetailInternalAsync(
+int chapterId, int? userId, int? translationId = null,
+CancellationToken cancellationToken = default)
+    {
       {
 
         var chapter = await _db.Chapters
@@ -232,7 +251,7 @@ CancellationToken cancellationToken = default)
                 .ThenInclude(s => s.Creator)
             .Include(c => c.Team)
             .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-            .FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+            .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
 
         // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
         if (chapter == null)
@@ -288,15 +307,20 @@ CancellationToken cancellationToken = default)
               .AnyAsync(u => u.ChapterId == chapterId
                           && u.UserId == userId.Value
                           && (
-                              u.TranslationId == null                         // đã mua chapter gốc → mở tất cả
-                              || (translationId.HasValue                      // hoặc đã mua đúng translation này
-                                  && u.TranslationId == translationId.Value)
+                              u.TranslationId == null // đã mua chapter gốc → mở tất cả
+                              || (translationId.HasValue && u.TranslationId == translationId.Value) // hoặc đã mua đúng translation này
                           ),
                         cancellationToken);
         }
-
         bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
 && chapter.Series.Creator?.UserId == userId.Value;
+
+
+                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+                // Nếu đã mua (isUnlockedByUser) hoặc là Creator, thì status trả về PHẢI LÀ UNLOCKED
+                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+                                  ? ChapterLockStatus.UNLOCKED.ToString()
+                                  : ChapterLockStatus.LOCKED.ToString();
 
         var dto = new ChapterDetailDto
         {
@@ -311,7 +335,7 @@ CancellationToken cancellationToken = default)
           PrevChapterId = prevChapterId,
           NextChapterId = nextChapterId,
           Chapters = chapters,
-          LockStatus = effectiveLockStatus.ToString(),
+                    LockStatus = finalStatus,
           UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
           UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
           IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
@@ -485,142 +509,13 @@ CancellationToken cancellationToken = default)
       return dto;
     }
 
-    public async Task<ChapterModerationStatusDto> GetModerationStatusAsync(
-int chapterId, CancellationToken ct = default)
-    {
-      var job = await _db.ModerationQueues
-          .Where(q => q.ContentId == chapterId
-              && q.ContentType == ModerationQueueContentType.CHAPTER)
-          .OrderByDescending(q => q.FlaggedAt)
-          .FirstOrDefaultAsync(ct);
-
-      // ── Fallback: chapter đã có kết quả AI rồi (APPROVED/REJECTED) nhưng queue missing/stuck ──
-      if (job == null || (job.Status != QueueStatus.RESOLVED && job.Status != QueueStatus.IN_REVIEW))
-      {
-        var chapter = await _db.Chapters.FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
-        if (chapter != null &&
-            (chapter.ModerationStatus == ModerationStatus.APPROVED || chapter.ModerationStatus == ModerationStatus.REJECTED))
-        {
-          // Return completed even if AiScoresJson is empty (e.g. old chapters)
-          AiModerationResultDto? result = null;
-          if (!string.IsNullOrEmpty(chapter.AiScoresJson))
-            result = await _moderationService.GetResultAsync(chapterId, ct);
-
-          return new ChapterModerationStatusDto
-          {
-            ChapterId = chapterId,
-            Status = "completed",
-            Flagged = result?.Flagged ?? (chapter.ModerationStatus == ModerationStatus.REJECTED),
-            FlaggedReason = result?.FlaggedReason,
-            CategoryScores = result?.CategoryScores ?? new Dictionary<string, double>(),
-            PerPageResults = result?.PerPageResults,
-          };
-        }
-
-        // No job AND no AI result → truly pending
-        if (job == null)
-          return new ChapterModerationStatusDto
-          {
-            ChapterId = chapterId,
-            Status = "pending"
-          };
-      }
-
-      // Tính queue position nếu đang pending
-      int? queuePos = null;
-      if (job.Status == QueueStatus.PENDING)
-      {
-        queuePos = await _db.ModerationQueues
-            .Where(q => q.Status == QueueStatus.PENDING
-                && (q.Priority == QueuePriority.HIGH && job.Priority != QueuePriority.HIGH
-                    || q.FlaggedAt < job.FlaggedAt))
-            .CountAsync(ct) + 1;
-      }
-
-      var status = job.Status switch
-      {
-        QueueStatus.PENDING => "pending",
-        QueueStatus.IN_REVIEW => "processing",
-        QueueStatus.RESOLVED => "completed",
-        QueueStatus.DISMISSED => "failed",
-        _ => "pending"
-      };
-
-      // Lấy kết quả AI nếu đã xong
-      AiModerationResultDto? result2 = null;
-      if (job.Status == QueueStatus.RESOLVED)
-        result2 = await _moderationService.GetResultAsync(chapterId, ct);
-
-      return new ChapterModerationStatusDto
-      {
-        ChapterId = chapterId,
-        Status = status,
-        QueuePos = queuePos,
-        Flagged = result2?.Flagged,
-        FlaggedReason = result2?.FlaggedReason,
-        CategoryScores = result2?.CategoryScores,
-        PerPageResults = result2?.PerPageResults,
-      };
-    }
-
-    public async Task RetryModerationAsync(int chapterId, CancellationToken ct = default)
-    {
-      var chapter = await _db.Chapters
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}.");
-
-      // Block retry if chapter is currently being processed
-      // But allow if queue is PENDING but chapter already has a result (stale entry from old code)
-      var activeJob = await _db.ModerationQueues
-          .Where(q => q.ContentId == chapterId
-              && q.ContentType == ModerationQueueContentType.CHAPTER
-              && (q.Status == QueueStatus.PENDING || q.Status == QueueStatus.IN_REVIEW))
-          .FirstOrDefaultAsync(ct);
-
-      if (activeJob != null)
-      {
-        // Stale entry: queue stuck at PENDING but chapter already moderated → allow retry
-        var isStale = chapter.ModerationStatus == ModerationStatus.APPROVED
-                   || chapter.ModerationStatus == ModerationStatus.REJECTED;
-        if (!isStale)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter đang trong hàng đợi hoặc đang được xử lý. Vui lòng đợi.");
-      }
-
-      // ── Retry Cooldown: 2 phút giữa 2 lần retry ──────────────────
-      var lastJob = await _db.ModerationQueues
-          .Where(q => q.ContentId == chapterId
-              && q.ContentType == ModerationQueueContentType.CHAPTER)
-          .OrderByDescending(q => q.FlaggedAt)
-          .FirstOrDefaultAsync(ct);
-
-      if (lastJob?.LastRetryAt.HasValue == true
-          && (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes < 2)
-      {
-        var remaining = 2 - (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi thử lại.");
-      }
-
-      // Reset chapter status
-      chapter.ModerationStatus = ModerationStatus.PENDING;
-      chapter.Status = ChapterStatus.DRAFT;
-      await _db.SaveChangesAsync(ct);
-
-      // EnqueueChapterForModerationAsync handles: cleanup old entries → create new PENDING → signal worker
-      await _moderationService.EnqueueChapterForModerationAsync(chapterId, ct);
-
-      _logger.LogInformation(
-          "[ChapterService] ChapterId={ChapterId} đã được retry vào moderation queue.",
-          chapterId);
-    }
-
     public async Task<List<ChapterListItemDto>> GetBySeriesAsync(int seriesId, int userId, CancellationToken ct = default)
     {
       // Verify ownership
       var series = await _db.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, ct)
-          ?? throw new KeyNotFoundException("Series không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
 
       if (series.Creator.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xem chapters của series này.");
@@ -657,7 +552,7 @@ int chapterId, CancellationToken ct = default)
       // Check if series exists
       var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
       if (!seriesExists)
-        throw new KeyNotFoundException("Series không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
 
       return await _db.Chapters
           .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
@@ -687,7 +582,7 @@ int chapterId, CancellationToken ct = default)
           .Include(c => c.Team)
           .Include(c => c.Pages.OrderBy(p => p.PageNumber))
           .Include(c => c.Language)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null) return null;
 
@@ -765,8 +660,8 @@ int chapterId, CancellationToken ct = default)
               .ThenInclude(s => s.Creator)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chương {chapterId}.");
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chương {chapterId}.");
 
       // Ownership check
       if (chapter.Series?.Creator?.UserId != userId)
@@ -951,8 +846,8 @@ int chapterId, CancellationToken ct = default)
       // 1. Load chapter + verify ownership through series → creator
       var chapter = await _db.Chapters
           .Include(c => c.Series)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException("Chapter không tồn tại.");
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Chapter không tồn tại.");
 
       // 2. Chỉ creator sở hữu series mới được chỉnh
       var creator = await _db.CreatorProfiles
@@ -992,96 +887,6 @@ int chapterId, CancellationToken ct = default)
       };
     }
 
-    public async Task<UnlockChapterResponseDto> UnlockAsync(
-int userId, int chapterId, CancellationToken ct = default)
-    {
-      // ── 1. Load chapter ────────────────────────────────────────────────
-      var chapter = await _db.Chapters
-          .Include(c => c.Series)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new KeyNotFoundException($"Không tìm thấy chapter {chapterId}.");
-
-      // ── 2. Must be published ───────────────────────────────────────────
-      if (chapter.Status != ChapterStatus.PUBLISHED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này chưa được phát hành.");
-
-      // ── 3. Effective lock status ───────────────────────────────────────
-      var now = DateTime.UtcNow;  // dùng chung một biến
-      var effectiveLock = chapter.LockStatus;
-      if (effectiveLock == ChapterLockStatus.LOCKED
-          && chapter.UnlockTime.HasValue
-          && now >= chapter.UnlockTime.Value)
-      {
-        effectiveLock = ChapterLockStatus.UNLOCKED;
-      }
-
-      if (effectiveLock == ChapterLockStatus.UNLOCKED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này đã miễn phí, không cần mở khóa.");
-
-      // ── 4. Idempotency ─────────────────────────────────────────────────
-      var alreadyUnlocked = await _db.ChapterUnlocks
-          .AnyAsync(u => u.ChapterId == chapterId && u.UserId == userId, ct);
-      if (alreadyUnlocked)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã mở khóa chương này rồi.");
-
-      // ── 5. Price must be configured ────────────────────────────────────
-      if (chapter.UnlockPriceCoins is null or <= 0)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chương này chưa được cấu hình giá mở khóa.");
-
-      var price = chapter.UnlockPriceCoins.Value;
-
-      // ── 6. Load wallet ─────────────────────────────────────────────────
-      var wallet = await _db.Wallets
-          .FirstOrDefaultAsync(w => w.UserId == userId, ct)
-          ?? throw new KeyNotFoundException("Không tìm thấy ví của bạn.");
-
-      if (wallet.CoinBalance < price)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
-
-      // ── 7. Deduct coins ────────────────────────────────────────────────
-      wallet.CoinBalance -= price;
-      wallet.TotalSpent += price;
-
-      // ── 8. Create transaction record ───────────────────────────────────
-      var coinTransaction = new Transaction
-      {
-        UserId = userId,
-        WalletId = wallet.WalletId,
-        Type = TransactionType.CHAPTER_UNLOCK,
-        AmountCoins = price, // Đảm bảo price tương thích kiểu dữ liệu
-        Status = TransactionStatus.COMPLETED,
-        Note = $"Mở khóa chapter {chapterId} — series {chapter.SeriesId}",
-        CreatedAt = now,
-      };
-      _db.Transactions.Add(coinTransaction);
-
-      // ── 9. Add ChapterUnlock (Lưu ý kiểu decimal của CoinsPaid) ────────
-      var unlockRecord = new ChapterUnlock
-      {
-        ChapterId = chapterId,
-        UserId = userId,
-        // Gán Navigation Property, EF sẽ tự map TransactionId sau khi SaveChanges
-        Transaction = coinTransaction,
-        CoinsPaid = (decimal)price, // Ép kiểu sang decimal để khớp với Entity
-        UnlockSource = UnlockSource.COIN
-      };
-      _db.ChapterUnlocks.Add(unlockRecord);
-      // ── 10. Một lần SaveChanges duy nhất ────────────────────────────
-      await _db.SaveChangesAsync(ct);
-
-      _logger.LogInformation(
-          "[ChapterUnlock] UserId={UserId} unlocked ChapterId={ChapterId} for {Price} coins. New balance: {Balance}",
-          userId, chapterId, price, wallet.CoinBalance);
-
-      return new UnlockChapterResponseDto
-      {
-        ChapterId = chapterId,
-        CoinsSpent = price,
-        NewCoinBalance = wallet.CoinBalance,
-        Message = $"Mở khóa thành công! Đã trừ {price} coin.",
-      };
-    }
     public async Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default)
     {
       var chapter = await _db.Chapters
@@ -1089,33 +894,44 @@ int userId, int chapterId, CancellationToken ct = default)
               .ThenInclude(s => s.Creator)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Không tìm thấy chương.");
 
-      // Verify ownership
       if (chapter.Series?.Creator?.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
 
-      // Prevent deleting if it's already translated by others (Optional, but usually a good idea or cascade delete)
-      // Let's assume it cascade deletes or we allow it. Here we just delete the images.
+            // ── 1. Xóa ChapterUnlock trước (có thể trỏ vào Translation hoặc Chapter) ──
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
 
-      foreach (var page in chapter.Pages)
+            // ── 2. Xóa Translation pages từ storage ──────────────────────────────────
+            if (chapter.Translations != null)
       {
-        if (!string.IsNullOrEmpty(page.ImageUrl))
-          await _storage.DeleteAsync(page.ImageUrl, ct);
+                var translationIds = chapter.Translations.Select(t => t.TranslationId).ToList();
+                var transPages = await _db.TranslationPages
+                    .Where(p => translationIds.Contains(p.TranslationId))
+                    .ToListAsync(ct);
+                foreach (var tp in transPages)
+                    await _storage.DeleteAsync(tp.TranslationImageUrl, ct);
       }
 
+            // ── 3. Xóa Chapter pages từ storage ──────────────────────────────────────
+            foreach (var page in chapter.Pages)
+                if (!string.IsNullOrEmpty(page.ImageUrl))
+                    await _storage.DeleteAsync(page.ImageUrl, ct);
+
+            // ── 4. Cascade EF sẽ tự xóa: Translations, ChapterPages, ChapterText ─────
       _db.Chapters.Remove(chapter);
       await _db.SaveChangesAsync(ct);
 
       _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
     }
-
     public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
     {
-      // Verify team membership
       var isMember = await _db.TeamMembers
           .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
 
@@ -1124,17 +940,21 @@ int userId, int chapterId, CancellationToken ct = default)
 
       var chapter = await _db.Chapters
           .Include(c => c.Pages)
-          .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+          .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
 
       if (chapter == null)
-        throw new KeyNotFoundException("Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
 
-      // Delete images from cloud storage
+            // ── 1. Xóa ChapterUnlock trước ────────────────────────────────────────────
+            var unlocks = await _db.ChapterUnlocks
+                .Where(u => u.ChapterId == chapterId)
+                .ToListAsync(ct);
+            _db.ChapterUnlocks.RemoveRange(unlocks);
+
+            // ── 2. Xóa ảnh từ storage ────────────────────────────────────────────────
       foreach (var page in chapter.Pages)
-      {
         if (!string.IsNullOrEmpty(page.ImageUrl))
           await _storage.DeleteAsync(page.ImageUrl, ct);
-      }
 
       _db.Chapters.Remove(chapter);
       await _db.SaveChangesAsync(ct);
