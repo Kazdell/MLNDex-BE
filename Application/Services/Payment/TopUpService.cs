@@ -35,12 +35,12 @@ public class TopUpService : ITopUpService
   {
     return await _context.CoinPackages
         .Where(p => p.IsActive)
-        .OrderBy(p => p.PriceCoins)
+        .OrderBy(p => p.PriceVnd)
         .Select(p => new CoinPackageResponseDto
         {
           PackageId = p.PackageId,
           Name = p.Name,
-          PriceCoins = p.PriceCoins,
+          PriceVnd = p.PriceVnd,
           CoinAmount = p.CoinAmount,
           BonusCoins = p.BonusCoins,
           IsActive = p.IsActive
@@ -127,7 +127,7 @@ public class TopUpService : ITopUpService
       var package = await _context.CoinPackages
           .FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
           ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại hoặc đã ngừng bán.");
-      amountVnd = (long)package.PriceCoins;
+      amountVnd = (long)package.PriceVnd;
       coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
     }
     else
