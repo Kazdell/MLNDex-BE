@@ -1,11 +1,8 @@
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Data;
-using Application.Interfaces.VIP;
-using Application.Services.Creator;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
