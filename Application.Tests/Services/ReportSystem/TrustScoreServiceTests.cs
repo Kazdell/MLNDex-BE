@@ -6,7 +6,6 @@ using Application.Services.ReportSystem;
 using Domain.Entities;
 using Domain.Enums;
 using FluentAssertions;
-using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -14,6 +13,7 @@ using Application.Tests.Shared;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
 using Moq;
+using Infrastructure.Data;
 namespace Application.Tests.Services.ReportSystem
 {
   [Collection("Database collection")]

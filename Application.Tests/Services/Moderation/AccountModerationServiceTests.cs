@@ -7,6 +7,7 @@ using Application.Services.Moderation;
 using Application.Tests.Shared;
 using Domain.Entities;
 using FluentAssertions;
+using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -16,7 +17,7 @@ namespace Application.Tests.Services.Moderation
   public class AccountModerationServiceTests : IAsyncLifetime
   {
     private readonly DatabaseFixture _fixture;
-    private Infrastructure.Persistence.Data.MlndexDbContext _context = default!;
+    private MlndexDbContext _context = default!;
     private AccountModerationService _service = default!;
 
     public AccountModerationServiceTests(DatabaseFixture fixture)

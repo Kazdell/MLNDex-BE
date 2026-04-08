@@ -1,7 +1,7 @@
 using System;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Infrastructure.Persistence.Data;
+using Infrastructure.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
