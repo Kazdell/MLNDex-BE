@@ -148,8 +148,22 @@ namespace Application.Services.Translation
             "Chapter not found."
           );
 
-        // NOTE: Lock check (COIN_LOCK / TIMED_LOCK) will be added here
-        // once the Creator team implements chapter locking feature.
+        // NOTE: Lock check (COIN_LOCK / TIMED_LOCK)
+        var effectiveLock = chapter.LockStatus;
+        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED 
+            && chapter.UnlockTime.HasValue 
+            && chapter.UnlockTime.Value <= DateTime.UtcNow)
+        {
+            effectiveLock = Domain.Entities.ChapterLockStatus.UNLOCKED;
+        }
+
+        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
+        {
+            throw new AppException(
+                ErrorCodes.CHAPTER_LOCKED,
+                "Bản dịch không chính thức không được phép dịch các chương đang khóa của tác giả."
+            );
+        }
 
         isOfficial = false;
 
