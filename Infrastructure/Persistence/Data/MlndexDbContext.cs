@@ -82,26 +82,26 @@ namespace Infrastructure.Persistence.Data
     {
       base.OnModelCreating(modelBuilder);
 
-      // ====================================================
-      // USER
-      // ====================================================
-      modelBuilder.Entity<User>(e =>
-      {
-        e.ToTable("User");
-        e.HasKey(x => x.UserId);
-        e.Property(x => x.UserId).UseIdentityColumn();
-        e.HasIndex(x => x.Username).IsUnique();
-        e.HasIndex(x => x.Email).IsUnique();
-        e.Property(x => x.Username).HasMaxLength(25).IsRequired();
-        e.Property(x => x.Email).HasMaxLength(256).IsRequired();
-        e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
-        e.Property(x => x.DisplayAvatar);
-        e.Property(x => x.BannerUrl);
-        e.Property(x => x.Bio);
-        e.Property(x => x.IsActive).IsRequired();
-        e.Property(x => x.TrustScore).HasDefaultValue(100);
-        e.Property(x => x.CannotUpload).HasDefaultValue(false);
-      });
+			// ====================================================
+			// USER
+			// ====================================================
+			modelBuilder.Entity<User>(e =>
+			{
+				e.ToTable("User");
+				e.HasKey(x => x.UserId);
+				e.Property(x => x.UserId).UseIdentityColumn();
+				e.HasIndex(x => x.Username).IsUnique();
+				e.HasIndex(x => x.Email).IsUnique();
+				e.Property(x => x.Username).HasMaxLength(25).IsRequired();
+				e.Property(x => x.Email).HasMaxLength(256).IsRequired();
+				e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
+				e.Property(x => x.DisplayAvatar);
+				e.Property(x => x.BannerUrl);
+				e.Property(x => x.Bio);
+				e.Property(x => x.IsActive).IsRequired();
+				e.Property(x => x.TrustScore).HasDefaultValue(100);
+				e.Property(x => x.CannotUpload).HasDefaultValue(false);
+			});
 
       // ====================================================
       // ROLE
@@ -288,35 +288,35 @@ namespace Infrastructure.Persistence.Data
                         .OnDelete(DeleteBehavior.Restrict);
       });
 
-      // ====================================================
-      // TRANSLATION_TEAM
-      // ====================================================
-      modelBuilder.Entity<TranslationTeam>(e =>
-      {
-        e.ToTable("TranslationTeam");
-        e.HasKey(x => x.TeamId);
-        e.Property(x => x.TeamId).UseIdentityColumn();
-        e.HasIndex(x => x.TeamName).IsUnique();
-        e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
-        e.Property(x => x.Slug).HasMaxLength(140).IsRequired();
-        e.Property(x => x.Description).HasMaxLength(1000);
-        e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
-        e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
-        e.Property(x => x.ReputationScore).IsRequired();
-        e.Property(x => x.TrustScore).HasDefaultValue(100);
-        e.Property(x => x.LockStatus)
-                        .HasConversion<string>()
-                        .IsRequired();
-        e.Property(x => x.IsMonetizationEnabled).IsRequired();
-        e.Property(x => x.LockedAt);
-        e.Property(x => x.ModerationStatus)
-                        .HasConversion<string>()
-                        .IsRequired();
-        e.Property(x => x.AvatarUrl);
-        e.Property(x => x.BannerUrl);
-        e.Property(x => x.Facebook).HasMaxLength(255);
-        e.Property(x => x.Discord).HasMaxLength(255);
-        e.Property(x => x.Website).HasMaxLength(255);
+			// ====================================================
+			// TRANSLATION_TEAM
+			// ====================================================
+			modelBuilder.Entity<TranslationTeam>(e =>
+			{
+				e.ToTable("TranslationTeam");
+				e.HasKey(x => x.TeamId);
+				e.Property(x => x.TeamId).UseIdentityColumn();
+				e.HasIndex(x => x.TeamName).IsUnique();
+				e.Property(x => x.TeamName).HasMaxLength(140).IsRequired();
+				e.Property(x => x.Slug).HasMaxLength(140).IsRequired();
+				e.Property(x => x.Description).HasMaxLength(1000);
+				e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
+				e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
+				e.Property(x => x.ReputationScore).IsRequired();
+				e.Property(x => x.TrustScore).HasDefaultValue(100);
+				e.Property(x => x.LockStatus)
+								.HasConversion<string>()
+								.IsRequired();
+				e.Property(x => x.IsMonetizationEnabled).IsRequired();
+				e.Property(x => x.LockedAt);
+				e.Property(x => x.ModerationStatus)
+								.HasConversion<string>()
+								.IsRequired();
+				e.Property(x => x.AvatarUrl);
+				e.Property(x => x.BannerUrl);
+				e.Property(x => x.Facebook).HasMaxLength(255);
+				e.Property(x => x.Discord).HasMaxLength(255);
+				e.Property(x => x.Website).HasMaxLength(255);
 
         e.HasOne(x => x.Leader)
                         .WithMany(u => u.LeadingTeams)
