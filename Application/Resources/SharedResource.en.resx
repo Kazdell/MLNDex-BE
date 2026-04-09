@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="INTERNAL_SERVER_ERROR" xml:space="preserve"><value>An unexpected error occurred.</value></data>
+  <data name="BAD_REQUEST" xml:space="preserve"><value>Invalid request.</value></data>
+  <data name="UNAUTHORIZED" xml:space="preserve"><value>Unauthorized access.</value></data>
+  <data name="FORBIDDEN" xml:space="preserve"><value>Access denied.</value></data>
+  <data name="NOT_FOUND" xml:space="preserve"><value>Data not found.</value></data>
+  <data name="USER_NOT_FOUND" xml:space="preserve"><value>User does not exist.</value></data>
+  <data name="COIN_PACKAGE_NOT_FOUND" xml:space="preserve"><value>Coin package does not exist.</value></data>
+  <data name="SERIES_NOT_FOUND" xml:space="preserve"><value>Series does not exist.</value></data>
+  <data name="SYSTEM_CONFIG_NOT_FOUND" xml:space="preserve"><value>System configuration is not set.</value></data>
+  <data name="DUPLICATE_TRANSLATION_TEAM" xml:space="preserve"><value>The translation team has already posted a translation in this language for the original chapter.</value></data>
+  <data name="TRANSLATION_NOT_FOUND" xml:space="preserve"><value>Translation does not exist.</value></data>
+  <data name="INSUFFICIENT_BALANCE" xml:space="preserve"><value>Insufficient balance to perform the transaction.</value></data>
+  <data name="CHAPTER_ALREADY_UNLOCKED" xml:space="preserve"><value>This chapter has already been unlocked.</value></data>
+  <data name="CHAPTER_LOCKED" xml:space="preserve"><value>This chapter is locked.</value></data>
+  <data name="UNOFFICIAL_TRANSLATION_LOCKED" xml:space="preserve"><value>Unofficial translation is not allowed for chapters that are locked by the creator.</value></data>
+  <data name="OPERATION_NOT_ALLOWED" xml:space="preserve"><value>Operation not allowed.</value></data>
+  <data name="WALLET_NOT_FOUND" xml:space="preserve"><value>Wallet does not exist.</value></data>
+  <data name="SUBSCRIPTION_NOT_FOUND" xml:space="preserve"><value>Subscription package does not exist.</value></data>
+  <data name="VIP_PACKAGE_NOT_FOUND" xml:space="preserve"><value>VIP package does not exist.</value></data>
+  <data name="INVALID_TRANSACTION" xml:space="preserve"><value>Invalid or already processed transaction.</value></data>
+  <data name="TEAM_NOT_FOUND" xml:space="preserve"><value>Translation team does not exist.</value></data>
+  <data name="CHAPTER_NOT_FOUND" xml:space="preserve"><value>Chapter does not exist.</value></data>
+  <data name="NOT_TEAM_MEMBER" xml:space="preserve"><value>You are not a member or leader of this translation team.</value></data>
+  <data name="TRANSLATION_PERMISSION_NOT_FOUND" xml:space="preserve"><value>Translation permission information not found.</value></data>
+  <data name="LANGUAGE_MISMATCH" xml:space="preserve"><value>The selected language does not match the original permission request.</value></data>
+  <data name="PERMISSION_NOT_VALID_FOR_SERIES" xml:space="preserve"><value>Translation permission does not match this series.</value></data>
+  <data name="TEAM_ID_REQUIRED_UNOFFICIAL" xml:space="preserve"><value>Team information is required for unofficial translations.</value></data>
+  <data name="TRANSLATION_RETRIEVE_FAILED" xml:space="preserve"><value>Error occurred while loading translation data.</value></data>
+  <data name="MISSING_TRANSLATION_PERMISSION" xml:space="preserve"><value>Data error: Missing translation permission record.</value></data>
+  <data name="UNAUTHORIZED_EDIT" xml:space="preserve"><value>You do not have permission to edit this translation.</value></data>
+  <data name="UNAUTHORIZED_DELETE" xml:space="preserve"><value>You do not have permission to delete this translation.</value></data>
+  <data name="TRANSLATION_NOT_FOUND_OR_NOT_OWNER" xml:space="preserve"><value>Translation not found or you are not its owner.</value></data>
+  <data name="CHAPTER_PRICE_NOT_CONFIGURED" xml:space="preserve"><value>This chapter does not have an unlock price configured.</value></data>
+  <data name="INVALID_TRANSLATION_CHAPTER" xml:space="preserve"><value>This translation is not linked to a valid chapter.</value></data>
+  <data name="ORIGINAL_CHAPTER_FREE" xml:space="preserve"><value>The original chapter is free, this translation does not need to be purchased.</value></data>
+  <data name="ORIGINAL_CHAPTER_UNLOCKED" xml:space="preserve"><value>You have unlocked the original chapter so you can read all free translations.</value></data>
+  <data name="TRANSLATION_ALREADY_UNLOCKED" xml:space="preserve"><value>You have already purchased this translation.</value></data>
+  <data name="TEAM_MONETIZATION_DISABLED" xml:space="preserve"><value>This translation team has not enabled monetization.</value></data>
+  <data name="TRANSLATION_PRICE_NOT_CONFIGURED" xml:space="preserve"><value>This translation does not have an unlock price configured.</value></data>
+  <data name="INVALID_UNLOCK_PRICE" xml:space="preserve"><value>Invalid unlock price.</value></data>
+  <data name="LANGUAGE_NOT_FOUND" xml:space="preserve"><value>Language does not exist.</value></data>
+  <data name="PERMISSION_REQUEST_PENDING" xml:space="preserve"><value>The team's translation request for this series is pending.</value></data>
+  <data name="PERMISSION_ALREADY_GRANTED" xml:space="preserve"><value>The team already has official translation rights for this series.</value></data>
+  <data name="PERMISSION_REQUEST_NOT_FOUND" xml:space="preserve"><value>Translation permission request not found.</value></data>
+  <data name="CREATOR_ONLY_REVIEW" xml:space="preserve"><value>Only the creator of the series has the right to review this permission.</value></data>
+  <data name="TEAM_MEMBER_ONLY_VIEW" xml:space="preserve"><value>You must be a translation team member to view these requests.</value></data>
+  <data name="CHAPTER_NOT_PUBLISHED" xml:space="preserve"><value>This chapter has not been published yet.</value></data>
+  <data name="CHAPTER_ALREADY_FREE" xml:space="preserve"><value>This chapter is already free and does not need to be unlocked.</value></data>
+  <data name="CREATOR_NOT_FOUND" xml:space="preserve"><value>Creator profile not found.</value></data>
+  <data name="REQUIRED_FIELD" xml:space="preserve"><value>The {0} field is required.</value></data>
+  <data name="INVALID_EMAIL" xml:space="preserve"><value>Invalid email address.</value></data>
+</root>

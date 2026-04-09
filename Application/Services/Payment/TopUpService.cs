@@ -31,6 +31,25 @@ public class TopUpService : ITopUpService
     _logger = logger;
   }
 
+
+
+  public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
+  {
+    var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
+        ?? throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
+
+    return new SystemConfigDto
+    {
+      ExchangeRateCoinToVnd = config.ExchangeRateCoinToVnd,
+      WithdrawalFeePercent = config.WithdrawalFeePercent,
+      WithdrawalMinCoins = config.WithdrawalMinCoins,
+      WithdrawalMaxCoins = config.WithdrawalMaxCoins,
+      BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
+    };
+  }
+
   public async Task<List<CoinPackageResponseDto>> GetActivePackagesAsync()
   {
     return await _context.CoinPackages

@@ -68,8 +68,16 @@ namespace mlndex_backend
       else
         builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
+      // Localization Configuration
+      builder.Services.AddLocalization();
+
       // Standard API Services
       builder.Services.AddControllers()
+          .AddDataAnnotationsLocalization(options =>
+          {
+            options.DataAnnotationLocalizerProvider = (type, factory) =>
+                factory.Create(typeof(Application.Resources.SharedResource));
+          })
           .AddJsonOptions(options =>
           {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -294,6 +302,12 @@ namespace mlndex_backend
       if (app.Environment.IsDevelopment())
       {
       }
+
+      var supportedCultures = new[] { "vi-VN", "en-US" };
+      app.UseRequestLocalization(new RequestLocalizationOptions()
+          .SetDefaultCulture(supportedCultures[0])
+          .AddSupportedCultures(supportedCultures)
+          .AddSupportedUICultures(supportedCultures));
 
       app.UseGlobalExceptionHandling();
       app.UseRateLimiter();

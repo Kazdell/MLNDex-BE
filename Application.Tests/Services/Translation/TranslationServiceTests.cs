@@ -226,6 +226,31 @@ namespace Application.Tests.Services.Translation
     }
 
     [Fact]
+    public async Task Upload_Unofficial_ShouldThrow_WhenChapterIsLocked()
+    {
+      var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(111);
+      var teamId = await SeedBaseData(db);
+
+      var chapter = await db.Chapters.FindAsync(100);
+      chapter!.LockStatus = ChapterLockStatus.LOCKED;
+      chapter.UnlockTime = DateTime.UtcNow.AddDays(1);
+      await db.SaveChangesAsync();
+
+      var dto = new UploadTranslationRequest
+      {
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.TEXT,
+        ContentText = "Attempt to translate locked chapter"
+      };
+
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
+      ex.Message.Should().Contain("không được phép dịch các chương đang khóa");
+    }
+
+    [Fact]
     public async Task Upload_ShouldRollbackAndThrow_WhenStorageUploadFails()
     {
       var db = CreateDb();
