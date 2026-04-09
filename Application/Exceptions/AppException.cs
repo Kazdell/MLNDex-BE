@@ -9,7 +9,7 @@ namespace Application.Exceptions
     public int StatusCode { get; }
 
     public AppException(string errorCode, string? customMessage = null, int statusCode = 400)
-        : base(customMessage ?? ErrorMessages.GetMessage(errorCode))
+        : base(customMessage ?? errorCode)
     {
       ErrorCode = errorCode;
       StatusCode = statusCode;
