@@ -74,6 +74,7 @@ namespace Application.Services.ReportSystem
       {
         var dto = MapToDto(r, r.Reporter.Username);
         dto.TargetName = await GetTargetNameAsync(r.ContentType, r.ContentId, cancellationToken);
+        dto.TargetUrl = await GetTargetUrlAsync(r.ContentType, r.ContentId, cancellationToken);
         result.Add(dto);
       }
 
@@ -150,6 +151,7 @@ namespace Application.Services.ReportSystem
  
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);
+      dto.TargetUrl = await GetTargetUrlAsync(report.ContentType, report.ContentId, cancellationToken);
       return dto;
     }
 
@@ -312,6 +314,24 @@ namespace Application.Services.ReportSystem
         ReportTargetType.Team => await _context.TranslationTeams.Where(t => t.TeamId == targetId).Select(t => t.TeamName).FirstOrDefaultAsync(ct) ?? "Unknown Team",
         ReportTargetType.User => await _context.Users.Where(u => u.UserId == targetId).Select(u => u.Username).FirstOrDefaultAsync(ct) ?? "Unknown User",
         _ => "Unknown Target"
+      };
+    }
+
+    private async Task<string> GetTargetUrlAsync(ReportTargetType targetType, int targetId, CancellationToken ct)
+    {
+      return targetType switch
+      {
+        ReportTargetType.Series => $"/series/{targetId}",
+        ReportTargetType.ChapterTranslation => await _context.Translations
+            .Where(t => t.TranslationId == targetId)
+            .Select(t => $"/chapter/{t.ChapterId}?translationId={t.TranslationId}")
+            .FirstOrDefaultAsync(ct) ?? "#",
+        ReportTargetType.Team => $"/translation/dashboard/{targetId}",
+        ReportTargetType.User => await _context.Users
+            .Where(u => u.UserId == targetId)
+            .Select(u => $"/profile/{u.Username}")
+            .FirstOrDefaultAsync(ct) ?? "#",
+        _ => "#"
       };
     }
 
