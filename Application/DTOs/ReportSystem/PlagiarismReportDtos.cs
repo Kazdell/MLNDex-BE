@@ -31,6 +31,7 @@ namespace Application.DTOs.ReportSystem
     public ReportTargetType TargetType { get; set; }
     public int TargetId { get; set; }
     public string TargetName { get; set; } = string.Empty;
+    public string TargetUrl { get; set; } = string.Empty;
     public ReportReason Reason { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<string> EvidenceUrls { get; set; } = new List<string>();

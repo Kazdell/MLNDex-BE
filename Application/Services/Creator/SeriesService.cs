@@ -342,7 +342,7 @@ namespace Application.Services.Creator
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -374,7 +374,7 @@ namespace Application.Services.Creator
           .GroupBy(p => p.SeriesId)
           .ToDictionaryAsync(g => g.Key, g => g.Select(p => p.TeamId).ToHashSet());
 
-      var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+      var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
       return new PaginatedList<SeriesDto>
       {
@@ -422,7 +422,7 @@ namespace Application.Services.Creator
       if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -454,7 +454,7 @@ namespace Application.Services.Creator
           .GroupBy(p => p.SeriesId)
           .ToDictionaryAsync(g => g.Key, g => g.Select(p => p.TeamId).ToHashSet());
 
-      var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+      var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
       return new PaginatedList<SeriesDto>
       {
