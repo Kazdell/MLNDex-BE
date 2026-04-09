@@ -31,9 +31,28 @@ namespace Application.DTOs.Financial
     public int UnlockCount { get; set; }
   }
 
+  public class DailyRevenueDto
+  {
+    public string Date { get; set; } = string.Empty;
+    public decimal Purchased { get; set; }
+    public decimal Withdrawn { get; set; }
+  }
+
+  public class RecentTransactionDto
+  {
+    public string TxId { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string User { get; set; } = string.Empty;
+    public string Time { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+  }
+
   public class FinancialReportResponse
   {
     public FinancialSummaryDto Summary { get; set; } = new();
     public List<CreatorRevenueDto> TopCreators { get; set; } = new();
+    public List<DailyRevenueDto> DailyRevenue { get; set; } = new();
+    public List<RecentTransactionDto> Transactions { get; set; } = new();
   }
 }

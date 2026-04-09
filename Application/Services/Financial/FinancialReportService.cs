@@ -63,6 +63,48 @@ namespace Application.Services.Financial
 
       var topCreators = await creatorEarningsQuery.ToListAsync(cancellationToken);
 
+      // 1. Daily Revenue (Last 30 Days)
+      var chartDays = 30;
+      var chartStart = DateTime.UtcNow.Date.AddDays(-(chartDays - 1));
+      
+      var dailyPurchases = await _context.Transactions
+          .Where(t => t.CreatedAt >= chartStart && t.Status == TransactionStatus.COMPLETED && t.Type == TransactionType.PURCHASE_COIN)
+          .GroupBy(t => t.CreatedAt.Date)
+          .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.AmountCoins) })
+          .ToListAsync(cancellationToken);
+
+      var dailyWithdrawals = await _context.WithdrawalRequests
+          .Where(w => w.ProcessedAt >= chartStart && w.Status == WithdrawalStatus.COMPLETED)
+          .GroupBy(w => w.ProcessedAt!.Value.Date)
+          .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.AmountCoins) })
+          .ToListAsync(cancellationToken);
+
+      var dailyRevenue = Enumerable.Range(0, chartDays)
+          .Select(offset => chartStart.AddDays(offset))
+          .Select(date => new DailyRevenueDto
+          {
+            Date = date.ToString("yyyy-MM-dd"),
+            Purchased = dailyPurchases.FirstOrDefault(x => x.Date == date)?.Amount ?? 0,
+            Withdrawn = dailyWithdrawals.FirstOrDefault(x => x.Date == date)?.Amount ?? 0
+          })
+          .ToList();
+
+      // 2. Recent Transactions
+      var recentTransactions = await _context.Transactions
+          .Include(t => t.User)
+          .OrderByDescending(t => t.CreatedAt)
+          .Take(10)
+          .Select(t => new RecentTransactionDto
+          {
+            TxId = $"TX-{t.TransactionId:D6}",
+            Type = t.Type.ToString(),
+            Amount = t.Type == TransactionType.PURCHASE_COIN ? t.AmountCoins : -t.AmountCoins,
+            User = t.User.DisplayName ?? t.User.Username,
+            Time = t.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+            Status = t.Status.ToString()
+          })
+          .ToListAsync(cancellationToken);
+
       return new FinancialReportResponse
       {
         Summary = new FinancialSummaryDto
@@ -77,6 +119,8 @@ namespace Application.Services.Financial
           ExchangeRateUsed = exchangeRate
         },
         TopCreators = topCreators,
+        DailyRevenue = dailyRevenue,
+        Transactions = recentTransactions
       };
     }
   }
