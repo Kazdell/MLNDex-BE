@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Caching.Memory;
 using Application.DTOs.Creator;
 using Application.Interfaces.Creator;
-using Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System;
+using Infrastructure.Data;
 
 namespace mlndex_backend.Controllers.Creator
 {

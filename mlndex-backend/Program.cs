@@ -36,7 +36,6 @@ using Infrastructure.Adapters.Translation;
 using Infrastructure.Common;
 using Infrastructure.DI;
 using Infrastructure.Hubs;
-using Infrastructure.Persistence.Data;
 using Infrastructure.Services;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Notification;
@@ -51,6 +50,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Application.Interfaces.VIP;
+using Infrastructure.Data;
 
 namespace mlndex_backend
 {
@@ -191,6 +192,8 @@ namespace mlndex_backend
       builder.Services.AddScoped<IPaymentGatewayService, PayOsGatewayService>();
       builder.Services.AddScoped<ICoinPackageService, CoinPackageService>();
       builder.Services.AddScoped<IContentUnlockService, ContentUnlockService>();
+      builder.Services.AddScoped<IVipService, VipService>();
+      builder.Services.AddScoped<VipExpirationJob>();
 
 
       // System Services — SystemConfigService now uses DbContext
@@ -260,10 +263,10 @@ namespace mlndex_backend
         options.AddPolicy("AllowSpecificOrigin", policy =>
               {
                 policy
-                                  .WithOrigins(allowedOrigins.ToArray())
-                                  .AllowAnyHeader()
-                                  .AllowAnyMethod()
-                                  .AllowCredentials();
+                .WithOrigins(allowedOrigins.ToArray())
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
               });
       });
 

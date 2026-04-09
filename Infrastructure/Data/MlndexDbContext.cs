@@ -3,7 +3,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Persistence.Data
+namespace Infrastructure.Data
 {
   public class MlndexDbContext : DbContext, IMlndexDbContext
   {
@@ -99,8 +99,8 @@ namespace Infrastructure.Persistence.Data
         e.Property(x => x.BannerUrl);
         e.Property(x => x.Bio);
         e.Property(x => x.IsActive).IsRequired();
-        e.Property(x => x.TrustScore).HasDefaultValue(0);
-        e.Property(x => x.CannotUpload).HasDefaultValue(false);
+        e.Property(x => x.TrustScore).IsRequired();
+		e.Property(x => x.CannotUpload).IsRequired();
       });
 
       // ====================================================
@@ -693,7 +693,7 @@ namespace Infrastructure.Persistence.Data
         e.Property(x => x.PackageId).UseIdentityColumn();
         e.Property(x => x.Name).HasMaxLength(150).IsRequired();
         e.Property(x => x.CoinAmount).HasColumnType("decimal(10,2)").IsRequired();
-        e.Property(x => x.PriceCoins).HasColumnType("decimal(10,2)").IsRequired();
+        e.Property(x => x.PriceVnd).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.BonusCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.IsActive).IsRequired();
         e.Property(x => x.CreatedAt).IsRequired();

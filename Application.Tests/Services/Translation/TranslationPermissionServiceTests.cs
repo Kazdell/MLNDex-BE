@@ -9,12 +9,12 @@ using Application.Interfaces.Notification;
 using Application.Services.Translation;
 using Domain.Entities;
 using FluentAssertions;
-using Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
 using Application.Tests.Shared;
+using Infrastructure.Data;
 
 namespace Application.Tests.Services.Translation
 {
