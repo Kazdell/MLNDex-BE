@@ -26,6 +26,7 @@
   <data name="INSUFFICIENT_BALANCE" xml:space="preserve"><value>Insufficient balance to perform the transaction.</value></data>
   <data name="CHAPTER_ALREADY_UNLOCKED" xml:space="preserve"><value>This chapter has already been unlocked.</value></data>
   <data name="CHAPTER_LOCKED" xml:space="preserve"><value>This chapter is locked.</value></data>
+  <data name="UNOFFICIAL_TRANSLATION_LOCKED" xml:space="preserve"><value>Unofficial translation is not allowed for chapters that are locked by the creator.</value></data>
   <data name="OPERATION_NOT_ALLOWED" xml:space="preserve"><value>Operation not allowed.</value></data>
   <data name="WALLET_NOT_FOUND" xml:space="preserve"><value>Wallet does not exist.</value></data>
   <data name="SUBSCRIPTION_NOT_FOUND" xml:space="preserve"><value>Subscription package does not exist.</value></data>

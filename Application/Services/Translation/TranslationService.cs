@@ -159,10 +159,7 @@ namespace Application.Services.Translation
 
         if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
         {
-            throw new AppException(
-                ErrorCodes.CHAPTER_LOCKED,
-                "Bản dịch không chính thức không được phép dịch các chương đang khóa của tác giả."
-            );
+            throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
         }
 
         isOfficial = false;

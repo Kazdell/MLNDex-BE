@@ -26,6 +26,7 @@
   <data name="INSUFFICIENT_BALANCE" xml:space="preserve"><value>Không đủ số dư để thực hiện giao dịch.</value></data>
   <data name="CHAPTER_ALREADY_UNLOCKED" xml:space="preserve"><value>Chương này đã được mở khóa từ trước.</value></data>
   <data name="CHAPTER_LOCKED" xml:space="preserve"><value>Chương này chưa được mở khóa.</value></data>
+  <data name="UNOFFICIAL_TRANSLATION_LOCKED" xml:space="preserve"><value>Bản dịch không chính thức không được phép dịch các chương đang khóa của tác giả.</value></data>
   <data name="OPERATION_NOT_ALLOWED" xml:space="preserve"><value>Thao tác không được phép.</value></data>
   <data name="WALLET_NOT_FOUND" xml:space="preserve"><value>Ví không tồn tại.</value></data>
   <data name="SUBSCRIPTION_NOT_FOUND" xml:space="preserve"><value>Gói đăng ký không tồn tại.</value></data>
@@ -38,7 +39,7 @@
   <data name="LANGUAGE_MISMATCH" xml:space="preserve"><value>Ngôn ngữ được chọn không khớp với yêu cầu phân quyền gốc.</value></data>
   <data name="PERMISSION_NOT_VALID_FOR_SERIES" xml:space="preserve"><value>Bản quyền dịch thuật không khớp với tựa truyện này.</value></data>
   <data name="TEAM_ID_REQUIRED_UNOFFICIAL" xml:space="preserve"><value>Bắt buộc phải cung cấp thông tin nhóm cho bản dịch tự do.</value></data>
-  <data name="TRANSLATION_RETRIEVE_FAILED" xml:space="preserve"><value>Lỗi xẩy ra khi tải dữ liệu bản dịch.</value></data>
+  <data name="TRANSLATION_RETRIEVE_FAILED" xml:space="preserve"><value>Lỗi xảy ra khi tải dữ liệu bản dịch.</value></data>
   <data name="MISSING_TRANSLATION_PERMISSION" xml:space="preserve"><value>Lỗi dữ liệu: Ghi nhận phân quyền dịch bị khuyết thiếu.</value></data>
   <data name="UNAUTHORIZED_EDIT" xml:space="preserve"><value>Bạn không có quyền chỉnh sửa bản dịch này.</value></data>
   <data name="UNAUTHORIZED_DELETE" xml:space="preserve"><value>Bạn không có quyền xóa bản dịch này.</value></data>
