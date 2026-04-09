@@ -14,7 +14,13 @@ namespace Application.DTOs.ReportSystem
     public string Reason { get; set; } = string.Empty;
   }
 
-  public class TrustScoreRestoreResultDto
+	public enum TrustScoreTargetType
+	{
+		User,
+		Team
+	}
+
+	public class TrustScoreRestoreResultDto
   {
     public string TargetName { get; set; } = string.Empty;
     public int OldScore { get; set; }
