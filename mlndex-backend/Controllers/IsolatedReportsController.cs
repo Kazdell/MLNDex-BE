@@ -10,7 +10,7 @@ namespace mlndex_backend.Controllers
 {
   [ApiController]
   [Route("api/[controller]")]
-  public class IsolatedReportsController : ControllerBase
+  public class IsolatedReportsController : BaseController
   {
     private readonly IPlagiarismReportService _reportService;
     private readonly ITrustScoreService _trustScoreService;
@@ -44,11 +44,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var result = await _reportService.CreateReportAsync(userId, request);
-        return Ok(new { Message = "Đã gửi báo cáo thành công.", Data = result });
+        return OkResponse(result, "Đã gửi báo cáo thành công.");
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -58,7 +58,7 @@ namespace mlndex_backend.Controllers
     public async Task<IActionResult> GetPendingReports([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
       var reports = await _reportService.GetPendingReportsAsync(page, limit);
-      return Ok(new { Data = reports });
+      return OkResponse(reports);
     }
 
     /// <summary>Lấy thống kê báo cáo (Moderator).</summary>
@@ -67,7 +67,7 @@ namespace mlndex_backend.Controllers
     public async Task<IActionResult> GetStats()
     {
       var stats = await _reportService.GetReportStatsAsync();
-      return Ok(stats);
+      return OkResponse(stats);
     }
 
     /// <summary>Xử lý một báo cáo (Moderator).</summary>
@@ -81,11 +81,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var result = await _reportService.ResolveReportAsync(id, modId, request);
-        return Ok(new { Message = "Đã xử lý báo cáo thành công.", Data = result });
+        return OkResponse(result, "Đã xử lý báo cáo thành công.");
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -97,11 +97,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var data = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
-        return Ok(new { Data = data });
+        return OkResponse(data);
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -120,11 +120,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
-        return Ok(new { Message = "Đã phục hồi điểm uy tín thành công.", Data = result });
+        return OkResponse(result, "Đã phục hồi điểm uy tín thành công.");
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -143,11 +143,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var result = await _trustScoreService.CreateAppealAsync(userId, request);
-        return Ok(new { Message = "Đã gửi đơn kháng cáo thành công.", Data = result });
+        return OkResponse(result, "Đã gửi đơn kháng cáo thành công.");
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -157,7 +157,7 @@ namespace mlndex_backend.Controllers
     public async Task<IActionResult> GetPendingAppeals([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
       var appeals = await _trustScoreService.GetPendingAppealsAsync(page, limit);
-      return Ok(new { Data = appeals });
+      return OkResponse(appeals);
     }
 
     /// <summary>Moderator duyệt/từ chối đơn kháng cáo.</summary>
@@ -171,11 +171,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
-        return Ok(new { Message = "Đã xử lý đơn kháng cáo.", Data = result });
+        return OkResponse(result, "Đã xử lý đơn kháng cáo.");
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -191,11 +191,11 @@ namespace mlndex_backend.Controllers
       try
       {
         var history = await _trustScoreService.GetUserTranslationHistoryAsync(userId);
-        return Ok(new { Data = history });
+        return OkResponse(history);
       }
       catch (System.Exception ex)
       {
-        return BadRequest(new { Error = ex.Message });
+        return BadRequestResponse(ex.Message);
       }
     }
   }
