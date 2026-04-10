@@ -54,12 +54,12 @@ public class TopUpService : ITopUpService
   {
     return await _context.CoinPackages
         .Where(p => p.IsActive)
-        .OrderBy(p => p.PriceCoins)
+        .OrderBy(p => p.PriceVnd)
         .Select(p => new CoinPackageResponseDto
         {
           PackageId = p.PackageId,
           Name = p.Name,
-          PriceCoins = p.PriceCoins,
+          PriceVnd = p.PriceVnd,
           CoinAmount = p.CoinAmount,
           BonusCoins = p.BonusCoins,
           IsActive = p.IsActive
