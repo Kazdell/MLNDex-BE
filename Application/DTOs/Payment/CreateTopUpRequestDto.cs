@@ -1,3 +1,4 @@
+using Application.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace Application.DTOs.Request;
@@ -14,14 +15,14 @@ public class CreateTopUpRequestDto : IValidatableObject
   public int? PackageId { get; set; }
 
   /// <summary>Số tiền VND nhập tự do. Null nếu chọn gói.</summary>
-  [Range(1, long.MaxValue, ErrorMessage = "Số tiền phải lớn hơn 0")]
+  [Range(1, long.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
   public long? CustomAmountVnd { get; set; }
 
   /// <summary>
   /// Phương thức thanh toán.
   /// Giá trị hợp lệ: "PAYOS" | "VNPAY" | "MOMO"
   /// </summary>
-  [Required(ErrorMessage = "Vui lòng chọn phương thức thanh toán")]
+  [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
   public string PaymentMethod { get; set; } = string.Empty;
 
   /// <summary>
@@ -60,3 +61,4 @@ public class CreateTopUpRequestDto : IValidatableObject
           [nameof(ReturnUrl)]);
   }
 }
+

@@ -1,14 +1,16 @@
+using Application.DTOs.Common;
 using System.ComponentModel.DataAnnotations;
 
 namespace Application.DTOs.Auth
 {
   public class ChangePasswordDto
   {
-    [Required(ErrorMessage = "Mật khẩu hiện tại không được để trống.")]
+    [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public string CurrentPassword { get; set; } = null!;
 
-    [Required(ErrorMessage = "Mật khẩu mới không được để trống.")]
-    [MinLength(6, ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự.")]
+    [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
+    [MinLength(6, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public string NewPassword { get; set; } = null!;
   }
 }
+
