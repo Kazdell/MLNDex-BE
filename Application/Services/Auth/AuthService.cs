@@ -44,19 +44,19 @@ namespace Application.Services.Auth
     public async Task<ServiceResult> RegisterAsync(RegisterDto dto)
     {
       if (IsReservedUsernameOrEmail(dto.Username, dto.Email))
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.OPERATION_NOT_ALLOWED));
+        return ServiceResult.Fail(ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 1. Kiểm tra email trùng
       var existingEmail = await _context.Users
           .AnyAsync(u => u.Email == dto.Email.ToLower());
       if (existingEmail)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.USER_ALREADY_EXISTS));
+        return ServiceResult.Fail(ErrorCodes.USER_ALREADY_EXISTS);
 
       // 2. Kiểm tra username trùng (case-insensitive)
       var existingUsername = await _context.Users
           .AnyAsync(u => u.Username == dto.Username.ToLower());
       if (existingUsername)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.USER_ALREADY_EXISTS));
+        return ServiceResult.Fail(ErrorCodes.USER_ALREADY_EXISTS);
 
       // 3. Hash password
       var hash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -82,7 +82,7 @@ namespace Application.Services.Auth
       var otp = await _otpService.GenerateOtpAsync(dto.Email);
       await _emailService.SendOtpEmailAsync(dto.Email, otp);
 
-      return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.REGISTRATION_SUCCESS));
+      return ServiceResult.Ok(SuccessCodes.REGISTRATION_SUCCESS);
     }
 
     // ── VERIFY OTP ──────────────────────────────────────
@@ -90,17 +90,17 @@ namespace Application.Services.Auth
     {
       var valid = _otpService.ValidateOtp(dto.Email, dto.Code);
       if (!valid)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.INVALID_TOKEN));
+        return ServiceResult.Fail(ErrorCodes.INVALID_TOKEN);
 
       var user = await _context.Users
           .FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower());
       if (user == null)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.USER_NOT_FOUND));
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       user.IsEmailVerified = true;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.EMAIL_VERIFIED));
+      return ServiceResult.Ok(SuccessCodes.EMAIL_VERIFIED);
     }
 
     // ── LOGIN ───────────────────────────────────────────
@@ -209,7 +209,7 @@ namespace Application.Services.Auth
         // Ignore parsing errors
       }
 
-      return Task.FromResult(ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.LOGOUT_SUCCESS)));
+      return Task.FromResult(ServiceResult.Ok(SuccessCodes.LOGOUT_SUCCESS));
     }
 
     // ── REFRESH TOKEN ───────────────────────────────────
@@ -254,12 +254,12 @@ namespace Application.Services.Auth
           .FirstOrDefaultAsync(u => u.Email == email.ToLower());
       // Always return success to prevent email enumeration
       if (user == null || !user.IsEmailVerified || !user.IsActive)
-        return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.OTP_SENT));
+        return ServiceResult.Ok(SuccessCodes.OTP_SENT);
 
       var otp = await _otpService.GenerateOtpAsync(email);
       await _emailService.SendOtpEmailAsync(email, otp);
 
-      return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.OTP_SENT));
+      return ServiceResult.Ok(SuccessCodes.OTP_SENT);
     }
 
     // ── RESET PASSWORD ──────────────────────────────────
@@ -267,12 +267,12 @@ namespace Application.Services.Auth
     {
       var valid = _otpService.ValidateOtp(email, otpCode);
       if (!valid)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.INVALID_TOKEN));
+        return ServiceResult.Fail(ErrorCodes.INVALID_TOKEN);
 
       var user = await _context.Users
           .FirstOrDefaultAsync(u => u.Email == email.ToLower());
       if (user == null)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.USER_NOT_FOUND));
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
       // Invalidate existing refresh tokens
@@ -280,7 +280,7 @@ namespace Application.Services.Auth
       user.RefreshTokenExpiryTime = null;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.PASSWORD_RESET_SUCCESS));
+      return ServiceResult.Ok(SuccessCodes.PASSWORD_RESET_SUCCESS);
     }
 
     // ── CHANGE PASSWORD (authenticated user) ─────────────
@@ -288,15 +288,15 @@ namespace Application.Services.Auth
     {
       var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
       if (user == null)
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.USER_NOT_FOUND));
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       // Verify current password
       if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.INVALID_CREDENTIALS));
+        return ServiceResult.Fail(ErrorCodes.INVALID_CREDENTIALS);
 
       // Prevent reusing the same password
       if (BCrypt.Net.BCrypt.Verify(newPassword, user.PasswordHash))
-        return ServiceResult.Fail(ErrorMessages.GetMessage(ErrorCodes.VALIDATION_ERROR));
+        return ServiceResult.Fail(ErrorCodes.VALIDATION_ERROR);
 
       user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
       // Invalidate refresh token to force re-login on other devices
@@ -304,7 +304,7 @@ namespace Application.Services.Auth
       user.RefreshTokenExpiryTime = null;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok(SuccessMessages.GetMessage(SuccessCodes.PASSWORD_CHANGED));
+      return ServiceResult.Ok(SuccessCodes.PASSWORD_CHANGED);
     }
 
     // ── GOOGLE LOGIN ─────────────────────────────────────────

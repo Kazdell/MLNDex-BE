@@ -54,12 +54,12 @@ namespace Application.Services.Community
         UpdatedAt = now,
       };
 
-      _context.Comments.Add(entity);
-      await _context.SaveChangesAsync(cancellationToken);
-
       var user =
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
           ?? throw new AppException(ErrorCodes.USER_NOT_FOUND);
+
+      _context.Comments.Add(entity);
+      await _context.SaveChangesAsync(cancellationToken);
 
       return new CommentDto
       {
@@ -89,6 +89,7 @@ namespace Application.Services.Community
               c.TargetId == targetId
               && c.TargetType == targetType
               && c.ParentCommentId == null
+              && (!c.IsDeleted || _context.Comments.Any(rep => rep.ParentCommentId == c.CommentId && !rep.IsDeleted))
           )
           .OrderByDescending(c => c.CreatedAt)
           .AsQueryable();
@@ -104,7 +105,7 @@ namespace Application.Services.Community
 
       var replies = await _context
           .Comments.Include(c => c.User)
-          .Where(c => c.ParentCommentId != null && rootIds.Contains(c.ParentCommentId.Value))
+          .Where(c => c.ParentCommentId != null && rootIds.Contains(c.ParentCommentId.Value) && !c.IsDeleted)
           .OrderBy(c => c.CreatedAt)
           .ToListAsync(cancellationToken);
 

@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Application.Tests.Shared;
 using Domain.Entities;
@@ -63,15 +63,17 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       // Act & Assert
-      db.TranslationTeams.Remove(team);
+      db.ChangeTracker.Clear();
+      var trackedTeam = await db.TranslationTeams.FindAsync(team.TeamId);
+      db.TranslationTeams.Remove(trackedTeam);
       
-      // Since it's configured with DeleteBehavior.Restrict, EF Core will throw an exception
-      // when attempting to delete a team that has related translations.
-      // Wait, if it's Restrict, EF Core might prevent marking as deleted if it tracks the dependent entity, 
-      // or DbUpdateException is thrown during SaveChangesAsync.
       var act = async () => await db.SaveChangesAsync();
       
       await act.Should().ThrowAsync<DbUpdateException>();
     }
   }
 }
+
+
+
+
