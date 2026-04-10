@@ -334,10 +334,7 @@ namespace Application.Services.Translation
       {
         var translationResult =
           await GetTranslationByIdAsync(translation.TranslationId)
-          ?? throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Translation failed to retrieve."
-          );
+          ?? throw new AppException(ErrorCodes.TRANSLATION_RETRIEVE_FAILED);
 
         var seriesTitle = chapter.Series?.Title ?? "series";
 
@@ -420,10 +417,7 @@ namespace Application.Services.Translation
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null)
-        throw new AppException(
-          ErrorCodes.UNAUTHORIZED,
-          "Unauthorized access."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var translation = await _context
         .Translations.Include(t => t.Permission)

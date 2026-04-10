@@ -32,7 +32,7 @@ namespace Application.Services.Financial
             var chapter = await _db.Chapters
                 .Include(c => c.Series)
                 .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-                ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}.");
+                ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
 
             // ── 2. Must be published ───────────────────────────────────────────
             if (chapter.Status != ChapterStatus.PUBLISHED)

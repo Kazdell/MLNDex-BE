@@ -487,7 +487,7 @@ namespace Application.Services.Translation
       catch (Exception ex)
       {
         _logger.LogError(ex, "Failed to download image for PageId {PageId} at URL {Url}", pageId, page.ImageUrl);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, "Lỗi khi tải ảnh từ server.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR);
       }
     }
   }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Application.DTOs.Common;
 using System.Linq;
 using System.Threading.Tasks;
@@ -545,7 +545,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).AcceptInvitationAsync(inv.InvitationId));
-      ex.Message.Should().Contain("phải chờ");
+      ex.Message.Should().Be(ErrorCodes.TEAM_JOIN_COOLDOWN);
     }
 
     // ═══════════════════════════════════════════════════════════

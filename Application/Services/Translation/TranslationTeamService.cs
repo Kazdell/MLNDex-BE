@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Common;
+using Application.DTOs.Common;
 using Application.Exceptions;
 using Application.Interfaces.Notification;
 using Application.Interfaces.Common;
@@ -735,7 +735,7 @@ namespace Application.Services.Translation
         var remaining = recentLeave.LeftAt.Value.AddHours(24) - DateTime.UtcNow;
         var hours = (int)remaining.TotalHours;
         var minutes = remaining.Minutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Bạn phải chờ {hours} giờ {minutes} phút nữa sau khi rời nhóm trước để có thể tham gia nhóm khác.");
+        throw new AppException(ErrorCodes.TEAM_JOIN_COOLDOWN);
       }
     }
 
