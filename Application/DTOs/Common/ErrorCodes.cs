@@ -106,5 +106,9 @@ namespace Application.DTOs.Common
     public const string VIP_PACKAGE_NOT_FOUND = "VIP_PACKAGE_NOT_FOUND";
     public const string INVALID_TRANSACTION = "INVALID_TRANSACTION";
 
+    // Community
+    public const string COMMENT_NOT_FOUND = "COMMENT_NOT_FOUND";
+    public const string COMMENT_MAX_DEPTH_REACHED = "COMMENT_MAX_DEPTH_REACHED";
+
   }
 }

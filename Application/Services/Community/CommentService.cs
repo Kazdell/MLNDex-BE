@@ -31,10 +31,10 @@ namespace Application.Services.Community
         );
 
         if (parent == null)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Parent comment không tồn tại.");
+          throw new AppException(ErrorCodes.COMMENT_NOT_FOUND);
 
         if (parent.ParentCommentId != null)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể reply một comment đã là reply (chỉ hỗ trợ 2 cấp độ bình luận).");
+          throw new AppException(ErrorCodes.COMMENT_MAX_DEPTH_REACHED);
 
         // Inherit Target information from parent to prevent Target Hijacking
         request.TargetId = parent.TargetId;
@@ -157,10 +157,10 @@ namespace Application.Services.Community
           await _context.Comments.FirstOrDefaultAsync(
               c => c.CommentId == commentId,
               cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Comment không tồn tại.");
+          ) ?? throw new AppException(ErrorCodes.COMMENT_NOT_FOUND);
 
       if (comment.UserId != userId)
-        throw new UnauthorizedAccessException("Không thể xóa comment của người khác.");
+        throw new AppException(ErrorCodes.FORBIDDEN);
 
       comment.IsDeleted = true;
       comment.Content = "[deleted]";

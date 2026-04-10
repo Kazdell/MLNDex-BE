@@ -67,6 +67,9 @@ namespace Application.Exceptions
             { ErrorCodes.CHAPTER_NOT_PUBLISHED, "Chương này chưa được phát hành." },
             { ErrorCodes.CHAPTER_ALREADY_FREE, "Chương này đã miễn phí, không cần mở khóa." },
             { ErrorCodes.CREATOR_NOT_FOUND, "Không tìm thấy hồ sơ tác giả." },
+            
+            { ErrorCodes.COMMENT_NOT_FOUND, "Bình luận không tồn tại." },
+            { ErrorCodes.COMMENT_MAX_DEPTH_REACHED, "Không thể phản hồi một bình luận đã là phản hồi (chỉ hỗ trợ 2 cấp độ bình luận)." }
         };
 
     public static string GetMessage(string code)
