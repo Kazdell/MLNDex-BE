@@ -100,22 +100,6 @@ namespace mlndex_backend.Controllers.Translation
       return OkResponse(translation);
     }
 
-    // Get text layers for a specific page
-    [HttpGet("page-layer/{pageId}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetPageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService)
-    {
-        var layers = await pageTranslationService.GetPageTextLayerAsync(pageId);
-        return OkResponse(layers);
-    }
-
-    // Generate text layers for a specific page using AI OCR and Translation
-    [HttpPost("page-layer/generate/{pageId}")]
-    public async Task<IActionResult> GeneratePageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService, [FromQuery] string targetLanguage = "Vietnamese")
-    {
-        var layers = await pageTranslationService.GeneratePageTextLayerAsync(pageId, targetLanguage);
-        return OkResponse(layers);
-    }
 
     // Get all translations by series ID.
     [HttpGet("series/{seriesId}")]
