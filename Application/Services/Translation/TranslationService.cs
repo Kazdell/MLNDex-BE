@@ -50,10 +50,7 @@ namespace Application.Services.Translation
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null)
-        throw new AppException(
-          ErrorCodes.UNAUTHORIZED,
-          "Unauthorized access."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       bool isOfficial = false;
       int resolvedTeamId;
@@ -68,41 +65,26 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(p => p.PermissionId == dto.PermissionId);
 
         if (permission == null)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Translation permission record not found."
-          );
+          throw new AppException(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
 
         if (permission.LanguageId != dto.LanguageId)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Language mismatch with the requested permission language."
-          );
+          throw new AppException(ErrorCodes.LANGUAGE_MISMATCH);
 
         // Verify the chapter belongs to the series for which permission was granted
         chapter =
           await _context
             .Chapters.Include(c => c.Series)
             .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
-          ?? throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Chapter not found."
-          );
+          ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
         if (chapter.SeriesId != permission.SeriesId)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Permission not valid for this series."
-          );
+          throw new AppException(ErrorCodes.PERMISSION_NOT_VALID_FOR_SERIES);
 
         // Verify uploader is in the team or is the leader
         bool isUploaderValid =
           permission.Team.LeaderId == uploaderId
           || permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
         if (!isUploaderValid)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Uploader is not an active member or leader of the translation team."
-          );
+          throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
 
         isOfficial = permission.Status == TranslationPermissionStatus.GRANTED;
         resolvedTeamId = permission.TeamId;
@@ -111,10 +93,7 @@ namespace Application.Services.Translation
       else
       {
         if (dto.TeamId == null)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "TeamId is required for unofficial translations."
-          );
+          throw new AppException(ErrorCodes.TEAM_ID_REQUIRED_UNOFFICIAL);
 
         resolvedTeamId = dto.TeamId.Value;
 
@@ -124,29 +103,20 @@ namespace Application.Services.Translation
           .FirstOrDefaultAsync(t => t.TeamId == resolvedTeamId);
 
         if (team == null)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Translation team not found."
-          );
+          throw new AppException(ErrorCodes.TEAM_NOT_FOUND);
 
         bool isUploaderValid =
           team.LeaderId == uploaderId
           || team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
         if (!isUploaderValid)
-          throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Uploader is not an active member or leader of the translation team."
-          );
+          throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
 
         // Verify chapter exists
         chapter =
           await _context
             .Chapters.Include(c => c.Series)
             .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
-          ?? throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Chapter not found."
-          );
+          ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
 
         // NOTE: Lock check (COIN_LOCK / TIMED_LOCK)
         var effectiveLock = chapter.LockStatus;
@@ -364,10 +334,7 @@ namespace Application.Services.Translation
       {
         var translationResult =
           await GetTranslationByIdAsync(translation.TranslationId)
-          ?? throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Translation failed to retrieve."
-          );
+          ?? throw new AppException(ErrorCodes.TRANSLATION_RETRIEVE_FAILED);
 
         var seriesTitle = chapter.Series?.Title ?? "series";
 
@@ -392,10 +359,7 @@ namespace Application.Services.Translation
           translation.TranslationId
         );
         return await GetTranslationByIdAsync(translation.TranslationId)
-          ?? throw new AppException(
-            ErrorCodes.VALIDATION_ERROR,
-            "Translation failed to retrieve."
-          );
+          ?? throw new AppException(ErrorCodes.TRANSLATION_RETRIEVE_FAILED);
       }
     } // end UploadTranslationAsync
 
@@ -453,10 +417,7 @@ namespace Application.Services.Translation
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null)
-        throw new AppException(
-          ErrorCodes.UNAUTHORIZED,
-          "Unauthorized access."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var translation = await _context
         .Translations.Include(t => t.Permission)
@@ -465,26 +426,17 @@ namespace Application.Services.Translation
         .FirstOrDefaultAsync(t => t.TranslationId == translationId);
 
       if (translation == null)
-        throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Translation not found."
-        );
+        throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
       if (translation.Permission == null)
-        throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Data consistency error: Missing TranslationPermission."
-        );
+        throw new AppException(ErrorCodes.MISSING_TRANSLATION_PERMISSION);
 
       bool isUploaderValid =
         translation.Permission.Team.LeaderId == uploaderId
         || translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
       if (!isUploaderValid)
       {
-        throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Unauthorized to edit."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED_EDIT);
       }
 
       if (dto.LanguageId > 0 && dto.LanguageId != translation.LanguageId)
@@ -511,20 +463,14 @@ namespace Application.Services.Translation
 
       await _context.SaveChangesAsync();
       return await GetTranslationByIdAsync(translationId)
-        ?? throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Error retrieving updated translation."
-        );
+        ?? throw new AppException(ErrorCodes.TRANSLATION_RETRIEVE_FAILED);
     }
 
     public async Task<bool> DeleteTranslationAsync(int translationId)
     {
       var uploaderId = _userContext.UserId;
       if (uploaderId == null)
-        throw new AppException(
-          ErrorCodes.UNAUTHORIZED,
-          "Unauthorized access."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var translation = await _context
         .Translations.Include(t => t.Permission)
@@ -536,20 +482,14 @@ namespace Application.Services.Translation
         return false;
 
       if (translation.Permission == null)
-        throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Data consistency error: Missing TranslationPermission."
-        );
+        throw new AppException(ErrorCodes.MISSING_TRANSLATION_PERMISSION);
 
       bool isUploaderValid =
         translation.Permission.Team.LeaderId == uploaderId
         || translation.Permission.Team.TeamMembers.Any(m => m.UserId == uploaderId && m.IsActive);
       if (!isUploaderValid)
       {
-        throw new AppException(
-          ErrorCodes.VALIDATION_ERROR,
-          "Unauthorized to delete."
-        );
+        throw new AppException(ErrorCodes.UNAUTHORIZED_DELETE);
       }
 
       var urlsToDelete = new List<string>();
@@ -675,9 +615,7 @@ namespace Application.Services.Translation
         );
 
       if (translation == null)
-        throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND, 
-          "Không tìm thấy bản dịch hoặc bản dịch không thuộc về nhóm của bạn."
-        );
+        throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
       return await DeleteTranslationAsync(translationId);
     }

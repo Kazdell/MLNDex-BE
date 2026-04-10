@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.System;
 using Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +33,7 @@ namespace mlndex_backend.Controllers.Platform
     public IActionResult Validate([FromQuery] string language)
     {
       if (string.IsNullOrWhiteSpace(language))
-        return BadRequestResponse("Language parameter is required.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var info = _languageService.ValidateLanguage(language);
       if (info == null)

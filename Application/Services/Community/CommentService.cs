@@ -31,10 +31,10 @@ namespace Application.Services.Community
         );
 
         if (parent == null)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Parent comment không tồn tại.");
+          throw new AppException(ErrorCodes.COMMENT_NOT_FOUND);
 
         if (parent.ParentCommentId != null)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể reply một comment đã là reply (chỉ hỗ trợ 2 cấp độ bình luận).");
+          throw new AppException(ErrorCodes.COMMENT_MAX_DEPTH_REACHED);
 
         // Inherit Target information from parent to prevent Target Hijacking
         request.TargetId = parent.TargetId;
@@ -54,12 +54,12 @@ namespace Application.Services.Community
         UpdatedAt = now,
       };
 
-      _context.Comments.Add(entity);
-      await _context.SaveChangesAsync(cancellationToken);
-
       var user =
           await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken)
           ?? throw new AppException(ErrorCodes.USER_NOT_FOUND);
+
+      _context.Comments.Add(entity);
+      await _context.SaveChangesAsync(cancellationToken);
 
       return new CommentDto
       {
@@ -89,6 +89,7 @@ namespace Application.Services.Community
               c.TargetId == targetId
               && c.TargetType == targetType
               && c.ParentCommentId == null
+              && (!c.IsDeleted || _context.Comments.Any(rep => rep.ParentCommentId == c.CommentId && !rep.IsDeleted))
           )
           .OrderByDescending(c => c.CreatedAt)
           .AsQueryable();
@@ -104,7 +105,7 @@ namespace Application.Services.Community
 
       var replies = await _context
           .Comments.Include(c => c.User)
-          .Where(c => c.ParentCommentId != null && rootIds.Contains(c.ParentCommentId.Value))
+          .Where(c => c.ParentCommentId != null && rootIds.Contains(c.ParentCommentId.Value) && !c.IsDeleted)
           .OrderBy(c => c.CreatedAt)
           .ToListAsync(cancellationToken);
 
@@ -157,10 +158,10 @@ namespace Application.Services.Community
           await _context.Comments.FirstOrDefaultAsync(
               c => c.CommentId == commentId,
               cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Comment không tồn tại.");
+          ) ?? throw new AppException(ErrorCodes.COMMENT_NOT_FOUND);
 
       if (comment.UserId != userId)
-        throw new UnauthorizedAccessException("Không thể xóa comment của người khác.");
+        throw new AppException(ErrorCodes.FORBIDDEN);
 
       comment.IsDeleted = true;
       comment.Content = "[deleted]";

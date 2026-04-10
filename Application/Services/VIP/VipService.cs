@@ -86,8 +86,7 @@ namespace Application.Services.VIP
 			// 1. Validate plan
 			var plan = await _context.VipPlans
 				.FirstOrDefaultAsync(p => p.PlanId == request.PlanId && p.IsActive)
-				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND,
-					"Gói VIP không tồn tại hoặc đã ngừng hoạt động.");
+				?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VIP_PACKAGE_NOT_FOUND);
 
 			// 2. Validate wallet
 			var wallet = await _context.Wallets
@@ -95,9 +94,7 @@ namespace Application.Services.VIP
 				?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
 			if (wallet.CoinBalance < plan.PriceCoins)
-				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INSUFFICIENT_BALANCE,
-					$"Không đủ coins. Cần {plan.PriceCoins} coins, " +
-					$"hiện có {wallet.CoinBalance} coins.");
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INSUFFICIENT_BALANCE);
 
 			// 3. Tính StartDate — nối tiếp nếu đang có sub active
 			var latestActiveSub = await _context.VipSubscriptions
@@ -168,8 +165,7 @@ namespace Application.Services.VIP
 				?? throw new AppException(ErrorCodes.SUBSCRIPTION_NOT_FOUND);
 
 			if (sub.Status != SubscriptionStatus.ACTIVE)
-				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-					"Chỉ có thể huỷ subscription đang ACTIVE.");
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
 			// Vẫn còn hiệu lực đến EndDate, chỉ tắt AutoRenew và đánh dấu CANCELLED
 			sub.AutoRenew = false;
@@ -203,8 +199,7 @@ namespace Application.Services.VIP
 			var exists = await _context.VipPlans
 				.AnyAsync(p => p.Name == request.Name);
 			if (exists)
-				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR,
-					$"Gói VIP tên '{request.Name}' đã tồn tại.");
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR);
 
 			var plan = new VipPlan
 			{
@@ -271,9 +266,7 @@ namespace Application.Services.VIP
 							&& s.Status == SubscriptionStatus.ACTIVE
 							&& s.EndDate > DateTime.UtcNow);
 			if (hasActiveSubs)
-				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-					"Không thể xoá gói VIP đang có user sử dụng. " +
-					"Hãy tắt IsActive thay vì xoá.");
+				throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
 			_context.VipPlans.Remove(plan);
 			await _context.SaveChangesAsync();

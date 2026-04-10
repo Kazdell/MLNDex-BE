@@ -25,12 +25,12 @@ namespace mlndex_backend.Controllers.Moderation
 
     // Check text against blacklist and profanity filter.
     [HttpPost("check-text")]
-    public IActionResult CheckText([FromBody] TextCheckRequest request)
+    public async Task<IActionResult> CheckText([FromBody] TextCheckRequest request)
     {
       if (string.IsNullOrWhiteSpace(request.Text))
-        return BadRequestResponse("Text content is required.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
-      var result = _moderationService.PreCheckText(request);
+      var result = await _moderationService.PreCheckTextAsync(request);
       return OkResponse(result);
     }
 
@@ -39,7 +39,7 @@ namespace mlndex_backend.Controllers.Moderation
     public IActionResult AnalyzeScores([FromBody] OpenAiScoreRequest request)
     {
       if (request.Scores == null || request.Scores.Count == 0)
-        return BadRequestResponse("At least one category score is required.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = _moderationService.AnalyzeOpenAiScores(request);
       return OkResponse(result);
@@ -64,7 +64,7 @@ namespace mlndex_backend.Controllers.Moderation
     {
       if (file == null || file.Length == 0)
       {
-        throw new AppException(ErrorCodes.BAD_REQUEST, "Vui lòng cung cấp file ảnh.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
 
       // Chuyển file sang byte array
@@ -76,11 +76,8 @@ namespace mlndex_backend.Controllers.Moderation
       var result = await _ocr.ExtractTextFromImageAsync(imageBytes);
 
       // Trả về kết quả (Sử dụng cấu trúc OkResponse của bạn)
-      return Ok(new
-      {
-        Success = true,
-        Data = result
-      });
+      return OkResponse(result);
     }
   }
 }
+

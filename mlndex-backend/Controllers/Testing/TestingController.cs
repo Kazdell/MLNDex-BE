@@ -6,7 +6,7 @@ namespace mlndex_backend.Controllers.Testing
 {
   [Route("api/[controller]")]
   [ApiController]
-  public class TestingController : ControllerBase
+  public class TestingController : BaseController
   {
     private readonly IMlndexDbContext _db;
 

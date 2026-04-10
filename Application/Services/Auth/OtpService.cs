@@ -19,7 +19,7 @@ namespace Application.Services.Auth
 
     public Task<string> GenerateOtpAsync(string email)
     {
-      var code = new Random().Next(100000, 999999).ToString();
+      var code = global::System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 999999).ToString();
 
       // key theo email, tự expire sau 10 phút
       _cache.Set($"otp:{email.ToLower()}", code, TimeSpan.FromMinutes(10));

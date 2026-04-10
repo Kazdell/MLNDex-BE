@@ -18,10 +18,12 @@ namespace Infrastructure.Adapters.AIModeration
     private const double NOTABLE_SCORE = 0.05;     // Score >= 0.05 → save to perPageResults
     private const int BATCH_SIZE = 10;        // Max images per single API call
 
+    private static readonly HttpClient _localHttpClient = new HttpClient();
+
     public AiModerationClient(IConfiguration configuration, ILogger<AiModerationClient> logger)
     {
       var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình OpenAI:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       _httpClient = new HttpClient
       {
@@ -237,7 +239,6 @@ namespace Infrastructure.Adapters.AIModeration
         List<string> imageUrls)
     {
       var inputItems = new List<object>();
-      using var localHttpClient = new HttpClient();
 
       foreach (var url in imageUrls)
       {
@@ -246,7 +247,7 @@ namespace Infrastructure.Adapters.AIModeration
         {
           try
           {
-            var bytes = await localHttpClient.GetByteArrayAsync(url);
+            var bytes = await _localHttpClient.GetByteArrayAsync(url);
             var base64 = Convert.ToBase64String(bytes);
             // Assuming jpeg for generic local files, OpenAI can usually infer it from the base64 content
             finalUrl = $"data:image/jpeg;base64,{base64}";
@@ -290,8 +291,7 @@ namespace Infrastructure.Adapters.AIModeration
       {
         try
         {
-          using var localHttpClient = new HttpClient();
-          var bytes = await localHttpClient.GetByteArrayAsync(imageUrl);
+          var bytes = await _localHttpClient.GetByteArrayAsync(imageUrl);
           var base64 = Convert.ToBase64String(bytes);
           finalUrl = $"data:image/jpeg;base64,{base64}";
         }

@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -39,16 +41,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> CreateReport([FromBody] CreatePlagiarismReportRequest request)
     {
       var userId = GetCurrentUserId();
-      if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _reportService.CreateReportAsync(userId, request);
-        return OkResponse(result, "Đã gửi báo cáo thành công.");
+        return OkResponse(result);
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -76,16 +78,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> ResolveReport(int id, [FromBody] ResolvePlagiarismReportRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _reportService.ResolveReportAsync(id, modId, request);
-        return OkResponse(result, "Đã xử lý báo cáo thành công.");
+        return OkResponse(result);
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -101,7 +103,7 @@ namespace mlndex_backend.Controllers.ReportSystem
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -115,16 +117,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> RestoreTrustScore([FromBody] RestoreTrustScoreRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
-        return OkResponse(result, "Đã phục hồi điểm uy tín thành công.");
+        return OkResponse(result);
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -138,16 +140,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> CreateAppeal([FromBody] CreateAppealRequest request)
     {
       var userId = GetCurrentUserId();
-      if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _trustScoreService.CreateAppealAsync(userId, request);
-        return OkResponse(result, "Đã gửi đơn kháng cáo thành công.");
+        return OkResponse(result);
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -166,16 +168,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> ReviewAppeal(int id, [FromBody] ReviewAppealRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
+      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
-        return OkResponse(result, "Đã xử lý đơn kháng cáo.");
+        return OkResponse(result);
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -195,7 +197,7 @@ namespace mlndex_backend.Controllers.ReportSystem
       }
       catch (System.Exception ex)
       {
-        return BadRequestResponse(ex.Message);
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
   }

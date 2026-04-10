@@ -1,4 +1,6 @@
 using Application.DTOs.Auth;
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
 using Application.Interfaces.Data;
@@ -41,17 +43,20 @@ namespace Application.Services.Auth
     // ── REGISTER ────────────────────────────────────────
     public async Task<ServiceResult> RegisterAsync(RegisterDto dto)
     {
+      if (IsReservedUsernameOrEmail(dto.Username, dto.Email))
+        return ServiceResult.Fail(ErrorCodes.OPERATION_NOT_ALLOWED);
+
       // 1. Kiểm tra email trùng
       var existingEmail = await _context.Users
           .AnyAsync(u => u.Email == dto.Email.ToLower());
       if (existingEmail)
-        return ServiceResult.Fail("Email đã được sử dụng.");
+        return ServiceResult.Fail(ErrorCodes.USER_ALREADY_EXISTS);
 
       // 2. Kiểm tra username trùng (case-insensitive)
       var existingUsername = await _context.Users
           .AnyAsync(u => u.Username == dto.Username.ToLower());
       if (existingUsername)
-        return ServiceResult.Fail("Username đã tồn tại.");
+        return ServiceResult.Fail(ErrorCodes.USER_ALREADY_EXISTS);
 
       // 3. Hash password
       var hash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -67,16 +72,17 @@ namespace Application.Services.Auth
         IsActive = true,
         CreatedAt = DateTime.UtcNow
       };
-      _context.Users.Add(user);
-      await _context.SaveChangesAsync();
 
       await CreateDefaultUserDataAsync(user);
+
+      _context.Users.Add(user);
+      await _context.SaveChangesAsync();
 
       // 6. Gửi OTP
       var otp = await _otpService.GenerateOtpAsync(dto.Email);
       await _emailService.SendOtpEmailAsync(dto.Email, otp);
 
-      return ServiceResult.Ok("Đăng ký thành công. Vui lòng kiểm tra email để xác thực.");
+      return ServiceResult.Ok(SuccessCodes.REGISTRATION_SUCCESS);
     }
 
     // ── VERIFY OTP ──────────────────────────────────────
@@ -84,17 +90,17 @@ namespace Application.Services.Auth
     {
       var valid = _otpService.ValidateOtp(dto.Email, dto.Code);
       if (!valid)
-        return ServiceResult.Fail("Mã OTP không hợp lệ hoặc đã hết hạn.");
+        return ServiceResult.Fail(ErrorCodes.INVALID_TOKEN);
 
       var user = await _context.Users
           .FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower());
       if (user == null)
-        return ServiceResult.Fail("Tài khoản không tồn tại.");
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       user.IsEmailVerified = true;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok("Xác thực email thành công. Bạn có thể đăng nhập.");
+      return ServiceResult.Ok(SuccessCodes.EMAIL_VERIFIED);
     }
 
     // ── LOGIN ───────────────────────────────────────────
@@ -162,7 +168,7 @@ namespace Application.Services.Auth
         if (user == null) return null;
         if (!user.IsEmailVerified) return null;
         if (!user.IsActive) return null;
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash)) return null;
+        if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash)) return null;
       }
 
       var token = _tokenService.GenerateJwtToken(user);
@@ -189,11 +195,21 @@ namespace Application.Services.Auth
     // ── LOGOUT ──────────────────────────────────────────
     public Task<ServiceResult> LogoutAsync(string token)
     {
-      var handler = new JwtSecurityTokenHandler();
-      var jwt = handler.ReadJwtToken(token);
-      _tokenService.BlacklistToken(token, jwt.ValidTo);
+      try
+      {
+        var handler = new JwtSecurityTokenHandler();
+        if (handler.CanReadToken(token))
+        {
+          var jwt = handler.ReadJwtToken(token);
+          _tokenService.BlacklistToken(token, jwt.ValidTo);
+        }
+      }
+      catch
+      {
+        // Ignore parsing errors
+      }
 
-      return Task.FromResult(ServiceResult.Ok("Đăng xuất thành công."));
+      return Task.FromResult(ServiceResult.Ok(SuccessCodes.LOGOUT_SUCCESS));
     }
 
     // ── REFRESH TOKEN ───────────────────────────────────
@@ -207,7 +223,7 @@ namespace Application.Services.Auth
               .ThenInclude(ur => ur.Role)
           .FirstOrDefaultAsync(u => u.RefreshToken == dto.RefreshToken);
 
-      if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+      if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow || !user.IsActive || !user.IsEmailVerified)
         return null;
 
       var newAccessToken = _tokenService.GenerateJwtToken(user);
@@ -238,12 +254,12 @@ namespace Application.Services.Auth
           .FirstOrDefaultAsync(u => u.Email == email.ToLower());
       // Always return success to prevent email enumeration
       if (user == null || !user.IsEmailVerified || !user.IsActive)
-        return ServiceResult.Ok("Nếu email tồn tại, chúng tôi đã gửi mã xác minh.");
+        return ServiceResult.Ok(SuccessCodes.OTP_SENT);
 
       var otp = await _otpService.GenerateOtpAsync(email);
       await _emailService.SendOtpEmailAsync(email, otp);
 
-      return ServiceResult.Ok("Mã xác minh đã được gửi đến email của bạn.");
+      return ServiceResult.Ok(SuccessCodes.OTP_SENT);
     }
 
     // ── RESET PASSWORD ──────────────────────────────────
@@ -251,12 +267,12 @@ namespace Application.Services.Auth
     {
       var valid = _otpService.ValidateOtp(email, otpCode);
       if (!valid)
-        return ServiceResult.Fail("Mã OTP không hợp lệ hoặc đã hết hạn.");
+        return ServiceResult.Fail(ErrorCodes.INVALID_TOKEN);
 
       var user = await _context.Users
           .FirstOrDefaultAsync(u => u.Email == email.ToLower());
       if (user == null)
-        return ServiceResult.Fail("Tài khoản không tồn tại.");
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
       // Invalidate existing refresh tokens
@@ -264,7 +280,7 @@ namespace Application.Services.Auth
       user.RefreshTokenExpiryTime = null;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập.");
+      return ServiceResult.Ok(SuccessCodes.PASSWORD_RESET_SUCCESS);
     }
 
     // ── CHANGE PASSWORD (authenticated user) ─────────────
@@ -272,15 +288,15 @@ namespace Application.Services.Auth
     {
       var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
       if (user == null)
-        return ServiceResult.Fail("Tài khoản không tồn tại.");
+        return ServiceResult.Fail(ErrorCodes.USER_NOT_FOUND);
 
       // Verify current password
       if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
-        return ServiceResult.Fail("Mật khẩu hiện tại không đúng.");
+        return ServiceResult.Fail(ErrorCodes.INVALID_CREDENTIALS);
 
       // Prevent reusing the same password
       if (BCrypt.Net.BCrypt.Verify(newPassword, user.PasswordHash))
-        return ServiceResult.Fail("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+        return ServiceResult.Fail(ErrorCodes.VALIDATION_ERROR);
 
       user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
       // Invalidate refresh token to force re-login on other devices
@@ -288,7 +304,7 @@ namespace Application.Services.Auth
       user.RefreshTokenExpiryTime = null;
       await _context.SaveChangesAsync();
 
-      return ServiceResult.Ok("Đổi mật khẩu thành công.");
+      return ServiceResult.Ok(SuccessCodes.PASSWORD_CHANGED);
     }
 
     // ── GOOGLE LOGIN ─────────────────────────────────────────
@@ -302,15 +318,25 @@ namespace Application.Services.Auth
       var user = await FindOrMergeAccountAsync(socialUser.Email, socialUser.SocialId, null, socialUser.Name);
       if (user == null) return null;
 
-      // 3. Trả về JWT
+      // 3. Trả về JWT và Refresh Token hợp lệ giống Login thường
       var token = _tokenService.GenerateJwtToken(user);
+      var refreshToken = _tokenService.GenerateRefreshToken();
+
+      user.RefreshToken = refreshToken;
+      user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:RefreshTokenExpiryDays"] ?? "7"));
+      await _context.SaveChangesAsync();
+
       return new AuthResponseDto
       {
         AccessToken = token,
-        ExpiresAt = DateTime.UtcNow.AddDays(30),
+        RefreshToken = refreshToken,
+        UserId = user.UserId,
+        ExpiresAt = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:AccessTokenExpiryMinutes"] ?? "15")),
         Username = user.Username,
+        DisplayName = user.DisplayName ?? user.Username,
         Email = user.Email,
-        Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+        Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+        CannotUpload = user.CannotUpload
       };
     }
 
@@ -325,15 +351,25 @@ namespace Application.Services.Auth
       var user = await FindOrMergeAccountAsync(socialUser.Email, null, socialUser.SocialId, socialUser.Name);
       if (user == null) return null;
 
-      // 3. Trả về JWT
+      // 3. Trả về JWT và Refresh Token hợp lệ giống Login thường
       var token = _tokenService.GenerateJwtToken(user);
+      var refreshToken = _tokenService.GenerateRefreshToken();
+
+      user.RefreshToken = refreshToken;
+      user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:RefreshTokenExpiryDays"] ?? "7"));
+      await _context.SaveChangesAsync();
+
       return new AuthResponseDto
       {
         AccessToken = token,
-        ExpiresAt = DateTime.UtcNow.AddDays(30),
+        RefreshToken = refreshToken,
+        UserId = user.UserId,
+        ExpiresAt = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:AccessTokenExpiryMinutes"] ?? "15")),
         Username = user.Username,
+        DisplayName = user.DisplayName ?? user.Username,
         Email = user.Email,
-        Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList()
+        Roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+        CannotUpload = user.CannotUpload
       };
     }
 
@@ -379,10 +415,10 @@ namespace Application.Services.Auth
           IsActive = true,
           CreatedAt = DateTime.UtcNow
         };
+        await CreateDefaultUserDataAsync(user);
+
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-
-        await CreateDefaultUserDataAsync(user);
 
         // Load lại roles để GenerateJwtToken dùng
         // Load lại user kèm roles sau khi tạo mới
@@ -406,10 +442,18 @@ namespace Application.Services.Auth
       var username = base_;
       var count = 1;
 
+      var adminUsername = _configuration["Admin:Username"]?.ToLower();
+      var adminEmail = _configuration["Admin:Email"]?.ToLower();
+
       // Đảm bảo unique
-      while (await _context.Users.AnyAsync(u => u.Username == username))
+      while (await _context.Users.AnyAsync(u => u.Username == username) ||
+             (!string.IsNullOrEmpty(adminUsername) && username == adminUsername) ||
+             (!string.IsNullOrEmpty(adminEmail) && username == adminEmail))
       {
-        username = $"{base_}{count++}";
+        var suffix = count.ToString();
+        var prefixLength = Math.Min(base_.Length, 15 - suffix.Length);
+        username = $"{base_[..prefixLength]}{suffix}";
+        count++;
       }
 
       return username;
@@ -422,24 +466,37 @@ namespace Application.Services.Auth
           .FirstOrDefaultAsync(r => r.RoleName == RoleName.READER);
       if (readerRole != null)
       {
-        _context.UserRoles.Add(new UserRole
+        user.UserRoles.Add(new UserRole
         {
-          UserId = user.UserId,
           RoleId = readerRole.RoleId,
           AssignedAt = DateTime.UtcNow
         });
       }
 
       // Tạo Wallet mặc định
-      _context.Wallets.Add(new Wallet
+      user.Wallet = new Wallet
       {
-        UserId = user.UserId,
         CoinBalance = 0,
         TotalEarned = 0,
         TotalSpent = 0
-      });
+      };
+    }
 
-      await _context.SaveChangesAsync();
+    private bool IsReservedUsernameOrEmail(string username, string email)
+    {
+      var adminUsername = _configuration["Admin:Username"]?.ToLower();
+      var adminEmail = _configuration["Admin:Email"]?.ToLower();
+
+      var normalizedUsername = username.ToLower();
+      var normalizedEmail = email.ToLower();
+
+      if (!string.IsNullOrEmpty(adminUsername) && normalizedUsername == adminUsername) return true;
+      if (!string.IsNullOrEmpty(adminEmail) && normalizedEmail == adminEmail) return true;
+      
+      if (!string.IsNullOrEmpty(adminEmail) && normalizedUsername == adminEmail) return true;
+      if (!string.IsNullOrEmpty(adminUsername) && normalizedEmail == adminUsername) return true;
+
+      return false;
     }
   }
 }

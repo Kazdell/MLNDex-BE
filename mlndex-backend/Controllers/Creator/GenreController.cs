@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,7 +28,7 @@ namespace mlndex_backend.Controllers.Creator
     {
       var result = await _genreService.GetGenreByIdAsync(id);
       if (result == null)
-        return NotFoundResponse("Genre not found.");
+        throw new AppException(ErrorCodes.NOT_FOUND);
 
       return OkResponse(result);
     }

@@ -23,7 +23,7 @@ namespace Application.Interfaces.AIModeration
         Task<Application.DTOs.Chapter.ChapterModerationStatusDto> GetChapterModerationStatusAsync(int chapterId, CancellationToken ct = default);
     Task RetryChapterModerationAsync(int chapterId, CancellationToken ct = default);
     Task<AiModerationResultDto?> GetResultAsync(int chapterId, CancellationToken ct = default);
-    TextCheckResponse PreCheckText(TextCheckRequest request);
+    Task<TextCheckResponse> PreCheckTextAsync(TextCheckRequest request);
     OpenAiScoreResponse AnalyzeOpenAiScores(OpenAiScoreRequest request);
     List<RejectionTemplateDto> GetRejectionTemplates();
     List<BannedTagDto> GetBannedTags();

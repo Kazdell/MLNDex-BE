@@ -30,7 +30,7 @@ namespace Application.Services.ReportSystem
         RestoreTrustScoreRequest request, int moderatorId, CancellationToken ct = default)
     {
       if (request.ScoreToRestore <= 0)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Điểm phục hồi phải lớn hơn 0.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       if (request.TargetType == TrustScoreTargetType.User)
       {
@@ -68,7 +68,7 @@ namespace Application.Services.ReportSystem
       else // Team
       {
         var team = await _context.TranslationTeams.FindAsync(new object[] { request.TargetId }, ct);
-        if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TEAM_NOT_FOUND, "Team không tồn tại.");
+        if (team == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TEAM_NOT_FOUND);
 
         int oldScore = team.TrustScore;
         team.TrustScore += request.ScoreToRestore;
@@ -111,7 +111,7 @@ namespace Application.Services.ReportSystem
       var existingAppeal = await _context.Appeals
           .AnyAsync(a => a.UserId == userId && a.Status == AppealStatus.Pending, ct);
       if (existingAppeal)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn đã có đơn kháng cáo đang chờ xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var appeal = new Appeal
       {
@@ -135,9 +135,9 @@ namespace Application.Services.ReportSystem
           .Include(a => a.User)
           .FirstOrDefaultAsync(a => a.AppealId == appealId, ct);
 
-      if (appeal == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.APPEAL_NOT_FOUND, "Appeal không tồn tại.");
+      if (appeal == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.APPEAL_NOT_FOUND);
       if (appeal.Status != AppealStatus.Pending)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Appeal đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       appeal.ReviewedBy = moderatorId;
       appeal.ReviewedAt = DateTime.UtcNow;

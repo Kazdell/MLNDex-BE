@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
 using Microsoft.AspNetCore.Authorization;
@@ -33,7 +35,7 @@ namespace mlndex_backend.Controllers.Admin
     )
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Invalid payload");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
         var result = await _service.AssignAsync(request.UserId, cancellationToken);
         return OkResponse(result, "Moderator assigned");

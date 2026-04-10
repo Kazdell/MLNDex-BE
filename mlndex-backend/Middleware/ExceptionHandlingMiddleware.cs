@@ -44,9 +44,9 @@ namespace mlndex_backend.Middleware
       {
         case Application.Exceptions.AppException appEx:
           statusCode = appEx.StatusCode;
-          // Use CustomMessage if provided, else rely on Localizer using ErrorCode
-          bool hasCustomMessage = appEx.Message != appEx.ErrorCode;
-          string localizedMessage = hasCustomMessage ? appEx.Message : _localizer[appEx.ErrorCode]?.Value ?? appEx.Message;
+          // Prioritize resource localization string if it exists in .resx
+          var localizedValue = _localizer[appEx.ErrorCode];
+          string localizedMessage = localizedValue.ResourceNotFound ? appEx.Message : localizedValue.Value;
           response = new ApiResponse<object?>(false, localizedMessage, null, appEx.ErrorCode);
           break;
 
@@ -62,8 +62,7 @@ namespace mlndex_backend.Middleware
 
         case DbUpdateException:
           statusCode = (int)HttpStatusCode.Conflict;
-          // response = new ApiResponse<object?>(false, "Database update error", null, ErrorCodes.DB_ERROR);
-          response = new ApiResponse<object?>(false, $"Database update error: {exception.Message}", null, ErrorCodes.DB_ERROR);
+          response = new ApiResponse<object?>(false, _localizer[ErrorCodes.DB_ERROR]?.Value ?? "Database update error", null, ErrorCodes.DB_ERROR);
           break;
 
 

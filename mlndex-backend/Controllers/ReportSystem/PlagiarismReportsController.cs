@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System.Security.Claims;
 using Application.DTOs.ReportSystem;
 using Application.Interfaces.ReportSystem;
@@ -8,7 +10,7 @@ namespace mlndex_backend.Controllers.ReportSystem
 {
   [ApiController]
   [Route("api/v1/plagiarism-reports")]
-  public class PlagiarismReportsController : ControllerBase
+  public class PlagiarismReportsController : BaseController
   {
     private readonly IPlagiarismReportService _reportService;
 
@@ -23,10 +25,10 @@ namespace mlndex_backend.Controllers.ReportSystem
     {
       var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
       if (!int.TryParse(userIdStr, out var userId))
-        return Unauthorized();
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _reportService.CreateReportAsync(userId, request);
-      return Ok(result);
+      return OkResponse(result);
     }
 
     [HttpGet("moderator")]
@@ -34,7 +36,7 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> GetPendingReports([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
       var result = await _reportService.GetPendingReportsAsync(page, limit);
-      return Ok(result);
+      return OkResponse(result);
     }
 
     [HttpPost("moderator/{id}/resolve")]
@@ -43,17 +45,17 @@ namespace mlndex_backend.Controllers.ReportSystem
     {
       var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
       if (!int.TryParse(userIdStr, out var userId))
-        return Unauthorized();
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {
         var result = await _reportService.ResolveReportAsync(id, userId, request);
-        return Ok(result);
+        return OkResponse(result);
       }
 
       catch (InvalidOperationException ex)
       {
-        return BadRequest(new { message = ex.Message });
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -64,12 +66,12 @@ namespace mlndex_backend.Controllers.ReportSystem
       try
       {
         var result = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
-        return Ok(result);
+        return OkResponse(result);
       }
 
       catch (InvalidOperationException ex)
       {
-        return BadRequest(new { message = ex.Message });
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
   }

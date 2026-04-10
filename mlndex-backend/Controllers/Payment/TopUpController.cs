@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.DTOs.Request;
 using Application.Interfaces;
@@ -70,7 +72,7 @@ public class TopUpController : BaseController
   public async Task<IActionResult> Initiate([FromBody] CreateTopUpRequestDto request)
   {
     if (!ModelState.IsValid)
-      return BadRequestResponse("Dữ liệu không hợp lệ.");
+      throw new AppException(ErrorCodes.INVALID_INPUT);
 
     var userId = GetUserId();
     if (userId == 0) return UnauthorizedResponse();
@@ -97,12 +99,12 @@ public class TopUpController : BaseController
     {
       var webhookData = MapPayOsWebhook(payload);
       var result = await _topUpService.HandlePayOsWebhookAsync(webhookData);
-      return Ok(result);
+      return OkResponse(result);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "[PayOS Webhook] Xử lý thất bại.");
-      return Ok(new { success = false, message = "Xử lý thất bại." });
+      return OkResponse(false);
     }
   }
 
@@ -129,12 +131,12 @@ public class TopUpController : BaseController
       };
 
       var result = await _topUpService.HandlePayOsWebhookAsync(webhookData);
-      return Ok(result);
+      return OkResponse(result);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "[PayOS Return] Xử lý thất bại.");
-      return Ok(new { success = false, message = "Xử lý thất bại." });
+      return OkResponse(false);
     }
   }
 
@@ -151,12 +153,12 @@ public class TopUpController : BaseController
 
       // Nếu là redirect từ browser (có vnp_TransactionStatus)
       // trả về 200 JSON — frontend tự xử lý redirect
-      return Ok(result);
+      return OkResponse(result);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "[VNPay Callback] Xử lý thất bại.");
-      return Ok(new { success = false, message = "Xử lý thất bại." });
+      return OkResponse(false);
     }
   }
 
@@ -170,12 +172,12 @@ public class TopUpController : BaseController
     try
     {
       var result = await _topUpService.HandleMoMoCallbackAsync(dto);
-      return Ok(result);
+      return OkResponse(result);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "[MoMo Callback] Xử lý thất bại.");
-      return Ok(new { success = false, message = "Xử lý thất bại." });
+      return OkResponse(false);
     }
   }
 
