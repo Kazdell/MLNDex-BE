@@ -11,7 +11,7 @@ namespace Domain.Entities
     public int PackageId { get; set; }
     public string Name { get; set; } = null!;
     public decimal CoinAmount { get; set; }
-    public decimal PriceCoins { get; set; }
+    public decimal PriceVnd { get; set; }
     public decimal BonusCoins { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
