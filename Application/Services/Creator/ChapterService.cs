@@ -229,11 +229,16 @@ namespace Application.Services.Creator
 int chapterId, int? userId, int? translationId = null,
 CancellationToken cancellationToken = default)
     {
-      var cacheKey = $"ChapterDetails_{chapterId}_User_{userId ?? 0}";
+      if (userId.HasValue)
+      {
+          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+      }
+
+      var cacheKey = $"ChapterDetails_{chapterId}_Trans_{translationId ?? 0}_User_0";
       return await _cache.GetOrCreateAsync(cacheKey, async entry =>
       {
           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+          return await GetChapterDetailInternalAsync(chapterId, null, translationId, cancellationToken);
       });
     }
 
