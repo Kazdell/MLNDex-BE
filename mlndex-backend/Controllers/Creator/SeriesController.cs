@@ -38,7 +38,7 @@ namespace mlndex_backend.Controllers.Creator
       var userId = CurrentUserId;
       if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       var result = await _service.GetByCreatorAsync(userId, cancellationToken);
-      return Ok(result);
+      return OkResponse(result);
     }
 
     [HttpPost("create")]
@@ -54,7 +54,7 @@ namespace mlndex_backend.Controllers.Creator
         return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
       var result = await _service.CreateAsync(userId, dto, cancellationToken);
-      return Ok(result);
+      return OkResponse(result);
     }
 
     [HttpGet("{id}/edit")]
@@ -82,7 +82,7 @@ namespace mlndex_backend.Controllers.Creator
         return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
       var result = await _service.UpdateAsync(id, userId, dto, cancellationToken);
-      return Ok(result);
+      return OkResponse(result);
     }
 
     [HttpDelete("{id}")]

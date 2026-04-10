@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.DTOs.Common;
 using Application.DTOs.Creator;
 using Application.Interfaces.Creator;
@@ -31,7 +32,7 @@ namespace mlndex_backend.Controllers.Creator
       }
       catch (InvalidOperationException ex)
       {
-        return BadRequest(new ApiResponse<string>(false, ex.Message));
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -61,14 +62,11 @@ namespace mlndex_backend.Controllers.Creator
     {
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
-
-      if (!ModelState.IsValid) return BadRequest(ModelState);
-
       var success = await _creatorService.UpdateUnlockSettingsAsync(userId, dto, ct);
 
       if (!success)
       {
-        return NotFound(new ApiResponse<string>(false, "Không tìm thấy hồ sơ nhà sáng tạo để cập nhật."));
+        throw new AppException(ErrorCodes.NOT_FOUND);
       }
 
       return OkResponse(true, "Cập nhật cấu hình mở khóa thành công!");

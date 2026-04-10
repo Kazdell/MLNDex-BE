@@ -33,17 +33,17 @@ namespace mlndex_backend.Controllers.Translation
 
     // List all translation teams.
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TranslationTeamResponse>>> GetAllTeams()
+    public async Task<IActionResult> GetAllTeams()
     {
       var teams = await _service.GetAllTeamsAsync();
-      return Ok(teams);
+      return OkResponse(teams);
     }
 
     [HttpGet("{id}/members")]
-    public async Task<ActionResult<IEnumerable<TeamMemberDetailResponse>>> GetMembers(int id)
+    public async Task<IActionResult> GetMembers(int id)
     {
       var members = await _service.GetTeamMembersAsync(id);
-      return Ok(members);
+      return OkResponse(members);
     }
 
     // Get current user's joined teams.

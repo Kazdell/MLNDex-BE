@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using System;
 using System.Threading.Tasks;
 using Application.DTOs.User;
@@ -12,7 +13,7 @@ namespace mlndex_backend.Controllers.Translation
 {
   [ApiController]
   [Route("api/[controller]")]
-  public class ReaderTranslationController : ControllerBase
+  public class ReaderTranslationController : BaseController
   {
     private readonly IReaderTranslationService _translationService;
     private readonly ILogger<ReaderTranslationController> _logger;
@@ -35,11 +36,11 @@ namespace mlndex_backend.Controllers.Translation
       {
         if (request == null || request.PageId <= 0)
         {
-          return BadRequest(new ApiResponse<object>(false, "Invalid payload.", null, "400"));
+          throw new AppException(ErrorCodes.INVALID_INPUT);
         }
 
         var overlays = await _translationService.GenerateOverlayTranslationsAsync(request);
-        return Ok(new ApiResponse<object>(true, "Dịch thành công", overlays));
+        return OkResponse(overlays);
       }
       catch (Exception ex)
       {
@@ -59,11 +60,11 @@ namespace mlndex_backend.Controllers.Translation
       {
         if (request == null || request.PageId <= 0)
         {
-          return BadRequest(new ApiResponse<object>(false, "Invalid payload.", null, "400"));
+          throw new AppException(ErrorCodes.INVALID_INPUT);
         }
 
         var boxes = await _translationService.ScanBoxesAsync(request);
-        return Ok(new ApiResponse<object>(true, "Quét thành công", boxes));
+        return OkResponse(boxes);
       }
       catch (Exception ex)
       {
@@ -83,7 +84,7 @@ namespace mlndex_backend.Controllers.Translation
       {
         if (request == null || request.PageId <= 0)
         {
-          return BadRequest(new ApiResponse<object>(false, "Invalid payload.", null, "400"));
+          throw new AppException(ErrorCodes.INVALID_INPUT);
         }
 
         // Try to get userId if authenticated (for Learning Cache tracking)
@@ -94,7 +95,7 @@ namespace mlndex_backend.Controllers.Translation
           userId = parsedId;
 
         var overlays = await _translationService.TranslateAdjustedBoxesAsync(request, userId);
-        return Ok(new ApiResponse<object>(true, "Dịch thành công", overlays));
+        return OkResponse(overlays);
       }
       catch (Exception ex)
       {
@@ -113,11 +114,11 @@ namespace mlndex_backend.Controllers.Translation
       {
         if (request == null || request.PageId <= 0)
         {
-          return BadRequest(new ApiResponse<object>(false, "Invalid payload.", null, "400"));
+          throw new AppException(ErrorCodes.INVALID_INPUT);
         }
 
         var overlays = await _translationService.TranslatePageByAiVisionAsync(request.PageId, request.SourceLanguage, request.TargetLanguage);
-        return Ok(new ApiResponse<object>(true, "Dịch Vision thành công", overlays));
+        return OkResponse(overlays);
       }
       catch (Exception ex)
       {

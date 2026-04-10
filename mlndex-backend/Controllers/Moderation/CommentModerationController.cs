@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Community;
 using Application.Interfaces.Moderation;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +11,7 @@ namespace mlndex_backend.Controllers.Moderation
   [ApiController]
   [Route("api/admin/comments")]
   [Authorize(Roles = "ADMIN,MODERATOR")]
-  public class CommentModerationController : ControllerBase
+  public class CommentModerationController : BaseController
   {
     private readonly ICommentModerationService _commentModerationService;
 
@@ -27,18 +29,16 @@ namespace mlndex_backend.Controllers.Moderation
         CancellationToken cancellationToken = default)
     {
       var response = await _commentModerationService.GetAdminCommentsAsync(search, status, page, pageSize, cancellationToken);
-      return Ok(response);
+      return OkResponse(response);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCommentStatus(int id, [FromBody] UpdateCommentStatusRequest request, CancellationToken cancellationToken)
     {
-      if (!ModelState.IsValid) return BadRequest(ModelState);
-
       var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
       if (!int.TryParse(userIdString, out var moderatorId))
       {
-        return Unauthorized("User ID claim is missing or invalid.");
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
       }
 
       try
@@ -55,12 +55,10 @@ namespace mlndex_backend.Controllers.Moderation
     [HttpPut("bulk")]
     public async Task<IActionResult> BulkUpdateCommentStatus([FromBody] BulkUpdateCommentStatusRequest request, CancellationToken cancellationToken)
     {
-      if (!ModelState.IsValid) return BadRequest(ModelState);
-
       var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
       if (!int.TryParse(userIdString, out var moderatorId))
       {
-        return Unauthorized("User ID claim is missing or invalid.");
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
       }
 
       try
