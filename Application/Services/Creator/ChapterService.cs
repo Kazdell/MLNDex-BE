@@ -317,12 +317,21 @@ CancellationToken cancellationToken = default)
         bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
 && chapter.Series.Creator?.UserId == userId.Value;
 
-
-                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
-                // Nếu đã mua (isUnlockedByUser) hoặc là Creator, thì status trả về PHẢI LÀ UNLOCKED
-                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
-                                  ? ChapterLockStatus.UNLOCKED.ToString()
-                                  : ChapterLockStatus.LOCKED.ToString();
+        // 1.5 Kiểm tra xem user có thuộc Team được tác giả cấp quyền dịch bộ truyện này không
+        bool isAuthorizedTranslator = false;
+        if (userId.HasValue)
+        {
+            isAuthorizedTranslator = await _db.TranslationPermissions
+                .AnyAsync(p => p.SeriesId == chapter.SeriesId 
+                            && p.Status == TranslationPermissionStatus.GRANTED
+                            && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)), 
+                          cancellationToken);
+        }
+        // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+        // Nếu đã mua (isUnlockedByUser) hoặc là Creator hoặc là Translator được cấp quyền, thì status trả về PHẢI LÀ UNLOCKED
+        var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
+                          ? ChapterLockStatus.UNLOCKED.ToString()
+                          : ChapterLockStatus.LOCKED.ToString();
 
         var dto = new ChapterDetailDto
         {
@@ -340,10 +349,10 @@ CancellationToken cancellationToken = default)
                     LockStatus = finalStatus,
           UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
           UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-          IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
+          IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator,
 
           // Chặn Pages nếu locked và user chưa unlock
-          Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+          Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
             ? chapter.Pages.Select(p => new ChapterPageResponseDto
             {
               PageId = p.PageId,
