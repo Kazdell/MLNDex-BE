@@ -107,8 +107,8 @@ namespace mlndex_backend
       builder.Services.AddScoped<IOtpService, OtpService>();
       builder.Services.AddScoped<IEmailService, EmailService>();
       builder.Services.AddScoped<IUserContext, UserContext>();
-      builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
-      builder.Services.AddScoped<IFacebookOAuthService, FacebookOAuthService>();
+      builder.Services.AddHttpClient<IGoogleOAuthService, GoogleOAuthService>();
+      builder.Services.AddHttpClient<IFacebookOAuthService, FacebookOAuthService>();
 
 
       // Storage & Content Services
