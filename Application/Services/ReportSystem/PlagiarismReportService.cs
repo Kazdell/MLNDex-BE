@@ -105,10 +105,10 @@ namespace Application.Services.ReportSystem
           .FirstOrDefaultAsync(r => r.ReportId == reportId, cancellationToken);
 
       if (report == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND);
 
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Report đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       report.Status = request.NewStatus;
 
@@ -158,11 +158,11 @@ namespace Application.Services.ReportSystem
     public async Task<CompareTranslationResponse> GetCompareDataAsync(int reportId, int referenceTranslationId, CancellationToken cancellationToken = default)
     {
       var report = await _context.Reports.FindAsync(new object[] { reportId }, cancellationToken);
-      if (report == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại");
+      if (report == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND);
 
       if (report.ContentType != ReportTargetType.ChapterTranslation)
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       var reportedTranslation = await _context.Translations
@@ -181,7 +181,7 @@ namespace Application.Services.ReportSystem
 
       if (reportedTranslation == null || referenceTranslation == null)
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Một trong hai bản dịch không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
       }
 
       return new CompareTranslationResponse

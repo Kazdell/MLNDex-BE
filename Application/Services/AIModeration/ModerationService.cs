@@ -72,7 +72,7 @@ namespace Application.Services.AIModeration
           .Include(c => c.Series) // Lấy Series để biết AgeRating
               .ThenInclude(s => s.Creator) // Lấy Creator để biết ReputationScore
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       _logger.LogInformation("Chạy AI kiểm duyệt chapter {ChapterId} (Rating: {Rating})", chapterId, chapter.Series.AgeRating);
 
@@ -254,7 +254,7 @@ namespace Application.Services.AIModeration
       var series = await _db.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Không tìm thấy series {seriesId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       _logger.LogInformation("Chạy AI kiểm duyệt Series {SeriesId} (Rating: {Rating})", seriesId, series.AgeRating);
 
@@ -397,7 +397,7 @@ namespace Application.Services.AIModeration
               .ThenInclude(p => p!.Team)
               .ThenInclude(t => t!.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, $"Không tìm thấy translation {translationId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
 
       _logger.LogInformation("Chạy AI kiểm duyệt translation {TranslationId} (Rating: {Rating})", translationId, translation.Chapter.Series.AgeRating);
 
@@ -579,11 +579,11 @@ namespace Application.Services.AIModeration
     {
       var chapter = await _db.Chapters
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       // Chỉ cho appeal khi đang bị Flagged
       if (chapter.ModerationStatus != ModerationStatus.REJECTED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chỉ có thể appeal khi chapter đang bị reject.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // Đếm số lần đã appeal trước đó
       var appealCount = await _db.ModerationQueues
@@ -716,7 +716,7 @@ int chapterId, CancellationToken ct = default)
     {
       var chapter = await _db.Chapters
           .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chapter {chapterId}.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       // Block retry if chapter is currently being processed
       // But allow if queue is PENDING but chapter already has a result (stale entry from old code)
@@ -732,7 +732,7 @@ int chapterId, CancellationToken ct = default)
         var isStale = chapter.ModerationStatus == ModerationStatus.APPROVED
                    || chapter.ModerationStatus == ModerationStatus.REJECTED;
         if (!isStale)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter đang trong hàng đợi hoặc đang được xử lý. Vui lòng đợi.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       // ── Retry Cooldown: 2 phút giữa 2 lần retry ──────────────────
@@ -746,8 +746,7 @@ int chapterId, CancellationToken ct = default)
           && (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes < 2)
       {
         var remaining = 2 - (DateTime.UtcNow - lastJob.LastRetryAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi thử lại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       // Reset chapter status

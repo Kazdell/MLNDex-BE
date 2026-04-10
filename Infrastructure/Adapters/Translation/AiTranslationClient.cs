@@ -19,7 +19,7 @@ namespace Infrastructure.Adapters.Translation
     public AiTranslationClient(IConfiguration configuration, ILogger<AiTranslationClient> logger)
     {
       var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chưa cấu hình OpenAI:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       _httpClient = new HttpClient
       {
@@ -60,7 +60,7 @@ namespace Infrastructure.Adapters.Translation
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("OpenAI Translation API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"OpenAI Translation API error: {response.StatusCode}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR);
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();
@@ -168,7 +168,7 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
       {
         var error = await response.Content.ReadAsStringAsync();
         _logger.LogError("OpenAI Vision API lỗi {StatusCode}: {Error}", response.StatusCode, error);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"OpenAI Vision API error: {response.StatusCode}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR);
       }
 
       var responseBody = await response.Content.ReadAsStringAsync();

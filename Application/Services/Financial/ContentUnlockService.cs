@@ -71,8 +71,7 @@ namespace Application.Services.Financial
                 ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
             if (wallet.CoinBalance < price)
-                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED,
-                    $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin.");
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
             // ── 7. Deduct coins ────────────────────────────────────────────────
             wallet.CoinBalance -= price;
@@ -137,16 +136,12 @@ namespace Application.Services.Financial
       var chapter =
         translation.Chapter
         ?? throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Bản dịch không liên kết với chương hợp lệ."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 2. Chapter phải được published ───────────────────────────────────
       if (chapter.Status != ChapterStatus.PUBLISHED)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Chương này chưa được phát hành."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 3. Translation chỉ có giá khi chapter gốc đang bị lock ──────────
       var now = DateTime.UtcNow;
@@ -162,9 +157,7 @@ namespace Application.Services.Financial
 
       if (effectiveChapterLock == ChapterLockStatus.UNLOCKED)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Chương gốc đang miễn phí, bản dịch này không cần mua."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 4. User đã unlock chapter gốc rồi → đọc được tất cả translation ─
       var hasChapterUnlock = await _db.ChapterUnlocks.AnyAsync(
@@ -174,9 +167,7 @@ namespace Application.Services.Financial
 
       if (hasChapterUnlock)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Bạn đã mở khóa chương gốc nên có thể đọc tất cả bản dịch miễn phí."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 5. Idempotency: đã mua translation này chưa? ─────────────────────
       var alreadyUnlocked = await _db.ChapterUnlocks.AnyAsync(
@@ -189,32 +180,24 @@ namespace Application.Services.Financial
 
       if (alreadyUnlocked)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Bạn đã mua bản dịch này rồi."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 6. Team phải bật monetization & có giá ───────────────────────────
       var team = translation.Permission?.Team;
 
       if (team == null || !team.IsMonetizationEnabled)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Nhóm dịch này chưa bật tính năng kinh doanh."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var rawPrice =
         team.DefaultUnlockPriceCoins
         ?? chapter.UnlockPriceCoins
         ?? throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Bản dịch này chưa được cấu hình giá mở khóa."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       if (rawPrice <= 0)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          "Giá mở khóa không hợp lệ."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var price = (decimal)rawPrice;
 
@@ -225,9 +208,7 @@ namespace Application.Services.Financial
 
       if (wallet.CoinBalance < price)
         throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED,
-          $"Số dư không đủ. Cần {price} coin, bạn đang có {wallet.CoinBalance} coin."
-        );
+          ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 8. Trừ coin ──────────────────────────────────────────────────────
       wallet.CoinBalance -= price;

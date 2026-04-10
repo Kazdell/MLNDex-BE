@@ -20,11 +20,11 @@ public class PayOsGatewayService : IPaymentGatewayService
   private const string BaseUrl = "https://api-merchant.payos.vn";
 
   private string ClientId => _configuration["PayOS:ClientId"]
-      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu PayOS:ClientId");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
   private string ApiKey => _configuration["PayOS:ApiKey"]
-      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu PayOS:ApiKey");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
   private string ChecksumKey => _configuration["PayOS:ChecksumKey"]
-      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu PayOS:ChecksumKey");
+      ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
   public PayOsGatewayService(
       IHttpClientFactory httpClientFactory,

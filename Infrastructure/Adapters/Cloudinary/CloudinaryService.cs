@@ -23,11 +23,11 @@ namespace Infrastructure.Adapters.Cloudinary
       _logger = logger;
 
       var cloudName = config["Cloudinary:CloudName"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu Cloudinary:CloudName trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       var apiKey = config["Cloudinary:ApiKey"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu Cloudinary:ApiKey trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       var apiSecret = config["Cloudinary:ApiSecret"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Thiếu Cloudinary:ApiSecret trong appsettings");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var account = new Account(cloudName, apiKey, apiSecret);
       _cloudinary = new CloudinaryDotNet.Cloudinary(account)
@@ -70,7 +70,7 @@ CancellationToken cancellationToken = default)
       if (result.Error != null)
       {
         _logger.LogError("Cloudinary upload lỗi: {Error}", result.Error.Message);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Upload thất bại: {result.Error.Message}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       _logger.LogInformation("Upload thành công: {Url}", result.SecureUrl);

@@ -29,7 +29,7 @@ namespace Application.Services.Moderation
           ?? throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // Fetch the moderator to check their permissions
       var moderator = await _context.Users
@@ -53,13 +53,13 @@ namespace Application.Services.Moderation
       if (isModeratorLevel)
       {
         if (currentUserRolesCount.Contains(RoleName.ADMIN) || currentUserRolesCount.Contains(RoleName.MODERATOR))
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền thực thi hành động này lên Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED);
       }
       else if (isAdminLevel)
       {
         // Admin can act on other Admins, but not themselves (for deactivation)
         if (userId == moderatorId && request.Action == AccountActionType.DEACTIVATE)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Bạn không thể tự vô hiệu hóa tài khoản của chính mình.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
         // If deactivating another Admin, ensure at least one OTHER active Admin remains
         if (request.Action == AccountActionType.DEACTIVATE && currentUserRolesCount.Contains(RoleName.ADMIN))
@@ -71,7 +71,7 @@ namespace Application.Services.Moderation
 
           if (activeAdminsCount == 0)
           {
-            throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể vô hiệu hóa Admin này vì đây là Admin hoạt động cuối cùng của hệ thống.");
+            throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
           }
         }
       }
@@ -188,7 +188,7 @@ namespace Application.Services.Moderation
 
         if (otherAdminsCount == 0)
         {
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống phải tồn tại ít nhất một Admin. Bạn không thể gỡ bỏ quyền Admin cuối cùng.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
         }
       }
 
@@ -196,9 +196,9 @@ namespace Application.Services.Moderation
       if (isModeratorLevel)
       {
         if (currentRoles.Contains(RoleName.ADMIN) || currentRoles.Contains(RoleName.MODERATOR))
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền thay đổi vai trò của Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED);
         if (newRoles.Contains(RoleName.ADMIN) || newRoles.Contains(RoleName.MODERATOR))
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED, "Bạn không có quyền cấp quyền Hệ thống Quản trị (Moderator/Admin).");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.UNAUTHORIZED);
       }
       // Admin level can edit anyone's roles (including other Admins)
       // Safety checks for minimum admin count were handled above
