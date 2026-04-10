@@ -25,12 +25,12 @@ namespace mlndex_backend.Controllers.Moderation
 
     // Check text against blacklist and profanity filter.
     [HttpPost("check-text")]
-    public IActionResult CheckText([FromBody] TextCheckRequest request)
+    public async Task<IActionResult> CheckText([FromBody] TextCheckRequest request)
     {
       if (string.IsNullOrWhiteSpace(request.Text))
         return BadRequestResponse("Text content is required.");
 
-      var result = _moderationService.PreCheckText(request);
+      var result = await _moderationService.PreCheckTextAsync(request);
       return OkResponse(result);
     }
 
@@ -84,3 +84,4 @@ namespace mlndex_backend.Controllers.Moderation
     }
   }
 }
+

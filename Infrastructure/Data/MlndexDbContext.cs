@@ -694,7 +694,7 @@ namespace Infrastructure.Data
         e.Property(x => x.PackageId).UseIdentityColumn();
         e.Property(x => x.Name).HasMaxLength(150).IsRequired();
         e.Property(x => x.CoinAmount).HasColumnType("decimal(10,2)").IsRequired();
-        e.Property(x => x.PriceVnd).HasColumnType("decimal(10,2)").IsRequired();
+        e.Property(x => x.PriceCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.BonusCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.IsActive).IsRequired();
         e.Property(x => x.CreatedAt).IsRequired();
@@ -1169,3 +1169,4 @@ namespace Infrastructure.Data
     }
   }
 }
+

@@ -69,13 +69,13 @@ namespace Application.Services.Creator
       }
 
       // 2. Check Blacklist for Title & Description
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
+      var titleCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm: {string.Join(", ", titleCheck.Reasons)}");
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
-        var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
+        var descCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
           throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
       }
@@ -192,13 +192,13 @@ namespace Application.Services.Creator
           _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
       }
 
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
+      var titleCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm.");
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
-        var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
+        var descCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
           throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
       }

@@ -37,6 +37,8 @@ namespace Application.Services.AIModeration
             { '!', 'i' }, { '$', 's' }, { '4', 'a' }
         };
 
+    private static readonly HttpClient _staticHttpClient = new HttpClient();
+
     public ModerationService(
         IMlndexDbContext db,
         IAiModerationClient aiClient,
@@ -77,7 +79,7 @@ namespace Application.Services.AIModeration
       // 0. Check Chapter Title Blacklist
       if (!string.IsNullOrEmpty(chapter.Title))
       {
-        var titleCheck = PreCheckText(new TextCheckRequest { Text = chapter.Title, UserReputation = 100 });
+        var titleCheck = await PreCheckTextAsync(new TextCheckRequest { Text = chapter.Title, UserReputation = 100 });
         if (titleCheck.Action == ModerationActionType.AutoReject.ToString() || titleCheck.Action == ModerationActionType.InstantBan.ToString())
         {
           chapter.ModerationStatus = ModerationStatus.REJECTED;
@@ -122,12 +124,11 @@ namespace Application.Services.AIModeration
 
       // 2. OCR & Text Check (Dùng cho image content)
       var extractedTextBuilder = new StringBuilder();
-      using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
       foreach (var url in imageUrls)
       {
         try
         {
-          var imageBytes = await httpClient.GetByteArrayAsync(url);
+          var imageBytes = await _staticHttpClient.GetByteArrayAsync(url);
           var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
           if (!string.IsNullOrWhiteSpace(text))
           {
@@ -143,7 +144,7 @@ namespace Application.Services.AIModeration
       var fullText = extractedTextBuilder.ToString();
       if (!string.IsNullOrWhiteSpace(fullText))
       {
-        var textResult = PreCheckText(new TextCheckRequest
+        var textResult = await PreCheckTextAsync(new TextCheckRequest
         {
           Text = fullText,
           UserReputation = chapter.Series.Creator.ReputationScore,
@@ -260,7 +261,7 @@ namespace Application.Services.AIModeration
       // 0. Check Series Title Blacklist
       if (!string.IsNullOrEmpty(series.Title))
       {
-        var titleCheck = PreCheckText(new TextCheckRequest { Text = series.Title, UserReputation = 100 });
+        var titleCheck = await PreCheckTextAsync(new TextCheckRequest { Text = series.Title, UserReputation = 100 });
         if (titleCheck.Action == ModerationActionType.AutoReject.ToString() ||
             titleCheck.Action == ModerationActionType.InstantBan.ToString())
         {
@@ -279,7 +280,7 @@ namespace Application.Services.AIModeration
       // 1. Check Description Blacklist
       if (!string.IsNullOrEmpty(series.Description))
       {
-        var descCheck = PreCheckText(new TextCheckRequest { Text = series.Description, UserReputation = 100 });
+        var descCheck = await PreCheckTextAsync(new TextCheckRequest { Text = series.Description, UserReputation = 100 });
         if (descCheck.Action == ModerationActionType.AutoReject.ToString() ||
             descCheck.Action == ModerationActionType.InstantBan.ToString())
         {
@@ -419,12 +420,11 @@ namespace Application.Services.AIModeration
 
           // 2. OCR & Text Check (Dùng cho image content)
           var extractedTextBuilder = new StringBuilder();
-          using var httpClient = new HttpClient(); // Khởi tạo HttpClient tạm thời cho OCR image download
           foreach (var url in imageUrls)
           {
             try
             {
-              var imageBytes = await httpClient.GetByteArrayAsync(url);
+              var imageBytes = await _staticHttpClient.GetByteArrayAsync(url);
               var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
               if (!string.IsNullOrWhiteSpace(text))
               {
@@ -440,7 +440,7 @@ namespace Application.Services.AIModeration
           var fullText = extractedTextBuilder.ToString();
           if (!string.IsNullOrWhiteSpace(fullText))
           {
-            var textResult = PreCheckText(new TextCheckRequest
+            var textResult = await PreCheckTextAsync(new TextCheckRequest
             {
               Text = fullText,
               UserReputation = 100,
@@ -466,10 +466,9 @@ namespace Application.Services.AIModeration
       {
         if (translation.TranslationText != null && !string.IsNullOrWhiteSpace(translation.TranslationText.ContentUrl))
         {
-          using var httpClient = new global::System.Net.Http.HttpClient();
-          var textContent = await httpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
+          var textContent = await _staticHttpClient.GetStringAsync(translation.TranslationText.ContentUrl, CancellationToken.None);
 
-          var textResult = PreCheckText(new TextCheckRequest
+          var textResult = await PreCheckTextAsync(new TextCheckRequest
           {
             Text = textContent,
             UserReputation = 100,
@@ -764,14 +763,14 @@ int chapterId, CancellationToken ct = default)
           chapterId);
     }
 
-        public TextCheckResponse PreCheckText(TextCheckRequest request)
+        public async Task<TextCheckResponse> PreCheckTextAsync(TextCheckRequest request)
     {
       var cleanedText = CleanText(request.Text);
       int penaltyScore = 0;
       var flagReasons = new List<string>();
 
       // Load dynamic blacklist from DB
-      var config = _db.SystemConfigs.FirstOrDefault();
+      var config = await _db.SystemConfigs.FirstOrDefaultAsync();
       var dynamicWords = config != null && !string.IsNullOrEmpty(config.BlacklistWordsJson)
           ? JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
           : new List<string>();

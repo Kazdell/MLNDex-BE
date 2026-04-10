@@ -146,7 +146,7 @@ public class TopUpService : ITopUpService
       var package = await _context.CoinPackages
           .FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
           ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại hoặc đã ngừng bán.");
-      amountVnd = (long)package.PriceVnd;
+      amountVnd = (long)package.PriceCoins;
       coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
     }
     else
@@ -343,3 +343,4 @@ public class TopUpService : ITopUpService
     return long.Parse($"{timestamp}{random}");
   }
 }
+
