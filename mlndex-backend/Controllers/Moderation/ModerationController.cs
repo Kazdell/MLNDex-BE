@@ -64,7 +64,7 @@ namespace mlndex_backend.Controllers.Moderation
     {
       if (file == null || file.Length == 0)
       {
-        throw new AppException(ErrorCodes.BAD_REQUEST, "Vui lòng cung cấp file ảnh.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       }
 
       // Chuyển file sang byte array
@@ -76,11 +76,7 @@ namespace mlndex_backend.Controllers.Moderation
       var result = await _ocr.ExtractTextFromImageAsync(imageBytes);
 
       // Trả về kết quả (Sử dụng cấu trúc OkResponse của bạn)
-      return Ok(new
-      {
-        Success = true,
-        Data = result
-      });
+      return OkResponse(result);
     }
   }
 }
