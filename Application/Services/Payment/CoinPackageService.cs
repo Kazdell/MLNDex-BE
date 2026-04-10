@@ -28,7 +28,7 @@ public class CoinPackageService : ICoinPackageService
       query = query.Where(p => p.IsActive);
 
     return await query
-        .OrderBy(p => p.PriceVnd)
+        .OrderBy(p => p.PriceCoins)
         .Select(p => ToDto(p))
         .ToListAsync();
   }
@@ -45,7 +45,7 @@ public class CoinPackageService : ICoinPackageService
     {
       Name = dto.Name,
       CoinAmount = dto.CoinAmount,
-      PriceVnd = dto.PriceVnd,
+      PriceCoins = dto.PriceCoins,
       BonusCoins = dto.BonusCoins,
       IsActive = true,
       CreatedAt = DateTime.UtcNow
@@ -67,7 +67,7 @@ public class CoinPackageService : ICoinPackageService
 
     if (dto.Name is not null) package.Name = dto.Name;
     if (dto.CoinAmount.HasValue) package.CoinAmount = dto.CoinAmount.Value;
-    if (dto.PriceVnd.HasValue) package.PriceVnd = dto.PriceVnd.Value;
+    if (dto.PriceCoins.HasValue) package.PriceCoins = dto.PriceCoins.Value;
     if (dto.BonusCoins.HasValue) package.BonusCoins = dto.BonusCoins.Value;
     if (dto.IsActive.HasValue) package.IsActive = dto.IsActive.Value;
 
@@ -93,7 +93,7 @@ public class CoinPackageService : ICoinPackageService
   {
     PackageId = p.PackageId,
     Name = p.Name,
-    PriceVnd = p.PriceVnd,
+    PriceCoins = p.PriceCoins,
     CoinAmount = p.CoinAmount,
     BonusCoins = p.BonusCoins,
     IsActive = p.IsActive

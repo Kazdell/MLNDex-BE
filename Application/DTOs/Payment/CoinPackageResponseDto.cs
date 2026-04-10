@@ -13,7 +13,7 @@ namespace Application.DTOs.Payment
   {
     public int PackageId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public decimal PriceVnd { get; set; }
+    public decimal PriceCoins { get; set; }
     public decimal CoinAmount { get; set; }
     public decimal BonusCoins { get; set; }
     public decimal TotalCoins => CoinAmount + BonusCoins;
@@ -31,7 +31,7 @@ namespace Application.DTOs.Payment
     public decimal CoinAmount { get; set; }
 
     [Range(1, double.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
-    public decimal PriceVnd { get; set; }
+    public decimal PriceCoins { get; set; }
 
     [Range(0, double.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public decimal BonusCoins { get; set; } = 0;
@@ -43,7 +43,7 @@ namespace Application.DTOs.Payment
     [MaxLength(100)]
     public string? Name { get; set; }
     public decimal? CoinAmount { get; set; }
-    public decimal? PriceVnd { get; set; }
+    public decimal? PriceCoins { get; set; }
     public decimal? BonusCoins { get; set; }
     public bool? IsActive { get; set; }
   }

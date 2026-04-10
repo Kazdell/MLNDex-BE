@@ -381,7 +381,7 @@ namespace Application.Services.Creator
         TotalCount = totalCount,
         Page = page,
         PageSize = pageSize,
-        Items = orderedItems.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
 
@@ -461,7 +461,7 @@ namespace Application.Services.Creator
         TotalCount = totalCount,
         Page = request.Page,
         PageSize = request.PageSize,
-        Items = orderedItems.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
 
