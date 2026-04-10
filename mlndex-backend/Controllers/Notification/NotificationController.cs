@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Notification;
 using Microsoft.AspNetCore.Mvc;
 using mlndex_backend.Controllers;
@@ -31,7 +33,7 @@ namespace mlndex_backend.Controllers.Notification
       var isSuccess = await _notificationService.MarkAsReadAsync(id, currentUserId);
 
       if (!isSuccess)
-        return NotFoundResponse("Notification not found or unauthorized.");
+        throw new AppException(ErrorCodes.NOT_FOUND);
 
       return OkResponse("Marked as read.");
     }

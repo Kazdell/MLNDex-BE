@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.DTOs.Request;
 using Application.Interfaces;
@@ -70,7 +72,7 @@ public class TopUpController : BaseController
   public async Task<IActionResult> Initiate([FromBody] CreateTopUpRequestDto request)
   {
     if (!ModelState.IsValid)
-      return BadRequestResponse("Dữ liệu không hợp lệ.");
+      throw new AppException(ErrorCodes.INVALID_INPUT);
 
     var userId = GetUserId();
     if (userId == 0) return UnauthorizedResponse();

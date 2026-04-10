@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System.Security.Claims;
 using Application.DTOs.Community;
 using Application.Interfaces.Community;
@@ -25,12 +27,12 @@ namespace mlndex_backend.Controllers.Community
     )
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Invalid payload");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var userId = GetUserId();
 
       if (userId == 0)
-        return UnauthorizedResponse("Invalid user context");
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
         var result = await _service.CreateAsync(userId, request, cancellationToken);
         return OkResponse(result, "Created");
@@ -63,7 +65,7 @@ namespace mlndex_backend.Controllers.Community
       var userId = GetUserId();
 
       if (userId == 0)
-        return UnauthorizedResponse("Invalid user context");
+        throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try
       {

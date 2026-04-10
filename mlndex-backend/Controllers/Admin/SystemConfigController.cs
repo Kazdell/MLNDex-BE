@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.System;
 using Application.Interfaces.System;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +33,7 @@ namespace mlndex_backend.Controllers.Admin
 )
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Invalid payload");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
       var updated = await _service.UpdateAsync(dto, userId, cancellationToken);
       return OkResponse(updated, "Updated");

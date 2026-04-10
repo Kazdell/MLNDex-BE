@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.DTOs.User;
 using Application.DTOs.Common;
 using Application.Interfaces.User;
@@ -29,7 +30,7 @@ namespace mlndex_backend.Controllers.User
       if (userId == 0) return UnauthorizedResponse();
       var profile = await _userService.GetProfileAsync(userId, cancellationToken);
 
-      if (profile == null) return NotFoundResponse("User not found");
+      if (profile == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       return OkResponse(profile);
     }
@@ -88,7 +89,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetPublicProfile(string username, CancellationToken cancellationToken)
     {
       var profile = await _userService.GetPublicProfileAsync(username, cancellationToken);
-      if (profile == null) return NotFoundResponse("Người dùng không tồn tại");
+      if (profile == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
       return OkResponse(profile);
     }
     [HttpGet("settings")]
@@ -97,7 +98,7 @@ namespace mlndex_backend.Controllers.User
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
       var settings = await _userService.GetUserSettingsAsync(userId, cancellationToken);
-      if (settings == null) return NotFoundResponse("User not found");
+      if (settings == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
       return Ok(new ApiResponse<UserSettingsDto>(true, "Lấy cài đặt thành công", settings));
     }
 

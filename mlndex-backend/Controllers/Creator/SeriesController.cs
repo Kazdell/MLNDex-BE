@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Microsoft.Extensions.Caching.Memory;
 using Application.DTOs.Creator;
 using Application.Interfaces.Creator;
@@ -34,7 +36,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> GetSeriesByCreator(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       var result = await _service.GetByCreatorAsync(userId, cancellationToken);
       return Ok(result);
     }
@@ -45,7 +47,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Create([FromForm] CreateSeriesDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var currentUser = await _context.Users.FindAsync(userId);
       if (currentUser?.CannotUpload == true)
@@ -60,10 +62,10 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> GetForEdit(int id)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       var result = await _service.GetForEditAsync(id, userId);
       if (result == null)
-        return NotFoundResponse("Không tìm thấy truyện hoặc bạn không có quyền chỉnh sửa.");
+        throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
       return OkResponse(result);
     }
 
@@ -73,7 +75,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Update(int id, [FromForm] CreateSeriesDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var currentUser = await _context.Users.FindAsync(userId);
       if (currentUser?.CannotUpload == true)
@@ -88,7 +90,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Delete(int id)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       await _service.DeleteAsync(id, userId);
       return NoContent();
     }
@@ -98,7 +100,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateSeriesStatusRequest request, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       try
       {
         await _service.UpdateStatusAsync(id, userId, request.Status, ct);
@@ -154,7 +156,7 @@ namespace mlndex_backend.Controllers.Creator
 
       var result = await _service.GetSeriesDetailsAsync(id, userId);
       if (result == null)
-        return NotFoundResponse("Series not found.");
+        throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
       return OkResponse(result);
     }

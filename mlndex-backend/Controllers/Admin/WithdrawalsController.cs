@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Financial;
 using Application.Interfaces.Financial;
 using Microsoft.AspNetCore.Authorization;
@@ -28,7 +30,7 @@ namespace mlndex_backend.Controllers.Admin
     {
       var item = await _service.GetByIdAsync(id, cancellationToken);
       if (item == null)
-        return NotFoundResponse("Withdrawal not found");
+        throw new AppException(ErrorCodes.WITHDRAWAL_NOT_FOUND);
 
       return OkResponse(item);
     }
@@ -37,7 +39,7 @@ namespace mlndex_backend.Controllers.Admin
     public async Task<IActionResult> Decide(int id, [FromBody] WithdrawalDecisionRequest request, CancellationToken cancellationToken)
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Invalid payload");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
         var result = await _service.DecideAsync(id, request, cancellationToken);
         return OkResponse(result, "Updated");
