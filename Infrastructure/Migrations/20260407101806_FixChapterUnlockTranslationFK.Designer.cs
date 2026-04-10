@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Migrations
 {
-    [DbContext(typeof(MlndexDbContext))]
+    [DbContext(typeof(Infrastructure.Data.MlndexDbContext))]
     [Migration("20260407101806_FixChapterUnlockTranslationFK")]
     partial class FixChapterUnlockTranslationFK
     {
