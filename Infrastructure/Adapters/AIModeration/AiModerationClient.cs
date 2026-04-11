@@ -48,10 +48,27 @@ namespace Infrastructure.Adapters.AIModeration
       if (_isMockMode)
       {
         _logger.LogWarning("[HybridScan] OpenAI API Key trống — Kích hoạt Mock Mode (Auto-Pass).");
+        
+        var rnd = new Random();
+        double RandomSafeScore() => rnd.NextDouble() * 0.005; // Random score below 0.005 (0.5%)
+
         return new AiModerationResultDto
         {
           Flagged = false,
-          CategoryScores = new Dictionary<string, double>(),
+          CategoryScores = new Dictionary<string, double>
+          {
+            { "sexual", RandomSafeScore() },
+            { "hate", RandomSafeScore() },
+            { "harassment", RandomSafeScore() },
+            { "self-harm", RandomSafeScore() },
+            { "sexual/minors", RandomSafeScore() },
+            { "hate/threatening", RandomSafeScore() },
+            { "violence/graphic", RandomSafeScore() },
+            { "self-harm/intent", RandomSafeScore() },
+            { "self-harm/instructions", RandomSafeScore() },
+            { "harassment/threatening", RandomSafeScore() },
+            { "violence", RandomSafeScore() }
+          },
           ScanMode = "mock"
         };
       }
