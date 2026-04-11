@@ -77,20 +77,20 @@
         $([System.String]::Copy('%(Filename)').StartsWith('libpaddle2onnx.so'))
       " />
 
-      <!-- 2. Remove ALL non-win-x64 runtime folders (covers android, ios, osx, linux, win-arm, win-x86) -->
+      <!-- 2. Remove non-Windows runtime folders + win-x64 native OCR DLLs -->
+      <!-- KEEP runtimes/win-x86 (Azure Free Tier = 32-bit, needs SNI.dll!) -->
+      <!-- KEEP runtimes/win (shared managed DLLs) -->
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\android')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\ios')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\osx')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\linux')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-arm')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-x86')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/android')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/ios')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/osx')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/linux')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-arm')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-x86')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-x64\native')) Or
         $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-x64/native'))
       " />
