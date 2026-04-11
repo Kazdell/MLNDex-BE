@@ -46,7 +46,7 @@ jobs:
           # KEEP runtimes/win (shared Windows managed DLLs)
           # Remove debug symbols
           find . -name "*.pdb" -delete
-          # Remove unused locale folders (satellite assemblies already handled by ExcludeOCR)
+          # Remove unused locale folders (satellite assemblies)
           for dir in af ar az bg bn-BD cs da de el en es fa fi-FI fr fr-BE he hr hu hy id is it ja ko ko-KR ku lv ms-MY mt nb nb-NO nl pl pt pt-BR ro ru sk sl sr sr-Latn sv th-TH tr uk uz-Cyrl-UZ uz-Latn-UZ zh-CN zh-Hans zh-Hant; do
             rm -rf "./$dir"
           done
@@ -55,43 +55,12 @@ jobs:
           echo "=== Package size after cleanup ==="
           du -sh .
 
-      - name: 📦 Create zip package
-        run: |
-          cd ./publish
-          zip -r -q ../deploy.zip .
-          ls -lh ../deploy.zip
-
-      - name: 🔑 Extract Kudu credentials
-        id: creds
-        run: |
-          PUBLISH_PROFILE='${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}'
-          USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
-          PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
-          echo "::add-mask::$PASSWORD"
-          echo "username=$USERNAME" >> $GITHUB_OUTPUT
-          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
-
-      - name: 🚀 Deploy via Kudu zipdeploy
-        run: |
-          echo "Deploying to Azure via Kudu zipdeploy (synchronous)..."
-          HTTP_CODE=$(curl -X POST \
-            --retry 3 \
-            --retry-delay 10 \
-            --max-time 600 \
-            -u "${{ steps.creds.outputs.username }}:${{ steps.creds.outputs.password }}" \
-            --data-binary @deploy.zip \
-            -H "Content-Type: application/zip" \
-            "https://mlndex-backend-avcadghxf3ash9dn.scm.eastasia-01.azurewebsites.net/api/zipdeploy" \
-            -w "%{http_code}" \
-            -o response.txt \
-            -s)
-          echo "HTTP Status: $HTTP_CODE"
-          cat response.txt || true
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Deployment failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          echo "✅ Deploy successful!"
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
 
       - name: ⏳ Verify deployment
         run: |
