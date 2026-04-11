@@ -229,3 +229,4 @@ WebAPI/
 Infrastructure/Adapters/OCR/models/*.onnx
 /publish-test
 deploy.zip
+/azure-logs
