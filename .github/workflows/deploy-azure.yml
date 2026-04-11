@@ -36,21 +36,57 @@ jobs:
       - name: 📋 Publish
         run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-build --no-self-contained --output ./publish
 
-      - name: 🧹 Cleanup unused runtimes (reduce size)
+      - name: 🧹 Cleanup unused files (reduce size)
         run: |
           cd ./publish
-          # Remove non-Windows runtimes (Azure App Service is Windows)
+          # Remove non-Windows runtimes
           rm -rf runtimes/linux-* runtimes/osx-* runtimes/ios runtimes/android runtimes/win-arm*
           # Remove debug symbols
           find . -name "*.pdb" -delete
-          # Remove unused locale folders
+          # Remove unused locale folders  
           for dir in af ar az bg bn-BD cs da de el en es fa fi-FI fr fr-BE he hr hu hy id is it ja ko ko-KR ku lv ms-MY mt nb nb-NO nl pl pt pt-BR ro ru sk sl sr sr-Latn sv th-TH tr uk uz-Cyrl-UZ uz-Latn-UZ zh-CN zh-Hans zh-Hant; do
             rm -rf "./$dir"
           done
+          echo "=== Package size after cleanup ==="
+          du -sh .
 
-      - name: 🚀 Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
+      - name: 📦 Create zip package
+        run: |
+          cd ./publish
+          zip -r -q ../deploy.zip .
+          ls -lh ../deploy.zip
+
+      - name: 🔑 Extract Kudu credentials
+        id: creds
+        run: |
+          # Extract username and password from publish profile
+          PUBLISH_PROFILE='${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}'
+          USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
+          PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
+          echo "::add-mask::$PASSWORD"
+          echo "username=$USERNAME" >> $GITHUB_OUTPUT
+          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Deploy via Kudu zipdeploy
+        run: |
+          echo "Deploying to Azure via Kudu zipdeploy..."
+          curl -X POST \
+            --retry 3 \
+            --retry-delay 10 \
+            --max-time 600 \
+            -u "${{ steps.creds.outputs.username }}:${{ steps.creds.outputs.password }}" \
+            --data-binary @deploy.zip \
+            -H "Content-Type: application/zip" \
+            "https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=true" \
+            -w "\nHTTP Status: %{http_code}\n" \
+            -o response.txt
+          cat response.txt
+          echo "Deploy initiated!"
+
+      - name: ⏳ Wait for deployment to complete
+        run: |
+          echo "Waiting 60s for deployment to process..."
+          sleep 60
+          echo "Checking app status..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/" --max-time 30 || echo "000")
+          echo "App responded with: $HTTP_CODE"
