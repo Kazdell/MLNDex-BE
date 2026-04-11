@@ -172,7 +172,6 @@ namespace Application.Services.Translation
       bool translationExists = await _context.Translations.AnyAsync(t =>
         t.ChapterId == dto.ChapterId
         && t.LanguageId == dto.LanguageId
-        && t.ModerationStatus != ModerationStatus.REJECTED
         && (
           t.TeamId == resolvedTeamId
           || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)
