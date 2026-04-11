@@ -12,6 +12,7 @@ namespace Infrastructure.Adapters.AIModeration
   {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AiModerationClient> _logger;
+    private readonly bool _isMockMode;
 
     // Hybrid scan thresholds
     private const double RESCAN_THRESHOLD = 0.3;      // Score >= 0.3 in any category → trigger per-page rescan
@@ -22,15 +23,19 @@ namespace Infrastructure.Adapters.AIModeration
 
     public AiModerationClient(IConfiguration configuration, ILogger<AiModerationClient> logger)
     {
-      var apiKey = configuration["OpenAI:ApiKey"]
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
+      var apiKey = configuration["OpenAI:ApiKey"];
+      _isMockMode = string.IsNullOrWhiteSpace(apiKey);
 
       _httpClient = new HttpClient
       {
         Timeout = TimeSpan.FromSeconds(120) // Longer timeout for batch requests
       };
-      _httpClient.DefaultRequestHeaders.Authorization =
-          new AuthenticationHeaderValue("Bearer", apiKey);
+      
+      if (!_isMockMode)
+      {
+          _httpClient.DefaultRequestHeaders.Authorization =
+              new AuthenticationHeaderValue("Bearer", apiKey);
+      }
 
       _logger = logger;
     }
@@ -40,6 +45,17 @@ namespace Infrastructure.Adapters.AIModeration
     // ═══════════════════════════════════════════════════════════════════
     public async Task<AiModerationResultDto> ModerateImagesAsync(IEnumerable<string> imageUrls)
     {
+      if (_isMockMode)
+      {
+        _logger.LogWarning("[HybridScan] OpenAI API Key trống — Kích hoạt Mock Mode (Auto-Pass).");
+        return new AiModerationResultDto
+        {
+          Flagged = false,
+          CategoryScores = new Dictionary<string, double>(),
+          ScanMode = "mock"
+        };
+      }
+
       var urls = imageUrls.ToList();
       _logger.LogInformation("[HybridScan] Bắt đầu kiểm duyệt {Count} ảnh", urls.Count);
 

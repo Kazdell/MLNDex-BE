@@ -180,20 +180,8 @@ namespace Application.Services.Translation
 
       if (translationExists)
       {
-        // Debug: find the conflicting translation
-        var conflicting = await _context.Translations
-          .Where(t =>
-            t.ChapterId == dto.ChapterId
-            && t.LanguageId == dto.LanguageId
-            && t.ModerationStatus != ModerationStatus.REJECTED
-            && (t.TeamId == resolvedTeamId || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)))
-          .Select(t => new { t.TranslationId, t.ChapterId, t.TeamId, t.LanguageId, t.ModerationStatus, t.PermissionId })
-          .FirstOrDefaultAsync();
-
         throw new AppException(
-          ErrorCodes.DUPLICATE_TRANSLATION_TEAM,
-          $"Conflict: teamId={resolvedTeamId}, chapterId={dto.ChapterId}, langId={dto.LanguageId}, " +
-          $"found: id={conflicting?.TranslationId}, status={conflicting?.ModerationStatus}, permId={conflicting?.PermissionId}"
+          ErrorCodes.DUPLICATE_TRANSLATION_TEAM
         );
       }
 
