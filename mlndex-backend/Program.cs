@@ -311,9 +311,9 @@ namespace mlndex_backend
           .AddSupportedCultures(supportedCultures)
           .AddSupportedUICultures(supportedCultures));
 
+      app.UseCors("AllowSpecificOrigin");
       app.UseGlobalExceptionHandling();
       app.UseRateLimiter();
-      app.UseCors("AllowSpecificOrigin");
       app.UseAuthentication();
       app.UseAuthorization();
       app.UseStaticFiles();
