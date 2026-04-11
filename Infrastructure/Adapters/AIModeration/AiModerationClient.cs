@@ -335,7 +335,7 @@ namespace Infrastructure.Adapters.AIModeration
       HttpResponseMessage response;
       try
       {
-        response = await _httpClient.PostAsync("https://api.openai.com/v1/moderations", content);
+        response = await _httpClient.PostAsync("https://gateway.ai.cloudflare.com/v1/37a714edab65119e71904259d5c1f144/mlndex-ai/openai/moderations", content);
       }
       catch (TaskCanceledException)
       {
