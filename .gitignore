@@ -230,3 +230,7 @@ Infrastructure/Adapters/OCR/models/*.onnx
 /azure-logs
 /publish-test
 azure-logs.zip
+/publish-azure
+/publish-clean
+deploy.zip
+/publish-output
