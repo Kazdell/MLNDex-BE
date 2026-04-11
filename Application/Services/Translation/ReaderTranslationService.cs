@@ -46,6 +46,11 @@ namespace Application.Services.Translation
 
     private IOCRService GetOcrService(string provider)
     {
+      if (!_ocrServices.Any())
+        throw new Application.Exceptions.AppException(
+          Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
+          "OCR is not available on this server deployment. Please try again later or contact support.");
+
       // Resolve safe fallback provider
       var p = string.Equals(provider, "server_paddle", StringComparison.OrdinalIgnoreCase) ||
               string.Equals(provider, "paddle", StringComparison.OrdinalIgnoreCase)

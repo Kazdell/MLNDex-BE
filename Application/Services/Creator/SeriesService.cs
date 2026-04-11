@@ -505,17 +505,23 @@ namespace Application.Services.Creator
           .ToListAsync();
       var grantedTeamIds = new HashSet<int>(grantedTeamIdsList);
 
-            var userUnlocks = new List<(int ChapId, int? TransId)>();
+      var userUnlocks = new List<(int ChapId, int? TransId)>();
+      bool isAuthorizedTranslator = false;
 
       if (userId.HasValue && userId.Value > 0)
       {
         var chapterIds = series.Chapters.Select(c => c.ChapterId).ToList();
-                var unlockData = await _context.ChapterUnlocks
+        var unlockData = await _context.ChapterUnlocks
             .Where(u => u.UserId == userId.Value && chapterIds.Contains(u.ChapterId))
-                    .Select(u => new { u.ChapterId, u.TranslationId })
+            .Select(u => new { u.ChapterId, u.TranslationId })
             .ToListAsync();
 
-                userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
+        userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
+
+        isAuthorizedTranslator = await _context.TranslationPermissions
+            .AnyAsync(p => p.SeriesId == seriesId 
+                        && p.Status == TranslationPermissionStatus.GRANTED
+                        && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)));
       }
 
       // Detect original language from the first original chapter (TeamId == null)
@@ -555,9 +561,9 @@ namespace Application.Services.Creator
     LanguageName = c.Language?.Name,
     CommentCount = 0,
     PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
-    IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null),
+    IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null) || isAuthorizedTranslator,
     // ── THÊM 3 DÒNG NÀY ──
-    LockStatus = effectiveLock.ToString(),
+    LockStatus = isAuthorizedTranslator ? ChapterLockStatus.UNLOCKED.ToString() : effectiveLock.ToString(),
     UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
     UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
   };
@@ -588,7 +594,7 @@ namespace Application.Services.Creator
     // isUnlocked: đã mua chapter gốc → mở tất cả translation
     // hoặc đã mua đúng translation này
     var isUnlocked = userUnlocks.Any(u => u.ChapId == c.ChapterId &&
-                 (u.TransId == null || u.TransId == t.TranslationId));
+                 (u.TransId == null || u.TransId == t.TranslationId)) || isAuthorizedTranslator;
     // TODO: nếu muốn check per-translation unlock riêng, cần query ChapterUnlocks theo TranslationId
 
     return new SeriesChapterDto
@@ -609,7 +615,7 @@ namespace Application.Services.Creator
       LanguageName = t.Language?.Name,
       CommentCount = 0,
       // ── NEW fields ──
-      LockStatus = effectiveLock.ToString(),
+      LockStatus = isAuthorizedTranslator ? ChapterLockStatus.UNLOCKED.ToString() : effectiveLock.ToString(),
       TeamUnlockPrice = teamPrice,
       UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
       IsUnlockedByUser = isUnlocked,
