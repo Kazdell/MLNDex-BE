@@ -35,12 +35,12 @@ public class TopUpService : ITopUpService
   {
     return await _context.CoinPackages
         .Where(p => p.IsActive)
-        .OrderBy(p => p.PriceCoins)
+        .OrderBy(p => p.PriceVnd)
         .Select(p => new CoinPackageResponseDto
         {
           PackageId = p.PackageId,
           Name = p.Name,
-          PriceCoins = p.PriceCoins,
+          PriceVnd = p.PriceVnd,
           CoinAmount = p.CoinAmount,
           BonusCoins = p.BonusCoins,
           IsActive = p.IsActive
@@ -145,7 +145,7 @@ public class TopUpService : ITopUpService
         ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     var txnRef = GenerateOrderCode().ToString();
-    var expiredAt = DateTime.UtcNow.AddMinutes(15);
+    var expiredAt = DateTime.Now.AddMinutes(15);
 
     var transaction = new Transaction
     {
@@ -155,7 +155,7 @@ public class TopUpService : ITopUpService
       AmountCoins = coinsWillReceive,
       Status = TransactionStatus.PENDING,
       Note = $"{method}|{txnRef}",
-      CreatedAt = DateTime.UtcNow
+      CreatedAt = DateTime.Now
     };
     _context.Transactions.Add(transaction);
     await _context.SaveChangesAsync();

@@ -12,7 +12,7 @@ namespace Application.DTOs.Payment
   {
     public int PackageId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public decimal PriceVnd{ get; set; }
+    public decimal PriceVnd { get; set; }
     public decimal CoinAmount { get; set; }
     public decimal BonusCoins { get; set; }
     public decimal TotalCoins => CoinAmount + BonusCoins;
