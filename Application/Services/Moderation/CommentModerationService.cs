@@ -81,7 +81,7 @@ namespace Application.Services.Moderation
         CancellationToken cancellationToken = default)
     {
       var comment = await _context.Comments.FirstOrDefaultAsync(c => c.CommentId == commentId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Comment không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       ApplyAction(comment, action);
       await _context.SaveChangesAsync(cancellationToken);
@@ -124,7 +124,7 @@ namespace Application.Services.Moderation
           comment.IsHidden = false;
           break;
         default:
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_MODERATOR_ACTION, "Action không hợp lệ.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_MODERATOR_ACTION);
       }
       comment.UpdatedAt = DateTime.UtcNow;
     }

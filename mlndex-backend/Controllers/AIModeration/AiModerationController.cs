@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.AIModeration;
 using Application.Interfaces.AIModeration;
 using Domain.Entities;
@@ -43,7 +45,7 @@ namespace mlndex_backend.Controllers.AIModeration
     )
     {
       if (string.IsNullOrWhiteSpace(request.AppealReason))
-        return BadRequestResponse("Vui lòng nhập lý do appeal");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var userId = GetUserId();
       if (userId == 0)

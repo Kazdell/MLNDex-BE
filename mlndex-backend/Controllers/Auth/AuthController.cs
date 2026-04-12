@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Auth;
 using Application.Interfaces.Auth;
 using Microsoft.AspNetCore.Authorization;
@@ -22,7 +24,7 @@ namespace mlndex_backend.Controllers.Auth
 		public async Task<IActionResult> Register([FromBody] RegisterDto dto)
 		{
 			if (!ModelState.IsValid)
-				return BadRequestResponse("Dữ liệu không hợp lệ.");
+				throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.RegisterAsync(dto);
       return result.Success
@@ -35,7 +37,7 @@ namespace mlndex_backend.Controllers.Auth
 		public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
 		{
 			if (!ModelState.IsValid)
-				return BadRequestResponse("Dữ liệu không hợp lệ.");
+				throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.VerifyEmailOtpAsync(dto);
       return result.Success
@@ -48,11 +50,11 @@ namespace mlndex_backend.Controllers.Auth
 		public async Task<IActionResult> Login([FromBody] LoginDto dto)
 		{
 			if (!ModelState.IsValid)
-				return BadRequestResponse("Dữ liệu không hợp lệ.");
+				throw new AppException(ErrorCodes.INVALID_INPUT);
 
 			var result = await _authService.LoginAsync(dto);
 			if (result == null)
-				return UnauthorizedResponse("Email/password không đúng hoặc chưa xác thực email.");
+				throw new AppException(ErrorCodes.INVALID_CREDENTIALS);
 
 			return OkResponse(result, "Đăng nhập thành công.");
 		}
@@ -64,7 +66,7 @@ namespace mlndex_backend.Controllers.Auth
 		{
 			var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 			if (string.IsNullOrEmpty(token))
-				return BadRequestResponse("Token không hợp lệ.");
+				throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.LogoutAsync(token);
       return result.Success
@@ -77,11 +79,11 @@ namespace mlndex_backend.Controllers.Auth
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.GoogleLoginAsync(dto);
       if (result == null)
-        return UnauthorizedResponse("Google token không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_TOKEN);
 
       return OkResponse(result, "Đăng nhập Google thành công.");
     }
@@ -91,11 +93,11 @@ namespace mlndex_backend.Controllers.Auth
     public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginDto dto)
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.FacebookLoginAsync(dto);
       if (result == null)
-        return UnauthorizedResponse("Facebook token không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_TOKEN);
 
       return OkResponse(result, "Đăng nhập Facebook thành công.");
     }
@@ -104,11 +106,11 @@ namespace mlndex_backend.Controllers.Auth
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] TokenApiDto dto)
     {
-      if (dto == null) return BadRequestResponse("Dữ liệu không hợp lệ.");
+      if (dto == null) throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var result = await _authService.RefreshAsync(dto);
       if (result == null)
-        return UnauthorizedResponse("Refresh token không hợp lệ hoặc đã hết hạn.");
+        throw new AppException(ErrorCodes.INVALID_TOKEN);
 
       return OkResponse(result, "Token đã được cấp mới.");
     }
@@ -119,7 +121,7 @@ namespace mlndex_backend.Controllers.Auth
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
       if (string.IsNullOrWhiteSpace(dto.Email))
-        return BadRequestResponse("Email không được để trống.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       var result = await _authService.ForgotPasswordAsync(dto.Email);
       return OkResponse<object?>(null, result.Message);
     }
@@ -130,7 +132,7 @@ namespace mlndex_backend.Controllers.Auth
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
       var result = await _authService.ResetPasswordAsync(dto.Email, dto.OtpCode, dto.NewPassword);
       return result.Success
           ? OkResponse<object?>(null, result.Message)
@@ -143,10 +145,10 @@ namespace mlndex_backend.Controllers.Auth
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Dữ liệu không hợp lệ.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse("Chưa đăng nhập.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _authService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
       return result.Success

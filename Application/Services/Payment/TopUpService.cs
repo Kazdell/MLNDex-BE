@@ -31,6 +31,25 @@ public class TopUpService : ITopUpService
     _logger = logger;
   }
 
+
+
+  public async Task<SystemConfigDto> GetCoinRateAsync(CancellationToken cancellationToken = default)
+  {
+    var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
+        ?? throw new AppException(ErrorCodes.SYSTEM_CONFIG_NOT_FOUND);
+
+    return new SystemConfigDto
+    {
+      ExchangeRateCoinToVnd = config.ExchangeRateCoinToVnd,
+      WithdrawalFeePercent = config.WithdrawalFeePercent,
+      WithdrawalMinCoins = config.WithdrawalMinCoins,
+      WithdrawalMaxCoins = config.WithdrawalMaxCoins,
+      BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
+    };
+  }
+
   public async Task<List<CoinPackageResponseDto>> GetActivePackagesAsync()
   {
     return await _context.CoinPackages
@@ -114,7 +133,7 @@ public class TopUpService : ITopUpService
     var method = request.PaymentMethod.ToUpper();
     if (method == "MOMO" || method == "VNPAY")
     {
-      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Phương thức thanh toán {method} hiện tại chưa được hỗ trợ.");
+      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
     }
 
     var rate = await _context.SystemConfigs.FirstOrDefaultAsync()
@@ -126,7 +145,7 @@ public class TopUpService : ITopUpService
     {
       var package = await _context.CoinPackages
           .FirstOrDefaultAsync(p => p.PackageId == request.PackageId && p.IsActive)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND, "Gói coin không tồn tại hoặc đã ngừng bán.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.COIN_PACKAGE_NOT_FOUND);
       amountVnd = (long)package.PriceVnd;
       coinsWillReceive = (long)(package.CoinAmount + package.BonusCoins);
     }
@@ -134,9 +153,9 @@ public class TopUpService : ITopUpService
     {
       amountVnd = request.CustomAmountVnd!.Value;
       if (amountVnd < (long)rate.WithdrawalMinCoins)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối thiểu là {rate.WithdrawalMinCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
       if (amountVnd > (long)rate.WithdrawalMaxCoins)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền tối đa là {rate.WithdrawalMaxCoins:N0} VND.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
       coinsWillReceive = (long)Math.Floor(amountVnd / rate.ExchangeRateCoinToVnd);
     }
 
@@ -175,7 +194,7 @@ public class TopUpService : ITopUpService
     });
 
     if (!gatewayResult.IsSuccess)
-      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR, $"Tạo link thanh toán thất bại: {gatewayResult.ErrorMessage}");
+      throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.VALIDATION_ERROR);
 
     return new TopUpInitResponseDto
     {
@@ -324,3 +343,4 @@ public class TopUpService : ITopUpService
     return long.Parse($"{timestamp}{random}");
   }
 }
+

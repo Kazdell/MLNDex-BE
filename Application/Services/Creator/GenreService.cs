@@ -19,11 +19,12 @@ namespace Application.Services.Creator
 
     public async Task<IEnumerable<Genre>> GetAllGenresAsync()
     {
-      return await _cache.GetOrCreateAsync("AllGenres", async entry => 
+      var genres = await _cache.GetOrCreateAsync("AllGenres", async entry => 
       {
           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2);
           return await _context.Genres.AsNoTracking().OrderBy(g => g.Name).ToListAsync();
       });
+      return genres ?? Enumerable.Empty<Genre>();
     }
 
     public async Task<Genre?> GetGenreByIdAsync(int id)

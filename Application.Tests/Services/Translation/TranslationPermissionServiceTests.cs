@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using Application.DTOs.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -87,7 +88,7 @@ namespace Application.Tests.Services.Translation
       var (t1, _) = await SeedBaseData(db);
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("You are not an active member of this translation team.");
+      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -101,7 +102,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("You are not an active member of this translation team.");
+      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -115,7 +116,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("Series not found.");
+      ex.Message.Should().Be(ErrorCodes.SERIES_NOT_FOUND);
     }
 
     [Fact(Skip = "FK constraint prevents CreatorId orphaning - this scenario is impossible with proper DB constraints")]
@@ -134,7 +135,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 99 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("Language not found.");
+      ex.Message.Should().Be(ErrorCodes.LANGUAGE_NOT_FOUND);
     }
 
     [Fact]
@@ -149,7 +150,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý.");
+      ex.Message.Should().Be(ErrorCodes.PERMISSION_REQUEST_PENDING);
     }
 
     [Fact]
@@ -164,7 +165,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be("Nhóm đã có quyền dịch Official cho bộ truyện này.");
+      ex.Message.Should().Be(ErrorCodes.PERMISSION_ALREADY_GRANTED);
     }
 
     [Fact]
@@ -262,7 +263,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(456);
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
-      ex.Message.Should().Be("Permission request not found.");
+      ex.Message.Should().Be(ErrorCodes.PERMISSION_REQUEST_NOT_FOUND);
     }
 
     [Fact]
@@ -275,7 +276,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
-      ex.Message.Should().Contain("Unauthorized");
+      ex.Message.Should().Be(ErrorCodes.CREATOR_ONLY_REVIEW);
     }
 
     [Fact]
@@ -531,3 +532,7 @@ namespace Application.Tests.Services.Translation
     }
   }
 }
+
+
+
+

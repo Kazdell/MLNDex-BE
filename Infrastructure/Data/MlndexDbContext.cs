@@ -100,7 +100,7 @@ namespace Infrastructure.Data
         e.Property(x => x.Bio);
         e.Property(x => x.IsActive).IsRequired();
         e.Property(x => x.TrustScore).IsRequired();
-		e.Property(x => x.CannotUpload).IsRequired();
+        e.Property(x => x.CannotUpload).IsRequired();
       });
 
       // ====================================================
@@ -303,14 +303,15 @@ namespace Infrastructure.Data
         e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
         e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
         e.Property(x => x.ReputationScore).IsRequired();
+        e.Property(x => x.TrustScore).IsRequired();
         e.Property(x => x.LockStatus)
-                        .HasConversion<string>()
-                        .IsRequired();
+                .HasConversion<string>()
+                .IsRequired();
         e.Property(x => x.IsMonetizationEnabled).IsRequired();
         e.Property(x => x.LockedAt);
         e.Property(x => x.ModerationStatus)
-                        .HasConversion<string>()
-                        .IsRequired();
+                .HasConversion<string>()
+                .IsRequired();
         e.Property(x => x.AvatarUrl);
         e.Property(x => x.BannerUrl);
         e.Property(x => x.Facebook).HasMaxLength(255);
@@ -1168,3 +1169,4 @@ namespace Infrastructure.Data
     }
   }
 }
+

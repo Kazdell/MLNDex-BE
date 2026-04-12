@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.User;
 using Application.Interfaces.User;
 using Microsoft.AspNetCore.Authorization;
@@ -24,50 +26,50 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpdateHistory([FromBody] ReadingHistoryUpdateDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return Unauthorized();
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.UpdateHistoryAsync(userId, dto, cancellationToken);
-      return Ok(new { success = result, message = "Cập nhật lịch sử đọc thành công." });
+      return OkResponse(result);
     }
 
     [HttpGet]
     public async Task<IActionResult> GetUserHistory(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return Unauthorized();
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var history = await _historyService.GetUserHistoryAsync(userId, cancellationToken);
-      return Ok(new { success = true, data = history });
+      return OkResponse(history);
     }
 
     [HttpDelete("{seriesId}")]
     public async Task<IActionResult> DeleteHistory(int seriesId, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return Unauthorized();
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.RemoveFromHistoryAsync(userId, seriesId, cancellationToken);
-      return Ok(new { success = result, message = result ? "Đã xóa khỏi lịch sử." : "Không tìm thấy dữ liệu." });
+      return OkResponse(result);
     }
 
     [HttpDelete("all")]
     public async Task<IActionResult> ClearHistory(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return Unauthorized();
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.ClearAllHistoryAsync(userId, cancellationToken);
-      return Ok(new { success = result, message = result ? "Đã xóa toàn bộ lịch sử." : "Lịch sử đã trống." });
+      return OkResponse(result);
     }
 
     [HttpGet("stats")]
     public async Task<IActionResult> GetReadingStats(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) return Unauthorized();
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var stats = await _historyService.GetReadingStatsAsync(userId, cancellationToken);
-      return Ok(new { success = true, data = stats });
+      return OkResponse(stats);
     }
   }
 }

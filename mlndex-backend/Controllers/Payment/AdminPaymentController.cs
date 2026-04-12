@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Payment;
 using Application.Interfaces.Financial;
 using Application.Interfaces.Payment;
@@ -47,7 +49,7 @@ public class AdminPaymentController : BaseController
   public async Task<IActionResult> CreatePackage([FromBody] CreateCoinPackageDto dto)
   {
     if (!ModelState.IsValid)
-      return BadRequestResponse("Dữ liệu không hợp lệ.");
+      throw new AppException(ErrorCodes.INVALID_INPUT);
 
     var result = await _coinPackageService.CreateAsync(dto);
     return OkResponse(result, "Tạo gói coin thành công.");
@@ -59,7 +61,7 @@ public class AdminPaymentController : BaseController
   {
     Console.WriteLine($"=== UpdatePackage called. id={id}, dto={System.Text.Json.JsonSerializer.Serialize(dto)}");
     if (!ModelState.IsValid)
-      return BadRequestResponse("Dữ liệu không hợp lệ.");
+      throw new AppException(ErrorCodes.INVALID_INPUT);
 
     var result = await _coinPackageService.UpdateAsync(id, dto);
     return OkResponse(result, "Cập nhật gói coin thành công.");

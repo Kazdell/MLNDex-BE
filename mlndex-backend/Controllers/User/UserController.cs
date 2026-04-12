@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.DTOs.User;
 using Application.DTOs.Common;
 using Application.Interfaces.User;
@@ -29,7 +30,7 @@ namespace mlndex_backend.Controllers.User
       if (userId == 0) return UnauthorizedResponse();
       var profile = await _userService.GetProfileAsync(userId, cancellationToken);
 
-      if (profile == null) return NotFoundResponse("User not found");
+      if (profile == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
 
       return OkResponse(profile);
     }
@@ -59,7 +60,7 @@ namespace mlndex_backend.Controllers.User
         CancellationToken cancellationToken = default)
     {
       var stats = await _userService.GetUserStatsAsync(days, cancellationToken);
-      return Ok(new ApiResponse<UserStatsDto>(true, "Lấy thống kê thành công", stats));
+      return OkResponse(stats);
     }
 
     [HttpGet("membership/plans")]
@@ -80,7 +81,7 @@ namespace mlndex_backend.Controllers.User
         CancellationToken cancellationToken = default)
     {
       var result = await _userService.SearchUsersAsync(q ?? "", page, pageSize, role, status, cancellationToken);
-      return Ok(new ApiResponse<object>(true, "Tìm kiếm người dùng thành công", result));
+      return OkResponse(result);
     }
 
     [HttpGet("profile/{username}")]
@@ -88,7 +89,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetPublicProfile(string username, CancellationToken cancellationToken)
     {
       var profile = await _userService.GetPublicProfileAsync(username, cancellationToken);
-      if (profile == null) return NotFoundResponse("Người dùng không tồn tại");
+      if (profile == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
       return OkResponse(profile);
     }
     [HttpGet("settings")]
@@ -97,8 +98,8 @@ namespace mlndex_backend.Controllers.User
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
       var settings = await _userService.GetUserSettingsAsync(userId, cancellationToken);
-      if (settings == null) return NotFoundResponse("User not found");
-      return Ok(new ApiResponse<UserSettingsDto>(true, "Lấy cài đặt thành công", settings));
+      if (settings == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
+      return OkResponse(settings);
     }
 
     [HttpPut("settings")]
@@ -116,7 +117,7 @@ namespace mlndex_backend.Controllers.User
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
 
-      if (file == null || file.Length == 0) return BadRequest(new ApiResponse<string>(false, "Không có file."));
+      if (file == null || file.Length == 0) throw new AppException(ErrorCodes.INVALID_INPUT);
 
       using var stream = file.OpenReadStream();
       var folder = $"users/{userId}/avatar";
@@ -124,7 +125,7 @@ namespace mlndex_backend.Controllers.User
 
       await _userService.UpdateProfileAsync(userId, new UpdateProfileDto { Avatar = url }, cancellationToken);
 
-      return Ok(new ApiResponse<string>(true, "Cập nhật ảnh đại diện thành công", url));
+      return OkResponse(url);
     }
 
     [HttpPost("profile/banner")]
@@ -133,7 +134,7 @@ namespace mlndex_backend.Controllers.User
       var userId = GetUserId();
       if (userId == 0) return UnauthorizedResponse();
 
-      if (file == null || file.Length == 0) return BadRequest(new ApiResponse<string>(false, "Không có file."));
+      if (file == null || file.Length == 0) throw new AppException(ErrorCodes.INVALID_INPUT);
 
       using var stream = file.OpenReadStream();
       var folder = $"users/{userId}/banner";
@@ -141,7 +142,7 @@ namespace mlndex_backend.Controllers.User
 
       await _userService.UpdateProfileAsync(userId, new UpdateProfileDto { BannerUrl = url }, cancellationToken);
 
-      return Ok(new ApiResponse<string>(true, "Cập nhật ảnh bìa thành công", url));
+      return OkResponse(url);
     }
   }
 }

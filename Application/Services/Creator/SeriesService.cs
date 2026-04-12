@@ -44,7 +44,7 @@ namespace Application.Services.Creator
     {
       var creator = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Creator với UserId {userId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 1. Rate Limit: Max 5 series/ngày
       var todayUtc = DateTime.UtcNow.Date;
@@ -52,13 +52,12 @@ namespace Application.Services.Creator
           .Where(s => s.Creator.UserId == userId && s.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (seriesToday >= 5)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            "Bạn đã đạt giới hạn 5 bộ truyện/ngày. Vui lòng quay lại ngày mai.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 2. Check Title Duplicate
       var titleExists = await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower(), cancellationToken);
       if (titleExists)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE, "Tiêu đề truyện này đã tồn tại trên hệ thống.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE);
 
       // 1b. Check Description Duplicate
       if (!string.IsNullOrEmpty(dto.Description))
@@ -69,15 +68,17 @@ namespace Application.Services.Creator
       }
 
       // 2. Check Blacklist for Title & Description
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
+      var titleCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm: {string.Join(", ", titleCheck.Reasons)}");
+      {
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT);
+      }
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
-        var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
+        var descCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT);
       }
 
       string? imageUrl = null;
@@ -167,7 +168,7 @@ namespace Application.Services.Creator
           .Include(s => s.SeriesGenres)
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       if (series.Creator.UserId != userId)
       {
@@ -179,12 +180,11 @@ namespace Application.Services.Creator
           && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
       {
         var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            $"Vui lòng đợi {Math.Ceiling(remaining)} phút trước khi chỉnh sửa lại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId, cancellationToken))
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE, "Tiêu đề mới đã tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE);
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
@@ -192,15 +192,15 @@ namespace Application.Services.Creator
           _logger.LogWarning("Mô tả truyện bị trùng lặp với một truyện khác.");
       }
 
-      var titleCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
+      var titleCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Title });
       if (titleCheck.Action == "AutoReject" || titleCheck.Action == "InstantBan")
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Tiêu đề vi phạm.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT);
 
       if (!string.IsNullOrEmpty(dto.Description))
       {
-        var descCheck = _moderation.PreCheckText(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
+        var descCheck = await _moderation.PreCheckTextAsync(new DTOs.Moderation.TextCheckRequest { Text = dto.Description });
         if (descCheck.Action == "AutoReject" || descCheck.Action == "InstantBan")
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT, $"Mô tả chứa từ ngữ không phù hợp.");
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PROHIBITED_CONTENT);
       }
 
       string? newImageUrl = null;
@@ -289,7 +289,7 @@ namespace Application.Services.Creator
     {
       var creator = await _context.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Creator với UserId {userId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var series = await _context.Series
           .Where(s => s.CreatorId == creator.CreatorId)
@@ -342,7 +342,7 @@ namespace Application.Services.Creator
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -374,14 +374,14 @@ namespace Application.Services.Creator
           .GroupBy(p => p.SeriesId)
           .ToDictionaryAsync(g => g.Key, g => g.Select(p => p.TeamId).ToHashSet());
 
-      var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+      var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
       return new PaginatedList<SeriesDto>
       {
         TotalCount = totalCount,
         Page = page,
         PageSize = pageSize,
-        Items = orderedItems.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
 
@@ -422,7 +422,7 @@ namespace Application.Services.Creator
       if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.TotalRatings);
       else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.Chapters!.Any() ? s.Chapters!.OrderByDescending(c => c.ChapterNumber).FirstOrDefault()!.PublishedAt : s.CreatedAt);
+        query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
         query = query.OrderByDescending(s => s.CreatedAt);
 
@@ -454,14 +454,14 @@ namespace Application.Services.Creator
           .GroupBy(p => p.SeriesId)
           .ToDictionaryAsync(g => g.Key, g => g.Select(p => p.TeamId).ToHashSet());
 
-      var orderedItems = ids.Select(id => items.First(i => i.SeriesId == id)).ToList();
+      var orderedItems = ids.Select(id => items.FirstOrDefault(i => i.SeriesId == id)).Where(i => i != null).ToList();
 
       return new PaginatedList<SeriesDto>
       {
         TotalCount = totalCount,
         Page = request.Page,
         PageSize = request.PageSize,
-        Items = orderedItems.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
 
@@ -505,17 +505,23 @@ namespace Application.Services.Creator
           .ToListAsync();
       var grantedTeamIds = new HashSet<int>(grantedTeamIdsList);
 
-            var userUnlocks = new List<(int ChapId, int? TransId)>();
+      var userUnlocks = new List<(int ChapId, int? TransId)>();
+      bool isAuthorizedTranslator = false;
 
       if (userId.HasValue && userId.Value > 0)
       {
         var chapterIds = series.Chapters.Select(c => c.ChapterId).ToList();
-                var unlockData = await _context.ChapterUnlocks
+        var unlockData = await _context.ChapterUnlocks
             .Where(u => u.UserId == userId.Value && chapterIds.Contains(u.ChapterId))
-                    .Select(u => new { u.ChapterId, u.TranslationId })
+            .Select(u => new { u.ChapterId, u.TranslationId })
             .ToListAsync();
 
-                userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
+        userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
+
+        isAuthorizedTranslator = await _context.TranslationPermissions
+            .AnyAsync(p => p.SeriesId == seriesId 
+                        && p.Status == TranslationPermissionStatus.GRANTED
+                        && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)));
       }
 
       // Detect original language from the first original chapter (TeamId == null)
@@ -555,9 +561,9 @@ namespace Application.Services.Creator
     LanguageName = c.Language?.Name,
     CommentCount = 0,
     PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
-    IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null),
+    IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null) || isAuthorizedTranslator,
     // ── THÊM 3 DÒNG NÀY ──
-    LockStatus = effectiveLock.ToString(),
+    LockStatus = isAuthorizedTranslator ? ChapterLockStatus.UNLOCKED.ToString() : effectiveLock.ToString(),
     UnlockPriceCoins = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockPriceCoins : null,
     UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
   };
@@ -588,7 +594,7 @@ namespace Application.Services.Creator
     // isUnlocked: đã mua chapter gốc → mở tất cả translation
     // hoặc đã mua đúng translation này
     var isUnlocked = userUnlocks.Any(u => u.ChapId == c.ChapterId &&
-                 (u.TransId == null || u.TransId == t.TranslationId));
+                 (u.TransId == null || u.TransId == t.TranslationId)) || isAuthorizedTranslator;
     // TODO: nếu muốn check per-translation unlock riêng, cần query ChapterUnlocks theo TranslationId
 
     return new SeriesChapterDto
@@ -609,7 +615,7 @@ namespace Application.Services.Creator
       LanguageName = t.Language?.Name,
       CommentCount = 0,
       // ── NEW fields ──
-      LockStatus = effectiveLock.ToString(),
+      LockStatus = isAuthorizedTranslator ? ChapterLockStatus.UNLOCKED.ToString() : effectiveLock.ToString(),
       TeamUnlockPrice = teamPrice,
       UnlockTime = effectiveLock == ChapterLockStatus.LOCKED ? c.UnlockTime : null,
       IsUnlockedByUser = isUnlocked,
@@ -677,13 +683,13 @@ namespace Application.Services.Creator
       var series = await _context.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       if (series.Creator.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
 
       if (!Enum.TryParse<SeriesStatus>(status, true, out var newStatus))
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Trạng thái '{status}' không hợp lệ. Chấp nhận: ONGOING, COMPLETED, HALTED, DROPPED.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       series.Status = newStatus;
       series.UpdatedAt = DateTime.UtcNow;
@@ -699,7 +705,7 @@ namespace Application.Services.Creator
           .Include(s => s.Chapters).ThenInclude(c => c.Pages)
           .Include(s => s.SeriesGenres)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {seriesId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       if (series.Creator.UserId != userId)
       {
@@ -776,8 +782,7 @@ namespace Application.Services.Creator
       catch (Exception ex)
       {
         _logger.LogError(ex, "Lỗi khi xóa truyện {SeriesId}", seriesId);
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            $"Không thể xóa truyện do dữ liệu liên quan. Vui lòng thử lại sau. {ex.Message}");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
     }
 

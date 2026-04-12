@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Moderation;
 using Application.Interfaces.Moderation;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +23,7 @@ namespace mlndex_backend.Controllers.User
     )
     {
       if (!ModelState.IsValid)
-        return BadRequestResponse("Invalid payload");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       // TODO: replace with real reporterId from auth claims
       var reporterId = 1;

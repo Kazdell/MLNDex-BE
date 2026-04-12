@@ -52,10 +52,10 @@ namespace Application.Services.Creator
     {
       // ── 1. Kiểm tra quyền tải lên (Tác giả hoặc Nhóm dịch) ───────────
       if (dto.TeamId != null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Vui lòng sử dụng API dành riêng cho nhóm dịch để đăng bản dịch.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       var series = await _db.Series.FirstOrDefaultAsync(s => s.SeriesId == dto.SeriesId && s.Creator.UserId == userId, cancellationToken);
-      if (series == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, $"Series {dto.SeriesId} không tồn tại hoặc bạn không phải là tác giả.");
+      if (series == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       // ── 2. Rate Limit: Max 10 chapters/ngày ─────────────────────────
       var todayUtc = DateTime.UtcNow.Date;
@@ -63,8 +63,7 @@ namespace Application.Services.Creator
           .Where(c => c.Series.Creator.UserId == userId && c.CreatedAt >= todayUtc)
           .CountAsync(cancellationToken);
       if (chaptersToday >= 10)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            "Bạn đã đạt giới hạn 10 chapter/ngày. Vui lòng quay lại ngày mai.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 2b. Cooldown: 15 phút giữa mỗi lần đăng ───────────────────
       // var cutoff = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -79,8 +78,7 @@ namespace Application.Services.Creator
       //     if (elapsed.TotalMinutes < 15)
       //     {
       //         var remaining = TimeSpan.FromMinutes(15) - elapsed;
-      //         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, 
-      //             $"Vui lòng đợi {remaining.Minutes} phút {remaining.Seconds} giây nữa trước khi đăng chapter mới.");
+      //         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       //     }
       // }
 
@@ -92,8 +90,7 @@ namespace Application.Services.Creator
                   && c.Series.Creator.UserId == userId))
           .CountAsync(cancellationToken);
       if (pendingJobs >= 10)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED,
-            "Bạn đang có 10 chapter chờ kiểm duyệt. Hãy đợi kết quả trước khi tải thêm.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 4. Kiểm tra trùng số chương (chương gốc) ──
       bool duplicate = await _db.Chapters.AnyAsync(
@@ -103,7 +100,7 @@ namespace Application.Services.Creator
           cancellationToken);
 
       if (duplicate)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, $"Chương {dto.ChapterNumber} đã tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // ── 3. Upload ảnh trang lên Cloudinary ────────────────────────
       var uploadedUrls = new List<string>();
@@ -232,11 +229,16 @@ namespace Application.Services.Creator
 int chapterId, int? userId, int? translationId = null,
 CancellationToken cancellationToken = default)
     {
-      var cacheKey = $"ChapterDetails_{chapterId}_User_{userId ?? 0}";
+      if (userId.HasValue)
+      {
+          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+      }
+
+      var cacheKey = $"ChapterDetails_{chapterId}_Trans_{translationId ?? 0}_User_0";
       return await _cache.GetOrCreateAsync(cacheKey, async entry =>
       {
           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-          return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+          return await GetChapterDetailInternalAsync(chapterId, null, translationId, cancellationToken);
       });
     }
 
@@ -315,12 +317,21 @@ CancellationToken cancellationToken = default)
         bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
 && chapter.Series.Creator?.UserId == userId.Value;
 
-
-                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
-                // Nếu đã mua (isUnlockedByUser) hoặc là Creator, thì status trả về PHẢI LÀ UNLOCKED
-                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
-                                  ? ChapterLockStatus.UNLOCKED.ToString()
-                                  : ChapterLockStatus.LOCKED.ToString();
+        // 1.5 Kiểm tra xem user có thuộc Team được tác giả cấp quyền dịch bộ truyện này không
+        bool isAuthorizedTranslator = false;
+        if (userId.HasValue)
+        {
+            isAuthorizedTranslator = await _db.TranslationPermissions
+                .AnyAsync(p => p.SeriesId == chapter.SeriesId 
+                            && p.Status == TranslationPermissionStatus.GRANTED
+                            && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)), 
+                          cancellationToken);
+        }
+        // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+        // Nếu đã mua (isUnlockedByUser) hoặc là Creator hoặc là Translator được cấp quyền, thì status trả về PHẢI LÀ UNLOCKED
+        var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
+                          ? ChapterLockStatus.UNLOCKED.ToString()
+                          : ChapterLockStatus.LOCKED.ToString();
 
         var dto = new ChapterDetailDto
         {
@@ -338,10 +349,10 @@ CancellationToken cancellationToken = default)
                     LockStatus = finalStatus,
           UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
           UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-          IsUnlockedByUser = isUnlockedByUser || isSeriesCreator,
+          IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator,
 
           // Chặn Pages nếu locked và user chưa unlock
-          Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator)
+          Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
             ? chapter.Pages.Select(p => new ChapterPageResponseDto
             {
               PageId = p.PageId,
@@ -515,7 +526,7 @@ CancellationToken cancellationToken = default)
       var series = await _db.Series
           .Include(s => s.Creator)
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       if (series.Creator.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xem chapters của series này.");
@@ -552,7 +563,7 @@ CancellationToken cancellationToken = default)
       // Check if series exists
       var seriesExists = await _db.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
       if (!seriesExists)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND, "Series không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
       return await _db.Chapters
           .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
@@ -661,7 +672,7 @@ CancellationToken cancellationToken = default)
           .Include(c => c.Pages)
           .Include(c => c.Translations)
           .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, $"Không tìm thấy chương {chapterId}.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       // Ownership check
       if (chapter.Series?.Creator?.UserId != userId)
@@ -847,7 +858,7 @@ CancellationToken cancellationToken = default)
       var chapter = await _db.Chapters
           .Include(c => c.Series)
           .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Chapter không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       // 2. Chỉ creator sở hữu series mới được chỉnh
       var creator = await _db.CreatorProfiles
@@ -861,7 +872,7 @@ CancellationToken cancellationToken = default)
       if (dto.LockStatus == ChapterLockStatus.LOCKED
           && dto.UnlockPriceCoins == null
           && dto.UnlockTime == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Chapter bị khóa phải có giá coin hoặc thời gian mở khóa.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 4. UNLOCKED thì clear hết
       if (dto.LockStatus == ChapterLockStatus.UNLOCKED)
@@ -897,7 +908,7 @@ CancellationToken cancellationToken = default)
           .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
       if (chapter == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND, "Không tìm thấy chương.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
 
       if (chapter.Series?.Creator?.UserId != userId)
         throw new UnauthorizedAccessException("Bạn không có quyền xóa chương này.");
@@ -943,7 +954,7 @@ CancellationToken cancellationToken = default)
           .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
 
       if (chapter == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Không tìm thấy chương dịch hoặc chương không thuộc về nhóm của bạn.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
 
             // ── 1. Xóa ChapterUnlock trước ────────────────────────────────────────────
             var unlocks = await _db.ChapterUnlocks

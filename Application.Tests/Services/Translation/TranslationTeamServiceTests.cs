@@ -1,4 +1,5 @@
 using System;
+using Application.DTOs.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using Application.DTOs.Translation.Requests;
@@ -154,7 +155,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team", Slug = "new-slug" }));
-      ex.Message.Should().Be("Team name already exists.");
+      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
     }
 
     [Fact]
@@ -167,7 +168,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team 2", Slug = "hero-team" }));
-      ex.Message.Should().Be("Slug already exists.");
+      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TEAM_SLUG);
     }
 
     [Fact]
@@ -255,7 +256,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 55, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be("Team not found or unauthorized.");
+      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -269,7 +270,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be("User is already a team member.");
+      ex.Message.Should().Be(ErrorCodes.USER_ALREADY_IN_TEAM);
     }
 
     [Fact]
@@ -291,7 +292,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be("Invitation already pending.");
+      ex.Message.Should().Be(ErrorCodes.INVITATION_ALREADY_PENDING);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -326,7 +327,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(teamId, 1));
-      ex.Message.Should().Be("Leader cannot be removed.");
+      ex.Message.Should().Be(ErrorCodes.CANNOT_REMOVE_LEADER);
     }
 
     [Fact]
@@ -339,7 +340,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(teamId, 55));
-      ex.Message.Should().Be("Team not found or unauthorized.");
+      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -360,7 +361,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(9999, 55));
-      (ex.Message.Contains("not found") || ex.Message.Contains("unauthorized")).Should().BeTrue();
+      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -544,7 +545,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).AcceptInvitationAsync(inv.InvitationId));
-      ex.Message.Should().Contain("phải chờ");
+      ex.Message.Should().Be(ErrorCodes.TEAM_JOIN_COOLDOWN);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -635,7 +636,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).AssignRoleAsync(teamId, 1, new AssignTeamMemberRoleRequest { Role = TeamMemberRole.EDITOR }));
-      ex.Message.Should().Be("Leader role cannot be changed manually.");
+      ex.Message.Should().Be(ErrorCodes.CANNOT_CHANGE_LEADER_ROLE);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -704,7 +705,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).LeaveTeamAsync(teamId));
-      ex.Message.Should().Contain("Trưởng nhóm không thể rời nhóm");
+      ex.Message.Should().Be(ErrorCodes.LEADER_CANNOT_LEAVE_TEAM);
     }
 
     [Fact]
@@ -770,7 +771,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestToJoinAsync(team.TeamId, new JoinTeamRequest { Message = "again" }));
-      ex.Message.Should().Be("Join request already pending.");
+      ex.Message.Should().Be(ErrorCodes.JOIN_REQUEST_ALREADY_PENDING);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -935,4 +936,9 @@ namespace Application.Tests.Services.Translation
     }
   }
 }
+
+
+
+
+
 

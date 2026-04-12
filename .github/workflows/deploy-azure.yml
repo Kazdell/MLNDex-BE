@@ -1,0 +1,78 @@
+# Auto-deploy MLNDex Backend to Azure App Service
+# Triggers on push to main branch
+
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+env:
+  AZURE_WEBAPP_NAME: mlndex-backend
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: './mlndex-backend/mlndex-backend.csproj'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 📋 Publish (Lean mode for Azure Free Tier)
+        run: |
+          dotnet publish ${{ env.PROJECT_PATH }} \
+            --configuration Release \
+            --no-self-contained \
+            -r win-x86 \
+            -p:ExcludeOCR=true \
+            --output ./publish
+
+      - name: 🧹 Cleanup unused files (reduce size)
+        run: |
+          cd ./publish
+          # Remove non-Windows and non-x86 runtimes
+          rm -rf runtimes/linux-* runtimes/osx-* runtimes/ios runtimes/android runtimes/win-arm*
+          rm -rf runtimes/win-x64
+          # KEEP runtimes/win-x86 (Azure Free Tier is 32-bit!) — contains critical SNI.dll
+          # KEEP runtimes/win (shared Windows managed DLLs)
+          # Remove debug symbols
+          find . -name "*.pdb" -delete
+          # Remove unused locale folders (satellite assemblies)
+          for dir in af ar az bg bn-BD cs da de el en es fa fi-FI fr fr-BE he hr hu hy id is it ja ko ko-KR ku lv ms-MY mt nb nb-NO nl pl pt pt-BR ro ru sk sl sr sr-Latn sv th-TH tr uk uz-Cyrl-UZ uz-Latn-UZ zh-CN zh-Hans zh-Hant; do
+            rm -rf "./$dir"
+          done
+          echo "=== Remaining runtimes ==="
+          find ./runtimes -type f -name "*.dll" 2>/dev/null | head -20
+          echo "=== Package size after cleanup ==="
+          du -sh .
+
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
+
+      - name: ⏳ Verify deployment
+        run: |
+          echo "Waiting 30s for app restart..."
+          sleep 30
+          echo "Checking Swagger endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://mlndex-backend-avcadghxf3ash9dn.eastasia-01.azurewebsites.net/swagger/index.html" \
+            --max-time 120 || echo "000")
+          echo "Swagger responded with: $HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ App is running!"
+          else
+            echo "⚠️ App may still be starting (Free Tier cold start). Status: $HTTP_CODE"
+          fi

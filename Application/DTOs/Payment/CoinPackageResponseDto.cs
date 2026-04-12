@@ -1,3 +1,4 @@
+using Application.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -22,17 +23,17 @@ namespace Application.DTOs.Payment
   /// <summary>Admin tạo gói coin mới.</summary>
   public class CreateCoinPackageDto
   {
-    [Required(ErrorMessage = "Tên gói không được để trống")]
+    [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     [MaxLength(100)]
     public string Name { get; set; } = string.Empty;
 
-    [Range(1, double.MaxValue, ErrorMessage = "Số coins phải lớn hơn 0")]
+    [Range(1, double.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public decimal CoinAmount { get; set; }
 
-    [Range(1, double.MaxValue, ErrorMessage = "Giá tiền phải lớn hơn 0")]
+    [Range(1, double.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public decimal PriceVnd { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Bonus coins không được âm")]
+    [Range(0, double.MaxValue, ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public decimal BonusCoins { get; set; } = 0;
   }
 
@@ -47,3 +48,4 @@ namespace Application.DTOs.Payment
     public bool? IsActive { get; set; }
   }
 }
+

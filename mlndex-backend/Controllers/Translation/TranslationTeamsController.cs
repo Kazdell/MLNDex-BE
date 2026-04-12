@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -31,17 +33,17 @@ namespace mlndex_backend.Controllers.Translation
 
     // List all translation teams.
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TranslationTeamResponse>>> GetAllTeams()
+    public async Task<IActionResult> GetAllTeams()
     {
       var teams = await _service.GetAllTeamsAsync();
-      return Ok(teams);
+      return OkResponse(teams);
     }
 
     [HttpGet("{id}/members")]
-    public async Task<ActionResult<IEnumerable<TeamMemberDetailResponse>>> GetMembers(int id)
+    public async Task<IActionResult> GetMembers(int id)
     {
       var members = await _service.GetTeamMembersAsync(id);
-      return Ok(members);
+      return OkResponse(members);
     }
 
     // Get current user's joined teams.
@@ -50,7 +52,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> GetMyTeams([FromQuery] int limit = 5)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse("Invalid user.");
+      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var teams = await _service.GetUserTeamsAsync(userId, limit);
       return OkResponse(teams);
@@ -80,7 +82,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> DisbandTeam(int id)
     {
       var success = await _service.DisbandTeamAsync(id);
-      if (!success) return NotFoundResponse("Team not found or you are not the leader.");
+      if (!success) throw new AppException(ErrorCodes.TEAM_NOT_FOUND);
 
       return NoContent();
     }
@@ -106,7 +108,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> AcceptInvitation(int invitationId)
     {
       var success = await _service.AcceptInvitationAsync(invitationId);
-      if (!success) return NotFoundResponse("Invitation not found or unauthorized.");
+      if (!success) throw new AppException(ErrorCodes.INVITATION_NOT_FOUND);
       return OkResponse("Invitation accepted.");
     }
 
@@ -115,7 +117,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> RejectInvitation(int invitationId)
     {
       var success = await _service.RejectInvitationAsync(invitationId);
-      if (!success) return NotFoundResponse("Invitation not found or unauthorized.");
+      if (!success) throw new AppException(ErrorCodes.INVITATION_NOT_FOUND);
       return OkResponse("Invitation rejected.");
     }
 
@@ -140,7 +142,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> ApproveJoinRequest(int requestId)
     {
       var success = await _service.ApproveJoinRequestAsync(requestId);
-      if (!success) return NotFoundResponse("Join request not found or unauthorized.");
+      if (!success) throw new AppException(ErrorCodes.NOT_FOUND);
       return OkResponse("Join request approved.");
     }
 
@@ -149,7 +151,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> RejectJoinRequest(int requestId)
     {
       var success = await _service.RejectJoinRequestAsync(requestId);
-      if (!success) return NotFoundResponse("Join request not found or unauthorized.");
+      if (!success) throw new AppException(ErrorCodes.NOT_FOUND);
       return OkResponse("Join request rejected.");
     }
 
@@ -159,7 +161,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> RemoveMember(int id, int userId)
     {
       var success = await _service.RemoveMemberAsync(id, userId);
-      if (!success) return NotFoundResponse("Member not found.");
+      if (!success) throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
       return NoContent();
     }
 
@@ -169,7 +171,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> LeaveTeam(int id)
     {
       var success = await _service.LeaveTeamAsync(id);
-      if (!success) return NotFoundResponse("You are not a member of this team.");
+      if (!success) throw new AppException(ErrorCodes.TEAM_NOT_FOUND);
       return OkResponse("Successfully left the team.");
     }
 

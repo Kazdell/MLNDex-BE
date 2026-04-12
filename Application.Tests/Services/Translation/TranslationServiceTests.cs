@@ -1,4 +1,5 @@
 using System;
+using Application.DTOs.Common;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -111,7 +112,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 999, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be("Translation permission record not found.");
+      ex.Message.Should().Be(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
     }
 
     [Fact]
@@ -125,7 +126,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 2 }; // Wrong language
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Contain("Language mismatch");
+      ex.Message.Should().Be(ErrorCodes.LANGUAGE_MISMATCH);
     }
 
     [Fact]
@@ -140,7 +141,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be("Permission not valid for this series.");
+      ex.Message.Should().Be(ErrorCodes.PERMISSION_NOT_VALID_FOR_SERIES);
     }
 
     [Fact]
@@ -154,7 +155,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be("Uploader is not an active member or leader of the translation team.");
+      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -226,6 +227,31 @@ namespace Application.Tests.Services.Translation
     }
 
     [Fact]
+    public async Task Upload_Unofficial_ShouldThrow_WhenChapterIsLocked()
+    {
+      var db = CreateDb();
+      _mockUserContext.Setup(u => u.UserId).Returns(111);
+      var teamId = await SeedBaseData(db);
+
+      var chapter = await db.Chapters.FindAsync(100);
+      chapter!.LockStatus = ChapterLockStatus.LOCKED;
+      chapter.UnlockTime = DateTime.UtcNow.AddDays(1);
+      await db.SaveChangesAsync();
+
+      var dto = new UploadTranslationRequest
+      {
+        TeamId = teamId,
+        ChapterId = 100,
+        LanguageId = 1,
+        ContentType = ContentType.TEXT,
+        ContentText = "Attempt to translate locked chapter"
+      };
+
+      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
+      ex.Message.Should().Be(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+    }
+
+    [Fact]
     public async Task Upload_ShouldRollbackAndThrow_WhenStorageUploadFails()
     {
       var db = CreateDb();
@@ -277,7 +303,7 @@ namespace Application.Tests.Services.Translation
       };
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Contain("Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc");
+      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -296,7 +322,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 }));
-      ex.Message.Should().Be("Unauthorized to edit.");
+      ex.Message.Should().Be(ErrorCodes.UNAUTHORIZED_EDIT);
     }
 
     [Fact]
@@ -347,7 +373,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).DeleteTranslationAsync(55));
-      ex.Message.Should().Be("Data consistency error: Missing TranslationPermission.");
+      ex.Message.Should().Be(ErrorCodes.MISSING_TRANSLATION_PERMISSION);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -370,3 +396,8 @@ namespace Application.Tests.Services.Translation
     }
   }
 }
+
+
+
+
+

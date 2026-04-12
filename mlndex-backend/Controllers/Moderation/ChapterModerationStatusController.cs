@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.Interfaces.Creator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +58,7 @@ public class ChapterModerationStatusController : BaseController
 
     catch (InvalidOperationException ex)
     {
-      return BadRequestResponse(ex.Message);
+      throw new AppException(ErrorCodes.INVALID_INPUT);
     }
     catch (Exception ex)
     {

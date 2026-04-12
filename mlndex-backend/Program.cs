@@ -68,8 +68,16 @@ namespace mlndex_backend
       else
         builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
+      // Localization Configuration
+      builder.Services.AddLocalization();
+
       // Standard API Services
       builder.Services.AddControllers()
+          .AddDataAnnotationsLocalization(options =>
+          {
+            options.DataAnnotationLocalizerProvider = (type, factory) =>
+                factory.Create(typeof(Application.Resources.SharedResource));
+          })
           .AddJsonOptions(options =>
           {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -99,8 +107,8 @@ namespace mlndex_backend
       builder.Services.AddScoped<IOtpService, OtpService>();
       builder.Services.AddScoped<IEmailService, EmailService>();
       builder.Services.AddScoped<IUserContext, UserContext>();
-      builder.Services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
-      builder.Services.AddScoped<IFacebookOAuthService, FacebookOAuthService>();
+      builder.Services.AddHttpClient<IGoogleOAuthService, GoogleOAuthService>();
+      builder.Services.AddHttpClient<IFacebookOAuthService, FacebookOAuthService>();
 
 
       // Storage & Content Services
@@ -144,23 +152,25 @@ namespace mlndex_backend
       builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
       builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-      // OCR Services — Tesseract fallback (Scoped)
-      builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
-      builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
-      builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
-
-      // Register multiple IOCRService implementations (Strategy Pattern)
-      // ReaderTranslationService consumes IEnumerable<IOCRService>
-      builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
-      builder.Services.AddScoped<TesseractOCRService>();
-      builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
-
-      // For backward compatibility (PageTranslationService, ModerationService) which expect single IOCRService,
-      // the last one registered wins (TesseractOCRService). Or we can leave it as is if they just pick Tesseract.
-
-      // Thêm Keyed Services cho tách biệt ITextRecognitionService
-      builder.Services.AddKeyedScoped<ITextRecognitionService>("tesseract", (sp, key) => sp.GetRequiredService<TesseractOCRService>());
-      builder.Services.AddKeyedSingleton<ITextRecognitionService, PaddleOcrService>("paddle");
+      // OCR Services — with fallback for deployments without native DLLs
+      var ocrAvailable = File.Exists(Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll"));
+      if (ocrAvailable)
+      {
+        builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
+        builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
+        builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
+        builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
+        builder.Services.AddScoped<TesseractOCRService>();
+        builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
+        builder.Services.AddKeyedScoped<ITextRecognitionService>("tesseract", (sp, key) => sp.GetRequiredService<TesseractOCRService>());
+        builder.Services.AddKeyedSingleton<ITextRecognitionService, PaddleOcrService>("paddle");
+        Console.WriteLine("[OCR] Native DLLs found — OCR services registered.");
+      }
+      else
+      {
+        builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
+        Console.WriteLine("[OCR] Native DLLs NOT found — OCR disabled (Azure Free Tier mode).");
+      }
       builder.Services.AddHttpClient<IAiTranslationClient, GeminiTranslationClient>(client =>
       {
         client.Timeout = TimeSpan.FromSeconds(60);
@@ -295,9 +305,15 @@ namespace mlndex_backend
       {
       }
 
+      var supportedCultures = new[] { "vi-VN", "en-US" };
+      app.UseRequestLocalization(new RequestLocalizationOptions()
+          .SetDefaultCulture(supportedCultures[0])
+          .AddSupportedCultures(supportedCultures)
+          .AddSupportedUICultures(supportedCultures));
+
+      app.UseCors("AllowSpecificOrigin");
       app.UseGlobalExceptionHandling();
       app.UseRateLimiter();
-      app.UseCors("AllowSpecificOrigin");
       app.UseAuthentication();
       app.UseAuthorization();
       app.UseStaticFiles();

@@ -1,3 +1,4 @@
+using Application.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -12,13 +13,14 @@ namespace Application.DTOs.Payment
   /// </summary>
   public class ConfirmBankTransferDto
   {
-    [Required(ErrorMessage = "TxnRef không được để trống")]
+    [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public string TxnRef { get; set; } = string.Empty;
 
     /// <summary>Mã giao dịch từ sao kê ngân hàng — lưu để đối soát.</summary>
-    [Required(ErrorMessage = "Mã giao dịch ngân hàng không được để trống")]
+    [Required(ErrorMessage = ErrorCodes.VALIDATION_ERROR)]
     public string BankTransactionId { get; set; } = string.Empty;
 
     public string? Note { get; set; }
   }
 }
+

@@ -76,6 +76,7 @@ namespace Application.Services.ReportSystem
       {
         var dto = MapToDto(r, r.Reporter.Username);
         dto.TargetName = await GetTargetNameAsync(r.ContentType, r.ContentId, cancellationToken);
+        dto.TargetUrl = await GetTargetUrlAsync(r.ContentType, r.ContentId, cancellationToken);
         result.Add(dto);
       }
 
@@ -105,10 +106,10 @@ namespace Application.Services.ReportSystem
           .FirstOrDefaultAsync(r => r.ReportId == reportId, cancellationToken);
 
       if (report == null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND);
 
       if (report.Status == ReportStatus.Resolved || report.Status == ReportStatus.Rejected)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Report đã được xử lý.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       report.Status = request.NewStatus;
 
@@ -152,17 +153,18 @@ namespace Application.Services.ReportSystem
 
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);
+      dto.TargetUrl = await GetTargetUrlAsync(report.ContentType, report.ContentId, cancellationToken);
       return dto;
     }
 
     public async Task<CompareTranslationResponse> GetCompareDataAsync(int reportId, int referenceTranslationId, CancellationToken cancellationToken = default)
     {
       var report = await _context.Reports.FindAsync(new object[] { reportId }, cancellationToken);
-      if (report == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND, "Report không tồn tại");
+      if (report == null) throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.REPORT_NOT_FOUND);
 
       if (report.ContentType != ReportTargetType.ChapterTranslation)
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Tính năng compare chỉ hỗ trợ loại Report ChapterTranslation.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       var reportedTranslation = await _context.Translations
@@ -181,7 +183,7 @@ namespace Application.Services.ReportSystem
 
       if (reportedTranslation == null || referenceTranslation == null)
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND, "Một trong hai bản dịch không tồn tại.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
       }
 
       return new CompareTranslationResponse
@@ -314,6 +316,24 @@ namespace Application.Services.ReportSystem
         ReportTargetType.Team => await _context.TranslationTeams.Where(t => t.TeamId == targetId).Select(t => t.TeamName).FirstOrDefaultAsync(ct) ?? "Unknown Team",
         ReportTargetType.User => await _context.Users.Where(u => u.UserId == targetId).Select(u => u.Username).FirstOrDefaultAsync(ct) ?? "Unknown User",
         _ => "Unknown Target"
+      };
+    }
+
+    private async Task<string> GetTargetUrlAsync(ReportTargetType targetType, int targetId, CancellationToken ct)
+    {
+      return targetType switch
+      {
+        ReportTargetType.Series => $"/series/{targetId}",
+        ReportTargetType.ChapterTranslation => await _context.Translations
+            .Where(t => t.TranslationId == targetId)
+            .Select(t => $"/chapter/{t.ChapterId}?translationId={t.TranslationId}")
+            .FirstOrDefaultAsync(ct) ?? "#",
+        ReportTargetType.Team => $"/translation/dashboard/{targetId}",
+        ReportTargetType.User => await _context.Users
+            .Where(u => u.UserId == targetId)
+            .Select(u => $"/profile/{u.Username}")
+            .FirstOrDefaultAsync(ct) ?? "#",
+        _ => "#"
       };
     }
 

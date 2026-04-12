@@ -26,11 +26,11 @@ namespace Application.Services.Moderation
           await _context.ModerationQueues.FirstOrDefaultAsync(
               q => q.QueueId == queueId,
               cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Queue item không tồn tại.");
+          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
 
       var targetUserId =
           await ResolveTargetUserId(queue, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không tìm thấy tác giả để gửi feedback.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // Add notification to creator
       _context.Notifications.Add(

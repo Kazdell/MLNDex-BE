@@ -1,3 +1,5 @@
+using Application.DTOs.Common;
+using Application.Exceptions;
 using Application.DTOs.Chapter;
 using Application.Interfaces.Creator;
 using Application.Interfaces.Financial;
@@ -43,7 +45,7 @@ public class ChapterController : BaseController
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
     if (currentUser?.CannotUpload == true)
@@ -51,16 +53,16 @@ public class ChapterController : BaseController
 
     // 1. Validate files
     if (pages == null || pages.Count == 0)
-      return BadRequestResponse("Chưa có trang nào được gửi lên.");
+      throw new AppException(ErrorCodes.INVALID_INPUT);
 
     foreach (var file in pages)
     {
       var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
       if (!AllowedExtensions.Contains(ext))
-        return BadRequestResponse($"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
 
       if (file.Length > MaxFileSizeBytes)
-        return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
+        throw new AppException(ErrorCodes.INVALID_INPUT);
     }
 
     // 2. Build DTO — Creator upload: no TeamId
@@ -94,7 +96,7 @@ public class ChapterController : BaseController
     }
     catch (InvalidOperationException ex)
     {
-      return BadRequestResponse(ex.Message);
+      throw new AppException(ErrorCodes.INVALID_INPUT);
     }
     catch (Exception ex)
     {
@@ -122,7 +124,7 @@ public class ChapterController : BaseController
           userId,
           translationId,                  // int? — có thể null
           cancellationToken);             // named arg tránh nhầm slot
-      if (result == null) return NotFoundResponse("Không tìm thấy chương này.");
+      if (result == null) throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
       return OkResponse(result);
     }
     catch (Exception ex)
@@ -136,7 +138,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> GetBySeries(int seriesId, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -159,12 +161,12 @@ public class ChapterController : BaseController
   public async Task<IActionResult> GetForEdit(int id, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
       var result = await _service.GetForEditAsync(id, userId, cancellationToken);
-      if (result == null) return NotFoundResponse("Không tìm thấy chương truyện hoặc bạn không có quyền chỉnh sửa.");
+      if (result == null) throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
       return OkResponse(result);
     }
     catch (UnauthorizedAccessException ex)
@@ -195,7 +197,7 @@ public class ChapterController : BaseController
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
     if (currentUser?.CannotUpload == true)
@@ -208,9 +210,9 @@ public class ChapterController : BaseController
       {
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
-          return BadRequestResponse($"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: .jpg .jpeg .png .webp");
+          throw new AppException(ErrorCodes.INVALID_INPUT);
         if (file.Length > MaxFileSizeBytes)
-          return BadRequestResponse($"File '{file.FileName}' vượt quá 20MB.");
+          throw new AppException(ErrorCodes.INVALID_INPUT);
       }
     }
 
@@ -253,7 +255,7 @@ public class ChapterController : BaseController
     }
     catch (InvalidOperationException ex)
     {
-      return BadRequestResponse(ex.Message);
+      throw new AppException(ErrorCodes.INVALID_INPUT);
     }
     catch (Exception ex)
     {
@@ -269,7 +271,7 @@ public class ChapterController : BaseController
   CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -283,7 +285,7 @@ public class ChapterController : BaseController
     }
     catch (InvalidOperationException ex)
     {
-      return BadRequestResponse(ex.Message);
+      throw new AppException(ErrorCodes.INVALID_INPUT);
     }
     catch (Exception ex)
     {
@@ -295,7 +297,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Vui lòng đăng nhập.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -305,7 +307,7 @@ public class ChapterController : BaseController
 
     catch (InvalidOperationException ex)
     {
-      return BadRequestResponse(ex.Message);
+      throw new AppException(ErrorCodes.INVALID_INPUT);
     }
     catch (Exception ex)
     {
@@ -317,7 +319,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse("Không tìm thấy thông tin định danh người dùng.");
+    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {

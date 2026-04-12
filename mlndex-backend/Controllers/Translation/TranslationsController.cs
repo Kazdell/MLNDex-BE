@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using mlndex_backend.Controllers;
 using Application.Interfaces.Financial;
+using Application.Exceptions;
+using Application.DTOs.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,11 +54,11 @@ namespace mlndex_backend.Controllers.Translation
         // Guard: block upload if user trust score is depleted
         var currentUser = await _db.Users.FindAsync(GetUserId());
         if (currentUser?.CannotUpload == true)
-          return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+          throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
         // Parse contentType string → enum
         if (!Enum.TryParse<Domain.Entities.ContentType>(req.ContentType, ignoreCase: true, out var contentTypeEnum))
-          return BadRequest(new { message = $"Invalid contentType: {req.ContentType}" });
+          throw new AppException(ErrorCodes.INVALID_INPUT);
 
         var jsonOptions = new System.Text.Json.JsonSerializerOptions
         {
@@ -100,22 +102,6 @@ namespace mlndex_backend.Controllers.Translation
       return OkResponse(translation);
     }
 
-    // Get text layers for a specific page
-    [HttpGet("page-layer/{pageId}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetPageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService)
-    {
-        var layers = await pageTranslationService.GetPageTextLayerAsync(pageId);
-        return OkResponse(layers);
-    }
-
-    // Generate text layers for a specific page using AI OCR and Translation
-    [HttpPost("page-layer/generate/{pageId}")]
-    public async Task<IActionResult> GeneratePageTextLayers(int pageId, [FromServices] IPageTranslationService pageTranslationService, [FromQuery] string targetLanguage = "Vietnamese")
-    {
-        var layers = await pageTranslationService.GeneratePageTextLayerAsync(pageId, targetLanguage);
-        return OkResponse(layers);
-    }
 
     // Get all translations by series ID.
     [HttpGet("series/{seriesId}")]
@@ -141,7 +127,7 @@ namespace mlndex_backend.Controllers.Translation
     {
         var currentUser = await _db.Users.FindAsync(GetUserId());
         if (currentUser?.CannotUpload == true)
-          return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
+          throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
         var translation = await _service.EditTranslationAsync(id, dto);
         return OkResponse(translation);
@@ -152,7 +138,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> DeleteTranslation(int id)
     {
         var success = await _service.DeleteTranslationAsync(id);
-        if (!success) return NotFoundResponse("Translation not found or unauthorized.");
+        if (!success) throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND_OR_NOT_OWNER);
         return NoContent();
     }
 
@@ -161,7 +147,7 @@ namespace mlndex_backend.Controllers.Translation
     {
       var translation = await _db.Translations.FindAsync(id);
       if (translation == null)
-        return NotFoundResponse("Bản dịch không tồn tại.");
+        throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
       if (translation.ModerationStatus != Domain.Entities.ModerationStatus.PENDING)
       {

@@ -107,19 +107,19 @@ namespace Application.Services.Financial
           await _context
               .WithdrawalRequests.Include(w => w.Creator)
               .FirstOrDefaultAsync(w => w.WithdrawalId == withdrawalId, cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WITHDRAWAL_NOT_FOUND, $"Withdrawal {withdrawalId} không tồn tại.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.WITHDRAWAL_NOT_FOUND);
 
       if (
           entity.Status == WithdrawalStatus.COMPLETED
           || entity.Status == WithdrawalStatus.REJECTED
       )
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Yêu cầu đã được xử lý trước đó.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       if (request.Status == WithdrawalStatus.PENDING)
       {
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Không thể chuyển về trạng thái PENDING.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
 
       entity.Status = request.Status;
@@ -156,20 +156,20 @@ namespace Application.Services.Financial
     )
     {
       var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
-          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Hệ thống chưa được cấu hình.");
+          ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 1. Validate limits
       if (dto.AmountCoins < config.WithdrawalMinCoins)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền rút tối thiểu là {config.WithdrawalMinCoins} coins.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
       if (config.WithdrawalMaxCoins > 0 && dto.AmountCoins > config.WithdrawalMaxCoins)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT, $"Số tiền rút tối đa là {config.WithdrawalMaxCoins} coins.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
 
       // 2. Check wallet balance
       var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == creatorId, cancellationToken)
           ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
       if (wallet.CoinBalance < dto.AmountCoins)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Số dư không đủ để thực hiện yêu cầu này.");
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // 3. Calculate VND amount after fee
       var amountVnd = dto.AmountCoins * config.ExchangeRateCoinToVnd * (1 - config.WithdrawalFeePercent / 100);
