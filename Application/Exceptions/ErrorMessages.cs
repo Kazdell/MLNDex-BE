@@ -58,6 +58,8 @@ namespace Application.Exceptions
             { ErrorCodes.INVALID_UNLOCK_PRICE, "Giá mở khóa không hợp lệ." },
             
             { ErrorCodes.LANGUAGE_NOT_FOUND, "Ngôn ngữ không tồn tại." },
+            { ErrorCodes.LANGUAGE_ALREADY_TRANSLATED, "Ngôn ngữ này đã có nhóm dịch chính thức được cấp quyền. Không thể chấp nhận thêm." },
+            { ErrorCodes.PERMISSION_REVOKED, "Quyền dịch chính thức đã bị thu hồi, không thể đăng tải dưới dạng Official." },
             { ErrorCodes.PERMISSION_REQUEST_PENDING, "Yêu cầu dịch truyện của nhóm cho bộ này đang chờ xử lý." },
             { ErrorCodes.PERMISSION_ALREADY_GRANTED, "Nhóm đã có quyền dịch chính thức cho bộ truyện này." },
             { ErrorCodes.PERMISSION_REQUEST_NOT_FOUND, "Không tìm thấy yêu cầu phân quyền dịch." },

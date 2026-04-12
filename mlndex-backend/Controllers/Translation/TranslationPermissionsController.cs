@@ -43,6 +43,14 @@ namespace mlndex_backend.Controllers.Translation
     }
 
     [Authorize]
+    [HttpPut("{id}/revoke")]
+    public async Task<IActionResult> RevokePermission(int id)
+    {
+        var permission = await _service.RevokePermissionAsync(id);
+        return OkResponse(permission);
+    }
+
+    [Authorize]
     [HttpGet("team/{teamId}")]
     public async Task<IActionResult> GetTeamPermissions(int teamId)
     {

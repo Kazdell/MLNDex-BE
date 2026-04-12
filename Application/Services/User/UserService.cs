@@ -134,6 +134,7 @@ namespace Application.Services.User
         var q = query.Trim();
         usersQuery = usersQuery.Where(u =>
             u.Username.Contains(q) ||
+            u.Email.Contains(q) ||
             (u.DisplayName != null && u.DisplayName.Contains(q)));
       }
 

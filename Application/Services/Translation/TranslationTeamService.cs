@@ -193,6 +193,7 @@ namespace Application.Services.Translation
           {
             UserId = m.UserId,
             Username = m.User!.Username,
+            Email = m.User.Email,
             DisplayName = m.User!.DisplayName ?? m.User.Username,
             Role = m.Role.ToString(),
             JoinedAt = m.JoinedAt

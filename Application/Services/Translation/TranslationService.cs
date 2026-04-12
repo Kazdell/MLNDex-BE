@@ -66,6 +66,9 @@ namespace Application.Services.Translation
 
         if (permission == null)
           throw new AppException(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
+          
+        if (permission.Status == TranslationPermissionStatus.REVOKED || permission.Status == TranslationPermissionStatus.DENIED)
+          throw new AppException(ErrorCodes.PERMISSION_REVOKED);
 
         if (permission.LanguageId != dto.LanguageId)
           throw new AppException(ErrorCodes.LANGUAGE_MISMATCH);
