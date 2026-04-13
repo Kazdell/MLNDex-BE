@@ -114,7 +114,8 @@ namespace Application.Services.Financial
             {
                 UserId = authorUserId,
                 WalletId = authorWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
                 AmountCoins = price,
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Hoa hồng 100% từ mở khóa chapter {chapterId} — series {chapter.SeriesId}",
@@ -207,6 +208,8 @@ namespace Application.Services.Financial
             if (team == null || !team.IsMonetizationEnabled)
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
+            var teamId = team.TeamId;
+
             var rawPrice = team.DefaultUnlockPriceCoins
                 ?? chapter.UnlockPriceCoins
                 ?? throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
@@ -272,7 +275,8 @@ namespace Application.Services.Financial
             {
                 UserId = authorUserId,
                 WalletId = authorWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
                 AmountCoins = authorShare,
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Hoa hồng {authorCommissionPct}% từ bản dịch {translationId} — Ch.{chapter.ChapterNumber}",
@@ -283,10 +287,13 @@ namespace Application.Services.Financial
             {
                 UserId = teamLeaderUserId,
                 WalletId = teamLeaderWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.TEAM_ROYALTY,
                 AmountCoins = teamShare,
                 Status = TransactionStatus.COMPLETED,
-                Note = $"Hoa hồng {teamCommissionPct}% từ bản dịch {translationId} — Ch.{chapter.ChapterNumber} — nhóm {team.TeamName}",
+                RelatedEntityId = teamId,
+                RelatedEntityType = "TEAM",
+                RelatedSeriesId = chapter.SeriesId,
+                Note = $"Hoa hồng {teamCommissionPct}% từ bản dịch {translationId}...",
                 CreatedAt = now,
             });
 
