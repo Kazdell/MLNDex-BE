@@ -570,13 +570,13 @@ namespace Application.Services.Translation
         .Include(t => t.TranslationText)
         .Where(t =>
           t.Chapter.SeriesId == seriesId
-          && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
+          && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
         )
         .OrderByDescending(t => t.Chapter.ChapterNumber)
         .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
         {
-          ChapterId = t.ChapterId, // ID gốc của truyện
-          TranslationId = t.TranslationId, // ID bản dịch
+          ChapterId = t.ChapterId,
+          TranslationId = t.TranslationId,
           ChapterNumber = t.Chapter.ChapterNumber,
           Title = t.Chapter.Title,
           Status = t.QualityStatus.ToString(),
@@ -613,7 +613,7 @@ namespace Application.Services.Translation
         .FirstOrDefaultAsync(
           t =>
             t.TranslationId == translationId
-            && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
+            && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
           ct
         );
 
