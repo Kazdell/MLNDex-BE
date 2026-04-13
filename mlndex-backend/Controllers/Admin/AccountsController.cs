@@ -43,6 +43,7 @@ namespace mlndex_backend.Controllers.Admin
     }
 
     [HttpPut("{userId:int}/roles")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> UpdateRoles(
         int userId,
         [FromBody] UpdateUserRolesRequest request,

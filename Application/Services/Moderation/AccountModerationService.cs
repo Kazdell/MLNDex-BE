@@ -161,6 +161,10 @@ namespace Application.Services.Moderation
           .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
       if (user == null) return false;
+      
+      // Safety Rule: Cannot edit yourself
+      if (userId == moderatorId)
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
       // Fetch the moderator to check their permissions
       var moderator = await _context.Users

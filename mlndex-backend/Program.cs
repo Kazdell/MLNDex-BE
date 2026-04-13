@@ -126,6 +126,7 @@ namespace mlndex_backend
       builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
       builder.Services.AddScoped<IModerationService, ModerationService>();
       builder.Services.AddScoped<IReportService, ReportService>();
+      builder.Services.AddScoped<IContentModerationService, ContentModerationService>();
       builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
       builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
       builder.Services.AddScoped<ICommentModerationService, CommentModerationService>();

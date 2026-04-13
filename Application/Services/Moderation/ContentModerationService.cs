@@ -25,64 +25,77 @@ namespace Application.Services.Moderation
         CancellationToken cancellationToken = default
     )
     {
-      var queue =
-          await _context.ModerationQueues.FirstOrDefaultAsync(
-              q => q.QueueId == queueId,
-              cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
-
-      if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      var targetStatus = request.Action switch
+      try
       {
-        ContentDecisionAction.APPROVE => ModerationStatus.APPROVED,
-        ContentDecisionAction.REJECT => ModerationStatus.REJECTED,
-        ContentDecisionAction.BAN => ModerationStatus.BANNED,
-        _ => ModerationStatus.PENDING,
-      };
+        var queue =
+            await _context.ModerationQueues.FirstOrDefaultAsync(
+                q => q.QueueId == queueId,
+                cancellationToken
+            ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
 
-      await UpdateContentStatusAsync(queue, targetStatus, cancellationToken);
+        if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
-      queue.Status = QueueStatus.RESOLVED;
-      queue.AssignedTo = moderatorId;
-      queue.AssignedAt = DateTime.UtcNow;
+        var targetStatus = request.Action switch
+        {
+          ContentDecisionAction.APPROVE => ModerationStatus.APPROVED,
+          ContentDecisionAction.REJECT => ModerationStatus.REJECTED,
+          ContentDecisionAction.BAN => ModerationStatus.BANNED,
+          _ => ModerationStatus.PENDING,
+        };
 
-      var actionType = request.Action switch
+        await UpdateContentStatusAsync(queue, targetStatus, cancellationToken);
+
+        queue.Status = QueueStatus.RESOLVED;
+        queue.AssignedTo = moderatorId;
+        queue.AssignedAt = DateTime.UtcNow;
+
+        var actionType = request.Action switch
+        {
+          ContentDecisionAction.APPROVE => ModerationActionType.AutoPass,
+          ContentDecisionAction.REJECT => ModerationActionType.AutoReject,
+          ContentDecisionAction.BAN => ModerationActionType.InstantBan,
+          _ => ModerationActionType.FlagForReview,
+        };
+
+        _context.ModerationActions.Add(
+            new ModerationAction
+            {
+              QueueId = queue.QueueId,
+              ModeratorId = moderatorId,
+              Action = actionType,
+              Reason = request.Reason ?? string.Empty,
+              ActedAt = DateTime.UtcNow,
+            }
+        );
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Send notification to content owner
+        await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
+
+        return new ModerationQueueDto
+        {
+          QueueId = queue.QueueId,
+          ContentId = queue.ContentId,
+          ContentType = queue.ContentType,
+          Priority = queue.Priority,
+          Status = queue.Status,
+          ReportCount = queue.ReportCount,
+          FlaggedAt = queue.FlaggedAt,
+          AppealReason = queue.AppealReason
+        };
+      }
+      catch (Exception ex)
       {
-        ContentDecisionAction.APPROVE => ModerationActionType.AutoPass,
-        ContentDecisionAction.REJECT => ModerationActionType.AutoReject,
-        ContentDecisionAction.BAN => ModerationActionType.InstantBan,
-        _ => ModerationActionType.FlagForReview,
-      };
-
-      _context.ModerationActions.Add(
-          new ModerationAction
-          {
-            QueueId = queue.QueueId,
-            ModeratorId = moderatorId,
-            Action = actionType,
-            Reason = request.Reason ?? string.Empty,
-            ActedAt = DateTime.UtcNow,
-          }
-      );
-
-      await _context.SaveChangesAsync(cancellationToken);
-
-      // Send notification to content owner
-      await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
-
-      return new ModerationQueueDto
-      {
-        QueueId = queue.QueueId,
-        ContentId = queue.ContentId,
-        ContentType = queue.ContentType,
-        Priority = queue.Priority,
-        Status = queue.Status,
-        ReportCount = queue.ReportCount,
-        FlaggedAt = queue.FlaggedAt,
-        AppealReason = queue.AppealReason
-      };
+        Console.WriteLine($"[MODERATION ERROR] DecideAsync failed for Queue {queueId}: {ex.Message}");
+        Console.WriteLine(ex.StackTrace);
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+        }
+        throw;
+      }
     }
 
     private async Task UpdateContentStatusAsync(
@@ -142,7 +155,7 @@ namespace Application.Services.Moderation
       {
         case ModerationQueueContentType.SERIES:
           var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
-          if (series != null)
+          if (series != null && series.Creator != null)
           {
             ownerUserId = series.Creator.UserId;
             contentTitle = series.Title;
@@ -150,23 +163,41 @@ namespace Application.Services.Moderation
           }
           break;
         case ModerationQueueContentType.CHAPTER:
-          var chapter = await _context.Chapters.Include(c => c.Series).ThenInclude(s => s.Creator).Include(c => c.Team).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+          var chapter = await _context.Chapters
+              .Include(c => c.Series)
+              .ThenInclude(s => s.Creator)
+              .Include(c => c.Team)
+              .FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+          
           if (chapter != null)
           {
-            ownerUserId = chapter.TeamId != null ?
-                (await _context.TranslationTeams.FindAsync(chapter.TeamId))?.LeaderId :
-                chapter.Series.Creator.UserId;
-            contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
+            if (chapter.TeamId != null)
+            {
+                var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == chapter.TeamId, cancellationToken);
+                ownerUserId = team?.LeaderId;
+            }
+            else if (chapter.Series?.Creator != null)
+            {
+                ownerUserId = chapter.Series.Creator.UserId;
+            }
+            
+            contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series?.Title ?? "Nội dung đã xóa"}";
             actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
           }
           break;
         case ModerationQueueContentType.TRANSLATION:
-          var translation = await _context.Translations.Include(t => t.Chapter).ThenInclude(c => c.Series).Include(t => t.Permission).ThenInclude(p => p!.Team).FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+          var translation = await _context.Translations
+              .Include(t => t.Chapter)
+              .ThenInclude(c => c.Series)
+              .Include(t => t.Permission)
+              .ThenInclude(p => p!.Team)
+              .FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+              
           if (translation != null)
           {
-            ownerUserId = translation.Permission!.Team!.LeaderId;
-            contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
-            actionUrl = $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
+            ownerUserId = translation.Permission?.Team?.LeaderId;
+            contentTitle = $"Bản dịch của {translation.Chapter?.Series?.Title ?? "Nội dung đã xóa"}";
+            actionUrl = $"/series/{translation.Chapter?.SeriesId}/chapters/{translation.ChapterId}";
           }
           break;
       }

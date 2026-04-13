@@ -26,6 +26,13 @@ namespace mlndex_backend.Controllers.Admin
       return OkResponse(result);
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats(CancellationToken cancellationToken)
+    {
+      var result = await _service.GetDashboardStatsAsync(cancellationToken);
+      return OkResponse(result);
+    }
+
     [HttpPost("{queueId:int}/decision")]
     public async Task<IActionResult> Decide(
         int queueId,

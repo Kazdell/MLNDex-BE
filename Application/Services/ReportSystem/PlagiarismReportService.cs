@@ -56,6 +56,21 @@ namespace Application.Services.ReportSystem
       _context.Reports.Add(report);
       await _context.SaveChangesAsync(cancellationToken);
 
+      // Thông báo cho Moderator & Admin
+      var moderators = await _context.Users
+          .Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == RoleName.MODERATOR || ur.Role.RoleName == RoleName.ADMIN))
+          .Select(u => u.UserId)
+          .ToListAsync(cancellationToken);
+
+      foreach (var modId in moderators)
+      {
+        await _notificationService.CreateNotificationAsync(modId,
+            "Có báo cáo mới",
+            $"Có báo cáo vi phạm mới (#{report.ReportId}) cần xem xét.",
+            "/moderator/dashboard",
+            NotificationType.MOD_NEW_REPORT);
+      }
+
       return MapToDto(report, user.Username);
     }
 
@@ -150,6 +165,14 @@ namespace Application.Services.ReportSystem
       }
 
       await _context.SaveChangesAsync(cancellationToken);
+
+      // Thông báo cho người báo cáo
+      string statusText = request.NewStatus == ReportStatus.Resolved ? "đã được Chấp nhận và Xử lý" : "đã bị Từ chối";
+      await _notificationService.CreateNotificationAsync(report.ReporterId,
+          "Cập nhật báo cáo",
+          $"Báo cáo #{report.ReportId} của bạn {statusText}.",
+          "#",
+          NotificationType.REPORT_RESOLVED);
 
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);

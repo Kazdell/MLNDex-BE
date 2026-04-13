@@ -18,5 +18,7 @@ namespace Application.Interfaces.Moderation
         ModerationDecisionRequest request,
         CancellationToken cancellationToken = default
     );
+
+    Task<ModeratorDashboardStatsDto> GetDashboardStatsAsync(CancellationToken cancellationToken = default);
   }
 }
