@@ -154,29 +154,31 @@ namespace mlndex_backend
             builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
             builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-            // OCR Services — Tesseract fallback (Scoped)
-            builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
-            builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
-            builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
-
-            // Register multiple IOCRService implementations (Strategy Pattern)
-            // ReaderTranslationService consumes IEnumerable<IOCRService>
-            builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
-            builder.Services.AddScoped<TesseractOCRService>();
-            builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
-
-            // For backward compatibility (PageTranslationService, ModerationService) which expect single IOCRService,
-            // the last one registered wins (TesseractOCRService). Or we can leave it as is if they just pick Tesseract.
-
-            // Thêm Keyed Services cho tách biệt ITextRecognitionService
-            builder.Services.AddKeyedScoped<ITextRecognitionService>("tesseract", (sp, key) => sp.GetRequiredService<TesseractOCRService>());
-            builder.Services.AddKeyedSingleton<ITextRecognitionService, PaddleOcrService>("paddle");
-            builder.Services.AddHttpClient<IAiTranslationClient, GeminiTranslationClient>(client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(60);
-            });
-            builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
-            builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
+      // OCR Services — with fallback for deployments without native DLLs
+      var ocrAvailable = File.Exists(Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll"));
+      if (ocrAvailable)
+      {
+        builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
+        builder.Services.AddSingleton<ITextDetectorService, TextDetectorOnnxService>();
+        builder.Services.AddScoped<IImagePreprocessorService, OpenCvImagePreprocessor>();
+        builder.Services.AddSingleton<IOCRService, PaddleOcrService>();
+        builder.Services.AddScoped<TesseractOCRService>();
+        builder.Services.AddScoped<IOCRService>(sp => sp.GetRequiredService<TesseractOCRService>());
+        builder.Services.AddKeyedScoped<ITextRecognitionService>("tesseract", (sp, key) => sp.GetRequiredService<TesseractOCRService>());
+        builder.Services.AddKeyedSingleton<ITextRecognitionService, PaddleOcrService>("paddle");
+        Console.WriteLine("[OCR] Native DLLs found — OCR services registered.");
+      }
+      else
+      {
+        builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
+        Console.WriteLine("[OCR] Native DLLs NOT found — OCR disabled (Azure Free Tier mode).");
+      }
+      builder.Services.AddHttpClient<IAiTranslationClient, GeminiTranslationClient>(client =>
+      {
+        client.Timeout = TimeSpan.FromSeconds(60);
+      });
+      builder.Services.AddScoped<IGoogleTranslationClient, GoogleTranslationClient>();
+      builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
 
             // Community Services
             builder.Services.AddScoped<ICommentService, CommentService>();
@@ -314,12 +316,12 @@ namespace mlndex_backend
                 .AddSupportedCultures(supportedCultures)
                 .AddSupportedUICultures(supportedCultures));
 
-            app.UseGlobalExceptionHandling();
-            app.UseRateLimiter();
-            app.UseCors("AllowSpecificOrigin");
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseStaticFiles();
+      app.UseCors("AllowSpecificOrigin");
+      app.UseGlobalExceptionHandling();
+      app.UseRateLimiter();
+      app.UseAuthentication();
+      app.UseAuthorization();
+      app.UseStaticFiles();
 
             app.MapHub<NotificationHub>("/hubs/notification");
             app.MapHub<ModerationHub>("/hubs/moderation");
