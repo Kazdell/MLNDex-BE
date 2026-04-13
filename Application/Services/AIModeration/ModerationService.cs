@@ -26,7 +26,7 @@ namespace Application.Services.AIModeration
     private readonly IAiModerationClient _aiClient;
     private readonly ILogger<ModerationService> _logger;
     private readonly IBlacklistProvider _blacklist;
-    private readonly IOCRService _ocr;
+    private readonly IOCRService? _ocr;
     private readonly IModerationQueue _queue;
     private readonly INotificationService _notificationService;
     private readonly Application.Interfaces.Creator.IStorageService _storage;
@@ -44,10 +44,10 @@ namespace Application.Services.AIModeration
         IAiModerationClient aiClient,
         ILogger<ModerationService> logger,
         IBlacklistProvider blacklist,
-        IOCRService ocr,
         IModerationQueue queue,
         INotificationService notificationService,
-        Application.Interfaces.Creator.IStorageService storage)
+        Application.Interfaces.Creator.IStorageService storage,
+        IOCRService? ocr = null)
     {
       _db = db;
       _aiClient = aiClient;
@@ -128,6 +128,7 @@ namespace Application.Services.AIModeration
       {
         try
         {
+          if (_ocr == null) continue;
           var imageBytes = await _staticHttpClient.GetByteArrayAsync(url);
           var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
           if (!string.IsNullOrWhiteSpace(text))
@@ -424,6 +425,7 @@ namespace Application.Services.AIModeration
           {
             try
             {
+              if (_ocr == null) continue;
               var imageBytes = await _staticHttpClient.GetByteArrayAsync(url);
               var text = await _ocr.ExtractTextFromImageAsync(imageBytes);
               if (!string.IsNullOrWhiteSpace(text))
