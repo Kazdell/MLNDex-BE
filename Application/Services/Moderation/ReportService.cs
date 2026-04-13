@@ -219,7 +219,17 @@ namespace Application.Services.Moderation
       for (int i = 6; i >= 0; i--)
       {
         var date = now.AddDays(-i).Date;
-        var dayName = date.DayOfWeek.ToString().Substring(0, 3);
+        var dayName = date.DayOfWeek switch
+        {
+          DayOfWeek.Monday => "T2",
+          DayOfWeek.Tuesday => "T3",
+          DayOfWeek.Wednesday => "T4",
+          DayOfWeek.Thursday => "T5",
+          DayOfWeek.Friday => "T6",
+          DayOfWeek.Saturday => "T7",
+          DayOfWeek.Sunday => "CN",
+          _ => date.DayOfWeek.ToString().Substring(0, 3)
+        };
 
         var incoming = await _context.ModerationQueues.CountAsync(q => q.FlaggedAt.Date == date, cancellationToken);
         var processed = await _context.ModerationActions.CountAsync(a => a.ActedAt.Date == date, cancellationToken);

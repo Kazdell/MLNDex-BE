@@ -27,12 +27,17 @@ namespace Application.Services.Financial
     {
       var query = _context.WithdrawalRequests.Include(w => w.Creator).AsQueryable();
 
-      if (request.Status.HasValue)
+      if (request.IsHistory == true)
+      {
+        query = query.Where(w => w.Status == WithdrawalStatus.COMPLETED || w.Status == WithdrawalStatus.REJECTED);
+      }
+      else if (request.Status.HasValue)
       {
         query = query.Where(w => w.Status == request.Status.Value);
       }
       else
       {
+        // Default: Pending or Processing (for "Pending" tab)
         query = query.Where(w =>
             w.Status == WithdrawalStatus.PENDING || w.Status == WithdrawalStatus.PROCESSING
         );

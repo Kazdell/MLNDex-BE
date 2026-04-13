@@ -149,7 +149,8 @@ namespace Application.Services.User
       {
         if (statusFilter.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
           usersQuery = usersQuery.Where(u => u.IsActive);
-        else if (statusFilter.Equals("BANNED", StringComparison.OrdinalIgnoreCase))
+        else if (statusFilter.Equals("BANNED", StringComparison.OrdinalIgnoreCase) || 
+                 statusFilter.Equals("INACTIVE", StringComparison.OrdinalIgnoreCase))
           usersQuery = usersQuery.Where(u => !u.IsActive);
       }
 

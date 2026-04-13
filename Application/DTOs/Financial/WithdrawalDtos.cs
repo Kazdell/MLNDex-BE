@@ -12,7 +12,7 @@ namespace Application.DTOs.Financial
     public int PageSize { get; set; } = 20;
 
     public WithdrawalStatus? Status { get; set; }
-
+    public bool? IsHistory { get; set; }
     public int? CreatorId { get; set; }
   }
 
