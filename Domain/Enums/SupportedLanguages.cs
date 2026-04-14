@@ -12,15 +12,6 @@ namespace Domain.Enums
     {
             new LanguageInfo(1, "vi", "Tiếng Việt"),
             new LanguageInfo(2, "en", "English"),
-            new LanguageInfo(3, "ja", "日本語 (Japanese)"),
-            new LanguageInfo(4, "ko", "한국어 (Korean)"),
-            new LanguageInfo(5, "zh", "中文 (Chinese)"),
-            new LanguageInfo(6, "fr", "Français (French)"),
-            new LanguageInfo(7, "de", "Deutsch (German)"),
-            new LanguageInfo(8, "es", "Español (Spanish)"),
-            new LanguageInfo(9, "ru", "Русский (Russian)"),
-            new LanguageInfo(10, "th", "ไทย (Thai)"),
-            new LanguageInfo(11, "id", "Bahasa Indonesia"),
         };
 
     /// <summary>
