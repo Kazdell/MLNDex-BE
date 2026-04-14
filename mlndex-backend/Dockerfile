@@ -4,8 +4,8 @@ WORKDIR /src
 # Copy entire solution context
 COPY . .
 
-# Restore packages from solution
-RUN dotnet restore "MLNDex-BE.sln"
+# Restore packages from project
+RUN dotnet restore "mlndex-backend/mlndex-backend.csproj"
 
 # Publish main project
 RUN dotnet publish "mlndex-backend/mlndex-backend.csproj" -c Release -o /app/publish

@@ -10,8 +10,17 @@ namespace Domain.Enums
   {
     public static readonly LanguageInfo[] All = new[]
     {
-            new LanguageInfo("vi", "Tiếng Việt"),
-            new LanguageInfo("en", "English"),
+            new LanguageInfo(1, "vi", "Tiếng Việt"),
+            new LanguageInfo(2, "en", "English"),
+            new LanguageInfo(3, "ja", "日本語 (Japanese)"),
+            new LanguageInfo(4, "ko", "한국어 (Korean)"),
+            new LanguageInfo(5, "zh", "中文 (Chinese)"),
+            new LanguageInfo(6, "fr", "Français (French)"),
+            new LanguageInfo(7, "de", "Deutsch (German)"),
+            new LanguageInfo(8, "es", "Español (Spanish)"),
+            new LanguageInfo(9, "ru", "Русский (Russian)"),
+            new LanguageInfo(10, "th", "ไทย (Thai)"),
+            new LanguageInfo(11, "id", "Bahasa Indonesia"),
         };
 
     /// <summary>
@@ -42,11 +51,13 @@ namespace Domain.Enums
 
   public class LanguageInfo
   {
+    public int Id { get; set; }
     public string Code { get; set; }
     public string Name { get; set; }
 
-    public LanguageInfo(string code, string name)
+    public LanguageInfo(int id, string code, string name)
     {
+      Id = id;
       Code = code;
       Name = name;
     }
