@@ -281,7 +281,7 @@ namespace Application.Services.Creator
         CreatorUserId = s.Creator.UserId,
         CreatorName = s.Creator.PenName,
         Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
-        LatestChapters = s.Chapters
+        LatestChapters = (s.Chapters ?? Enumerable.Empty<Chapter>())
                 .Where(c => c.Status == ChapterStatus.PUBLISHED)
                 .OrderByDescending(c => c.ChapterNumber)
                 .Take(2)

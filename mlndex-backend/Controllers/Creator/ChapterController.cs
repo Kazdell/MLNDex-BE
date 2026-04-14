@@ -283,7 +283,7 @@ public class ChapterController : BaseController
     {
       return UnauthorizedResponse(ex.Message);
     }
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }
@@ -305,7 +305,7 @@ public class ChapterController : BaseController
       return OkResponse(result, "Mở khóa chương thành công.");
     }
 
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }

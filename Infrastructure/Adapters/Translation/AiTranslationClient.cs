@@ -190,8 +190,8 @@ Return exactly a JSON object containing an array named 'regions'. Each region mu
               {
                 resultRegions.Add(new Application.DTOs.User.OverlayTranslationResponse
                 {
-                  OriginalText = region.TryGetProperty("originalText", out var dO) ? dO.GetString() : "",
-                  TranslatedText = region.TryGetProperty("translatedText", out var dT) ? dT.GetString() : "",
+                  OriginalText = region.TryGetProperty("originalText", out var dO) ? (dO.GetString() ?? "") : "",
+                  TranslatedText = region.TryGetProperty("translatedText", out var dT) ? (dT.GetString() ?? "") : "",
                   X = region.TryGetProperty("x", out var dx) ? dx.GetDouble() : 0,
                   Y = region.TryGetProperty("y", out var dy) ? dy.GetDouble() : 0,
                   Width = region.TryGetProperty("width", out var dw) ? dw.GetDouble() : 0,

@@ -30,7 +30,7 @@ namespace mlndex_backend.Controllers.Creator
         var result = await _creatorService.RegisterAsync(userId, dto, ct);
         return OkResponse(result, "Đăng ký nhà sáng tạo thành công!");
       }
-      catch (InvalidOperationException ex)
+      catch (InvalidOperationException)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
