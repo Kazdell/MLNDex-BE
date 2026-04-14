@@ -465,11 +465,8 @@ namespace Application.Services.Creator
         Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
-
-    /// <summary>
     /// Lấy chi tiết thông tin một bộ truyện bao gồm Tác giả, Thể loại, Chương truyện (bao gồm bản dịch).
     /// Xác định xem bản dịch có phải là chính thức hay không dựa vào TranslationPermissions.
-    /// </summary>
     public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null, bool isModOrAdmin = false)
     {
       var cacheKey = $"SeriesDetails_{seriesId}_User_{userId ?? 0}_Mod_{isModOrAdmin}";

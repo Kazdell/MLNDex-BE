@@ -96,7 +96,7 @@ namespace Application.Services.User
             LastChapterId = h.LastChapterId,
             LastChapterTitle = "Chương " + h.LastChapter.ChapterNumber,
             LastPageNumber = h.LastPageNumber,
-            Progress = 100, // Tạm thời để 100%
+            Progress = h.LastChapter.PageCount > 0 ? (int)Math.Round((double)h.LastPageNumber / h.LastChapter.PageCount.Value * 100) : 100,
             LastReadAt = h.LastReadAt
           })
           .ToListAsync(cancellationToken);
@@ -212,7 +212,7 @@ namespace Application.Services.User
             LastChapterId = h.LastChapterId,
             LastChapterTitle = "Chương " + h.LastChapter.ChapterNumber,
             LastPageNumber = h.LastPageNumber,
-            Progress = 100, // Tạm thời để 100%
+            Progress = h.LastChapter.PageCount > 0 ? (int)Math.Round((double)h.LastPageNumber / h.LastChapter.PageCount.Value * 100) : 100,
             LastReadAt = h.LastReadAt
           })
           .ToListAsync(cancellationToken);

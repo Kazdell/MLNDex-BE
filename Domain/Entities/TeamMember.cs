@@ -25,6 +25,8 @@ namespace Domain.Entities
   {
     LEADER,
     TRANSLATOR,
+    CLEANER,
+    REDRAWER,
     EDITOR,
     PROOFREADER
   }
