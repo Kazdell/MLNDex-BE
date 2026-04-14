@@ -11,7 +11,11 @@ namespace Domain.Enums
     public static readonly LanguageInfo[] All = new[]
     {
             new LanguageInfo(1, "vi", "Tiếng Việt"),
-            new LanguageInfo(2, "en", "English"),
+            new LanguageInfo(2, "en", "Tiếng Anh"),
+            new LanguageInfo(3, "ja", "Tiếng Nhật"),
+            new LanguageInfo(4, "ko", "Tiếng Hàn"),
+            new LanguageInfo(5, "zh", "Tiếng Trung"),
+            new LanguageInfo(6, "fr", "Tiếng Pháp"),
         };
 
     /// <summary>
