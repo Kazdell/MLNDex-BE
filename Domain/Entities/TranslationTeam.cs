@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Domain.Entities
@@ -39,7 +39,8 @@ namespace Domain.Entities
     public User Leader { get; set; } = null!;
     public User? LockedByUser { get; set; }
     public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
-    public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
+    // Chapters (bản gốc) không còn FK về team nữa.
+    // Mối quan hệ team ↔ chapter được quản lý qua Translation.Permission.TeamId.
     public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
     public ICollection<Translation> Translations { get; set; } = new List<Translation>();
     public ICollection<TeamGenre> TeamGenres { get; set; } = new List<TeamGenre>();

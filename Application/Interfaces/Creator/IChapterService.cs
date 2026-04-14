@@ -22,6 +22,6 @@ CancellationToken cancellationToken = default);
     Task<UpdateChapterLockResponseDto> UpdateChapterLockStatusAsync(int chapterId, int requestingUserId, UpdateChapterLockDto dto, CancellationToken ct = default);
 
     Task DeleteAsync(int chapterId, int userId, CancellationToken ct = default);
-    Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default);
+    Task DeleteTranslationChapterAsync(int translationId, int teamId, int userId, CancellationToken ct = default);
   }
 }

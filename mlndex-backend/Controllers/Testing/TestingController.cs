@@ -110,7 +110,7 @@ namespace mlndex_backend.Controllers.Testing
         await _db.SaveChangesAsync(default);
 
         // Chapters
-        var chap1 = new Domain.Entities.Chapter { SeriesId = series1.SeriesId, ChapterNumber = 1, Title = "The Beginning", ContentType = ContentType.TEXT, LockStatus = ChapterLockStatus.UNLOCKED, Status = ChapterStatus.PUBLISHED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, PublishedAt = DateTime.UtcNow, TeamId = team.TeamId }; // assigned translation team
+        var chap1 = new Domain.Entities.Chapter { SeriesId = series1.SeriesId, ChapterNumber = 1, Title = "The Beginning", ContentType = ContentType.TEXT, LockStatus = ChapterLockStatus.UNLOCKED, Status = ChapterStatus.PUBLISHED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, PublishedAt = DateTime.UtcNow };
         var chap2 = new Domain.Entities.Chapter { SeriesId = series2.SeriesId, ChapterNumber = 1, Title = "Manga Chap 1", ContentType = ContentType.IMAGE, LockStatus = ChapterLockStatus.UNLOCKED, Status = ChapterStatus.PUBLISHED, ModerationStatus = Domain.Entities.ModerationStatus.APPROVED, PublishedAt = DateTime.UtcNow };
         _db.Chapters.AddRange(chap1, chap2);
         await _db.SaveChangesAsync(default);

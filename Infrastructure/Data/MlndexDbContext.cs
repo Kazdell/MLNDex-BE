@@ -444,18 +444,6 @@ namespace Infrastructure.Data
                         .WithMany(s => s.Chapters)
                         .HasForeignKey(x => x.SeriesId)
                         .OnDelete(DeleteBehavior.Restrict);
-
-        e.HasOne(x => x.Team)
-        .WithMany(t => t.Chapters)
-        .HasForeignKey(x => x.TeamId)
-        .OnDelete(DeleteBehavior.Restrict)
-        .IsRequired(false);
-
-        e.HasOne(x => x.Language)
-                        .WithMany(l => l.Chapters)
-                        .HasForeignKey(x => x.LanguageId)
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired(false);
       });
 
       // ====================================================

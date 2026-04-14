@@ -92,20 +92,18 @@ namespace Application.Services.Creator
             if (pendingJobs >= 10)
                 throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
-            // ── 4. Kiểm tra trùng số chương (chương gốc) ──
+            // ── 4. Kiểm tra trùng số chương ─────────────────────────────────────────
+            // Chapter = bản gốc. Không cho phép 2 chapter cùng số trong cùng series (bất kể status).
             bool duplicate = await _db.Chapters.AnyAsync(
                 c => c.SeriesId == dto.SeriesId
-                     && c.ChapterNumber == dto.ChapterNumber
-                     && c.TeamId == null,
+                     && c.ChapterNumber == dto.ChapterNumber,
                 cancellationToken);
-
             if (duplicate)
                 throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
             // ── 3. Upload ảnh trang lên Cloudinary ────────────────────────
             var uploadedUrls = new List<string>();
             var folder = $"chapters/{dto.SeriesId}";
-
             try
             {
                 // ── 4. Build chapter entity ───────────────────────────────
@@ -246,12 +244,9 @@ namespace Application.Services.Creator
     int chapterId, int? userId, int? translationId = null,
     CancellationToken cancellationToken = default)
         {
-            {
-
                 var chapter = await _db.Chapters
                     .Include(c => c.Series)
                         .ThenInclude(s => s.Creator)
-                    .Include(c => c.Team)
                     .Include(c => c.Pages.OrderBy(p => p.PageNumber))
                     .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
 
@@ -262,8 +257,6 @@ namespace Application.Services.Creator
                 }
 
                 var chapters = await _db.Chapters
-                    .Include(c => c.Team)
-                    .Include(c => c.Language)
                     .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
                     .OrderByDescending(c => c.ChapterNumber)
                     .Select(c => new ChapterSummaryDto
@@ -271,22 +264,22 @@ namespace Application.Services.Creator
                         ChapterId = c.ChapterId,
                         ChapterNumber = c.ChapterNumber,
                         Title = c.Title,
-                        TeamId = c.TeamId,
-                        TeamName = c.Team != null ? c.Team.TeamName : null,
-                        LanguageCode = c.Language != null ? c.Language.Code : null,
-                        LanguageName = c.Language != null ? c.Language.Name : null,
-                        IsOriginal = c.TeamId == null
+                        TeamId = null,
+                        TeamName = null,
+                        LanguageCode = null,
+                        LanguageName = null,
+                        IsOriginal = true
                     })
                     .ToListAsync(cancellationToken);
 
                 var prevChapterId = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
+                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
                     .OrderByDescending(c => c.ChapterNumber)
                     .Select(c => (int?)c.ChapterId)
                     .FirstOrDefaultAsync(cancellationToken);
 
                 var nextChapterId = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.TeamId == chapter.TeamId && c.Status == ChapterStatus.PUBLISHED)
+                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
                     .OrderBy(c => c.ChapterNumber)
                     .Select(c => (int?)c.ChapterId)
                     .FirstOrDefaultAsync(cancellationToken);
@@ -343,7 +336,7 @@ namespace Application.Services.Creator
                     SeriesTitle = chapter.Series?.Title,
                     UploaderName = chapter.Series?.Creator?.PenName,
                     CreatorUserId = chapter.Series?.Creator?.UserId,
-                    TranslatorTeamName = chapter.Team?.TeamName,
+                    TranslatorTeamName = null,
                     ChapterNumber = chapter.ChapterNumber,
                     Title = chapter.Title,
                     PrevChapterId = prevChapterId,
@@ -366,47 +359,10 @@ namespace Application.Services.Creator
                     : new List<ChapterPageResponseDto>(),
                 };
 
-                // Translation Ecosystem logic:
-                if (chapter.TeamId != null)
-                {
-                    var translation = await _db.Translations
-                        .Include(t => t.TranslationCredits).ThenInclude(tc => tc.User)
-                        .Include(t => t.TeamJoins).ThenInclude(tj => tj.Team)
-                        .Include(t => t.Permission).ThenInclude(p => p!.Team) // ← thêm
-                        .FirstOrDefaultAsync(t => t.ChapterId == chapter.ChapterId, cancellationToken);
-
-                    if (translation != null)
-                    {
-                        dto.IsTranslation = true;
-                        dto.IsOfficial = translation.IsOfficial;
-                        dto.IsOutdated = translation.IsOutdated;
-                        dto.IsOrphan = translation.IsOrphan;
-                        dto.TeamUnlockPrice = translation.Permission?.Team?.DefaultUnlockPriceCoins
-                                              ?? chapter.UnlockPriceCoins; // ← thêm
-
-                        if (translation.TranslationCredits != null)
-                        {
-                            dto.TranslationCredits = translation.TranslationCredits.Select(tc => new TranslationCreditDetailDto
-                            {
-                                UserId = tc.UserId,
-                                Username = tc.User.Username,
-                                Role = tc.Role.ToString()
-                            }).ToList();
-                        }
-
-                        if (translation.TeamJoins != null)
-                        {
-                            dto.JointTeams = translation.TeamJoins.Select(tj => new JointTeamDetailDto
-                            {
-                                TeamId = tj.TeamId,
-                                TeamName = tj.Team.TeamName
-                            }).ToList();
-                        }
-                    }
-                }
+                // Translation Ecosystem legacy block removed — TeamId no longer on Chapter.
+                // Translation data is loaded via GetTranslationAsChapterDetailAsync(translationId).
 
                 return dto;
-            }
         }
 
         /// <summary>
@@ -554,7 +510,7 @@ namespace Application.Services.Creator
                 .ToListAsync(ct);
         }
 
-        public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
+       public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
         {
             // Verify team membership
             var isMember = await _db.TeamMembers
@@ -568,20 +524,28 @@ namespace Application.Services.Creator
             if (!seriesExists)
                 throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
 
-            return await _db.Chapters
-                .Where(c => c.SeriesId == seriesId && c.TeamId == teamId)
-                .OrderByDescending(c => c.ChapterNumber)
-                .Select(c => new ChapterListItemDto
+            // Model mới: "chapters của team" = Translation records thuộc team này cho series này.
+            // TeamId trên Chapter đã bị xóa; Translation.Permission.TeamId là nguồn thật.
+            return await _db.Translations
+                .Include(t => t.Chapter)
+                .Include(t => t.Permission)
+                .Where(t => t.Chapter.SeriesId == seriesId
+                         && t.Permission != null
+                         && t.Permission.TeamId == teamId)
+                .OrderByDescending(t => t.Chapter.ChapterNumber)
+                .Select(t => new ChapterListItemDto
                 {
-                    ChapterId = c.ChapterId,
-                    ChapterNumber = c.ChapterNumber,
-                    Title = c.Title,
-                    Status = c.Status.ToString(),
-                    ModerationStatus = c.ModerationStatus.ToString(),
-                    PageCount = c.PageCount ?? 0,
-                    Views = c.Views,
-                    PublishedAt = c.PublishedAt,
-                    CreatedAt = c.CreatedAt,
+                    // FE dùng ChapterId để navigate đến chapter viewer.
+                    // TranslationId được dùng để load đúng bản dịch.
+                    ChapterId = t.Chapter.ChapterId,
+                    ChapterNumber = t.Chapter.ChapterNumber,
+                    Title = t.Chapter.Title,
+                    Status = t.QualityStatus.ToString(),
+                    ModerationStatus = t.ModerationStatus.ToString(),
+                    PageCount = t.TranslationPages.Count,
+                    Views = t.Chapter.Views,
+                    PublishedAt = t.PublishedAt,
+                    CreatedAt = t.Chapter.CreatedAt,
                 })
                 .ToListAsync(ct);
         }
@@ -593,9 +557,7 @@ namespace Application.Services.Creator
             var chapter = await _db.Chapters
                 .Include(c => c.Series)
                     .ThenInclude(s => s.Creator)
-                .Include(c => c.Team)
                 .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-                .Include(c => c.Language)
                 .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct);
 
             if (chapter == null) return null;
@@ -633,11 +595,11 @@ namespace Application.Services.Creator
                 SeriesId = chapter.SeriesId,
                 SeriesTitle = chapter.Series?.Title,
                 UploaderName = chapter.Series?.Creator?.PenName,
-                TranslatorTeamName = chapter.Team?.TeamName,
+                TranslatorTeamName = null,
                 ChapterNumber = chapter.ChapterNumber,
                 Title = chapter.Title,
                 ModerationStatus = chapter.ModerationStatus.ToString(),
-                Language = chapter.Language?.Name,
+                Language = null,
                 ModerationReason = moderationReason,
 
                 // ── Unlock settings (current chapter values) ──────────────
@@ -711,8 +673,6 @@ namespace Application.Services.Creator
             }
             // If dto.LockStatus is null → creator didn't touch the lock section → preserve existing values
 
-            if (dto.LanguageId.HasValue)
-                chapter.LanguageId = dto.LanguageId.Value;
 
             var uploadedUrls = new List<string>();
             bool pagesChanged = false;
@@ -951,43 +911,39 @@ namespace Application.Services.Creator
 
             _logger.LogInformation("Tác giả {UserId} xóa chương {ChapterId}", userId, chapterId);
         }
-        public async Task DeleteTranslationChapterAsync(int chapterId, int teamId, int userId, CancellationToken ct = default)
+        public async Task DeleteTranslationChapterAsync(int translationId, int teamId, int userId, CancellationToken ct = default)
         {
+            // ── 1. Verify team membership ─────────────────────────────────────────────
             var isMember = await _db.TeamMembers
                 .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
 
             if (!isMember)
                 throw new UnauthorizedAccessException("Bạn không phải là thành viên của nhóm dịch này.");
 
-            var chapter = await _db.Chapters
-                .Include(c => c.Pages)
+            // ── 2. Load bản dịch + verify ownership qua Permission.TeamId ─────────────
+            // Model mới: bản dịch = Translation entity. Chapter.TeamId đã bị xóa.
+            // Permission.TeamId là nguồn chính xác để kiểm tra quyền sở hữu.
+            var translation = await _db.Translations
+                .Include(t => t.Permission)
+                .Include(t => t.TranslationPages)
                 .AsSplitQuery()
-                .FirstOrDefaultAsync(c => c.ChapterId == chapterId && c.TeamId == teamId, ct);
+                .FirstOrDefaultAsync(t => t.TranslationId == translationId
+                                       && t.Permission != null
+                                       && t.Permission.TeamId == teamId, ct);
 
-            if (chapter == null)
+            if (translation == null)
                 throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
-            // ── 1. Xóa ChapterUnlock ──────────────────────────────────────────────────
-            var unlocks = await _db.ChapterUnlocks
-                .Where(u => u.ChapterId == chapterId)
-                .ToListAsync(ct);
-            _db.ChapterUnlocks.RemoveRange(unlocks);
+            // ── 3. Xóa TranslationPages từ storage ───────────────────────────────────
+            foreach (var page in translation.TranslationPages)
+                if (!string.IsNullOrEmpty(page.TranslationImageUrl))
+                    await _storage.DeleteAsync(page.TranslationImageUrl, ct);
 
-            // ── 2. Xóa ReadingHistory trỏ đến chapter này ─────────────────────────────
-            var readingHistories = await _db.ReadingHistories
-                .Where(rh => rh.LastChapterId == chapterId)
-                .ToListAsync(ct);
-            _db.ReadingHistories.RemoveRange(readingHistories);
-
-            // ── 3. Xóa ảnh từ storage ────────────────────────────────────────────────
-            foreach (var page in chapter.Pages)
-                if (!string.IsNullOrEmpty(page.ImageUrl))
-                    await _storage.DeleteAsync(page.ImageUrl, ct);
-
-            _db.Chapters.Remove(chapter);
+            // ── 4. EF cascade sẽ tự xóa: TranslationPages, TranslationText, Credits ──
+            _db.Translations.Remove(translation);
             await _db.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Nhóm {TeamId} xoá chương dịch {ChapterId} bởi User {UserId}", teamId, chapterId, userId);
+            _logger.LogInformation("Nhóm {TeamId} xoá bản dịch {TranslationId} bởi User {UserId}", teamId, translationId, userId);
         }
     }
 }

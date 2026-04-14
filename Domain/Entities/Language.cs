@@ -11,7 +11,7 @@ namespace Domain.Entities
 
     // Navigation properties
     public ICollection<TranslationTeam> TranslationTeams { get; set; } = new List<TranslationTeam>();
-    public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
+    // Chapters không còn FK về Language nữa. Bỏ navigation để tránh EF sinh shadow FK 'LanguageId' trên Chapter.
     public ICollection<Translation> Translations { get; set; } = new List<Translation>();
     public ICollection<TranslationPermission> TranslationPermissions { get; set; } = new List<TranslationPermission>();
   }

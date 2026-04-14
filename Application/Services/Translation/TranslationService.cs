@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Application.DTOs.Chapter;
 using Application.DTOs.Translation.Requests;
 using Application.DTOs.Translation.Responses;
 using Application.Interfaces.AIModeration;
@@ -551,85 +552,6 @@ namespace Application.Services.Translation
       return true;
     }
 
-    public async Task<
-      List<Application.DTOs.Chapter.ChapterListItemDto>
-    > GetTeamTranslationsBySeriesAsync(
-      int teamId,
-      int seriesId,
-      int userId,
-      CancellationToken ct = default
-    )
-    {
-      // Verify team membership
-      var isMember = await _context.TeamMembers.AnyAsync(
-        tm => tm.TeamId == teamId && tm.UserId == userId,
-        ct
-      );
-
-      if (!isMember)
-        throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
-
-      // Fetch translations mapped to ChapterListItemDto for UI compatibility
-      return await _context
-        .Translations.Include(t => t.Chapter)
-        .Include(t => t.Permission)
-        .Include(t => t.TeamJoins)
-        .Include(t => t.TranslationPages)
-        .Include(t => t.TranslationText)
-        .Where(t =>
-          t.Chapter.SeriesId == seriesId
-          && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
-        )
-        .OrderByDescending(t => t.Chapter.ChapterNumber)
-        .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
-        {
-          ChapterId = t.ChapterId,
-          TranslationId = t.TranslationId,
-          ChapterNumber = t.Chapter.ChapterNumber,
-          Title = t.Chapter.Title,
-          Status = t.QualityStatus.ToString(),
-          ModerationStatus = t.ModerationStatus.ToString(),
-          PageCount =
-            (t.ContentType == Domain.Entities.ContentType.IMAGE)
-              ? t.TranslationPages.Count
-              : (t.TranslationText != null ? t.TranslationText.WordCount : 0),
-          Views = 0,
-          PublishedAt = t.PublishedAt,
-          CreatedAt = t.Chapter.CreatedAt,
-        })
-        .ToListAsync(ct);
-    }
-
-    public async Task<bool> DeleteTeamTranslationAsync(
-      int translationId,
-      int teamId,
-      int userId,
-      CancellationToken ct = default
-    )
-    {
-      var isMember = await _context.TeamMembers.AnyAsync(
-        tm => tm.TeamId == teamId && tm.UserId == userId,
-        ct
-      );
-
-      if (!isMember)
-        throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
-
-      var translation = await _context
-        .Translations.Include(t => t.Permission)
-        .Include(t => t.TeamJoins)
-        .FirstOrDefaultAsync(
-          t =>
-            t.TranslationId == translationId
-            && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
-          ct
-        );
-
-      if (translation == null)
-        throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
-
-      return await DeleteTranslationAsync(translationId);
-    }
 
     private TranslationResponse MapToDto(Domain.Entities.Translation t)
     {
@@ -673,6 +595,91 @@ namespace Application.Services.Translation
         TeamUnlockPrice =
           t.Permission?.Team?.DefaultUnlockPriceCoins ?? t.Chapter?.UnlockPriceCoins,
       };
+    }
+
+    // ── GET TEAM TRANSLATIONS BY SERIES ────────────────────────────────────────
+    // Trả về danh sách bản dịch của nhóm dịch cho một series, dùng cho trang ChapterManage.
+    // "Chapters của team translator" = Translation records, không phải Chapter rows.
+    public async Task<List<ChapterListItemDto>> GetTeamTranslationsBySeriesAsync(
+        int teamId, int seriesId, int userId, CancellationToken ct = default)
+    {
+        // Verify team membership
+        var isMember = await _context.TeamMembers
+            .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+
+        if (!isMember)
+            throw new AppException(ErrorCodes.UNAUTHORIZED);
+
+        // Series existence check
+        var seriesExists = await _context.Series.AnyAsync(s => s.SeriesId == seriesId, ct);
+        if (!seriesExists)
+            throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
+
+        // Query Translation entity — TeamId on Chapter has been removed.
+        // Permission.TeamId is the authoritative ownership source.
+        return await _context.Translations
+            .Include(t => t.Chapter)
+            .Include(t => t.Permission)
+            .Include(t => t.TranslationPages)
+            .Where(t => t.Chapter.SeriesId == seriesId
+                     && t.Permission != null
+                     && t.Permission.TeamId == teamId)
+            .OrderByDescending(t => t.Chapter.ChapterNumber)
+            .Select(t => new ChapterListItemDto
+            {
+                TranslationId = t.TranslationId,
+                ChapterId = t.Chapter.ChapterId,
+                ChapterNumber = t.Chapter.ChapterNumber,
+                Title = t.Chapter.Title,
+                Status = t.QualityStatus.ToString(),          // QualityStatus: DRAFT|REVIEWING|PUBLISHED
+                ModerationStatus = t.ModerationStatus.ToString(),
+                PageCount = t.TranslationPages.Count,
+                Views = t.Chapter.Views,
+                PublishedAt = t.PublishedAt,
+                CreatedAt = t.Chapter.CreatedAt,
+            })
+            .ToListAsync(ct);
+    }
+
+    // ── DELETE TEAM TRANSLATION ──────────────────────────────────────────────────
+    // Xoá một bản dịch (Translation entity). Ownership được verify qua Permission.TeamId.
+    // Chapter.TeamId đã bị xoá khỏi schema — không dùng để check ownership nữa.
+    public async Task<bool> DeleteTeamTranslationAsync(
+        int translationId, int teamId, int userId, CancellationToken ct = default)
+    {
+        // Verify team membership
+        var isMember = await _context.TeamMembers
+            .AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
+
+        if (!isMember)
+            throw new AppException(ErrorCodes.UNAUTHORIZED);
+
+        // Load translation + verify team ownership via Permission.TeamId
+        var translation = await _context.Translations
+            .Include(t => t.Permission)
+            .Include(t => t.TranslationPages)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(t => t.TranslationId == translationId
+                                   && t.Permission != null
+                                   && t.Permission.TeamId == teamId, ct);
+
+        if (translation == null)
+            return false; // Not found or not owned by this team
+
+        // Delete translation pages from storage
+        foreach (var page in translation.TranslationPages)
+            if (!string.IsNullOrEmpty(page.TranslationImageUrl))
+                await _storage.DeleteAsync(page.TranslationImageUrl, ct);
+
+        // EF cascade removes: TranslationPages, TranslationText, credits
+        _context.Translations.Remove(translation);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Team {TeamId} deleted translation {TranslationId} by user {UserId}",
+            teamId, translationId, userId);
+
+        return true;
     }
   }
 }
