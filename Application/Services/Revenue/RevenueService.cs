@@ -108,7 +108,7 @@ namespace Application.Services.Revenue
         }
 
         public async Task<TeamRevenueSummaryDto> GetTeamRevenueAsync(
-            int userId, int teamId, RevenueQueryDto query, CancellationToken ct = default)
+    int userId, int teamId, RevenueQueryDto query, CancellationToken ct = default)
         {
             _ = await _db.TranslationTeams
                 .FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == userId, ct)
@@ -116,7 +116,6 @@ namespace Application.Services.Revenue
 
             var toExclusive = query.To.Date.AddDays(1);
 
-            // Chỉ lấy TEAM_ROYALTY — không cần filter Note hay RelatedEntityType nữa
             var transactions = await _db.Transactions
                 .Where(t => t.UserId == userId
                     && t.Type == TransactionType.TEAM_ROYALTY
@@ -124,6 +123,32 @@ namespace Application.Services.Revenue
                     && t.CreatedAt >= query.From
                     && t.CreatedAt < toExclusive)
                 .ToListAsync(ct);
+
+            // ── THÊM: group by series ──────────────────────────────────────
+            var seriesIds = transactions
+                .Where(t => t.RelatedSeriesId.HasValue)
+                .Select(t => t.RelatedSeriesId!.Value)
+                .Distinct()
+                .ToList();
+
+            var seriesTitleMap = await _db.Series
+                .Where(s => seriesIds.Contains(s.SeriesId))
+                .Select(s => new { s.SeriesId, s.Title })
+                .ToDictionaryAsync(s => s.SeriesId, s => s.Title, ct);
+
+            var bySeries = transactions
+                .Where(t => t.RelatedSeriesId.HasValue)
+                .GroupBy(t => t.RelatedSeriesId!.Value)
+                .Select(g => new RevenueBySeriesDto
+                {
+                    SeriesId = g.Key,
+                    SeriesTitle = seriesTitleMap.GetValueOrDefault(g.Key, $"Series #{g.Key}"),
+                    UnlockCount = g.Count(),
+                    Revenue = g.Sum(t => t.AmountCoins)
+                })
+                .OrderByDescending(x => x.Revenue)
+                .ToList();
+            // ───────────────────────────────────────────────────────────────
 
             var total = transactions.Sum(t => t.AmountCoins);
             var periodCount = GetPeriodCount(query.From, query.To, query.Granularity);
@@ -134,6 +159,7 @@ namespace Application.Services.Revenue
                 TotalUnlocks = transactions.Count,
                 AveragePerPeriod = periodCount > 0 ? Math.Round(total / periodCount, 2) : 0,
                 DataPoints = GroupByGranularity(transactions, query.From, query.To, query.Granularity),
+                BySeries = bySeries,   // ← THÊM
             };
         }
 

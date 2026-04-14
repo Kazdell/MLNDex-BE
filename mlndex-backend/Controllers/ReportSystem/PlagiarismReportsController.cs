@@ -53,7 +53,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         return OkResponse(result);
       }
 
-      catch (InvalidOperationException ex)
+      catch (InvalidOperationException)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -69,7 +69,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         return OkResponse(result);
       }
 
-      catch (InvalidOperationException ex)
+      catch (InvalidOperationException)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }

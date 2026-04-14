@@ -29,16 +29,16 @@ namespace mlndex_backend.Controllers.Creator
             var userId = GetUserId();
             if (userId == 0) return UnauthorizedResponse();
 
-            try
-            {
-                var result = await _creatorService.RegisterAsync(userId, dto, ct);
-                return OkResponse(result, "Đăng ký nhà sáng tạo thành công!");
-            }
-            catch (InvalidOperationException ex)
-            {
-                throw new AppException(ErrorCodes.INVALID_INPUT);
-            }
-        }
+      try
+      {
+        var result = await _creatorService.RegisterAsync(userId, dto, ct);
+        return OkResponse(result, "Đăng ký nhà sáng tạo thành công!");
+      }
+      catch (InvalidOperationException)
+      {
+        throw new AppException(ErrorCodes.INVALID_INPUT);
+      }
+    }
 
         // --- New Unlock Settings Endpoints ---
 

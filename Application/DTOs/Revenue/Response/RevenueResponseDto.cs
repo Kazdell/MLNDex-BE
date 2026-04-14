@@ -31,6 +31,7 @@ namespace Application.DTOs.Revenue.Response
         public decimal TotalRevenue { get; set; }
         public int TotalUnlocks { get; set; }
         public decimal AveragePerPeriod { get; set; }
-        public List<RevenueDataPointDto> DataPoints { get; set; } = new();
+        public List<RevenueDataPointDto> DataPoints { get; set; } = [];
+        public List<RevenueBySeriesDto> BySeries { get; set; } = []; 
     }
 }

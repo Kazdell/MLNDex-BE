@@ -104,6 +104,8 @@ namespace Application.Services.Financial
                 Type = TransactionType.CHAPTER_UNLOCK,
                 AmountCoins = price,
                 Status = TransactionStatus.COMPLETED,
+                RelatedEntityId = chapterId,
+                RelatedEntityType = "CHAPTER",
                 Note = $"Mở khóa chapter {chapterId} — series {chapter.SeriesId}",
                 CreatedAt = now,
             };
@@ -265,6 +267,8 @@ namespace Application.Services.Financial
                 Type = TransactionType.CHAPTER_UNLOCK,
                 AmountCoins = price,
                 Status = TransactionStatus.COMPLETED,
+                RelatedEntityId = translationId,
+                RelatedEntityType = "TRANSLATION",
                 Note = $"Mở khóa bản dịch {translationId} — Ch.{chapter.ChapterNumber} — nhóm {team.TeamName}",
                 CreatedAt = now,
             };

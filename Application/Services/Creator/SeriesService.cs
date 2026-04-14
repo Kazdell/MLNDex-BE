@@ -360,8 +360,7 @@ namespace Application.Services.Creator
       var items = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
@@ -441,8 +440,7 @@ namespace Application.Services.Creator
       var items = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
@@ -472,7 +470,7 @@ namespace Application.Services.Creator
       var cacheKey = $"SeriesDetails_{seriesId}_User_{userId ?? 0}_Mod_{isModOrAdmin}";
       return await _cache.GetOrCreateAsync(cacheKey, async entry =>
       {
-          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+          entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10);
           return await GetSeriesDetailsInternalAsync(seriesId, userId, isModOrAdmin);
       });
     }
@@ -482,8 +480,7 @@ namespace Application.Services.Creator
       var series = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-          .Include(s => s.Chapters).ThenInclude(c => c.Team)
-          .Include(s => s.Chapters).ThenInclude(c => c.Language)
+
           .Include(s => s.Chapters).ThenInclude(c => c.Pages)
           .Include(s => s.Chapters).ThenInclude(c => c.Translations)
               .ThenInclude(t => t.Language)
@@ -526,16 +523,15 @@ namespace Application.Services.Creator
         userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
 
         isAuthorizedTranslator = await _context.TranslationPermissions
-            .AnyAsync(p => p.SeriesId == seriesId 
+            .Include(p => p.Team)
+                .ThenInclude(t => t.TeamMembers)
+            .AnyAsync(p => p.SeriesId == seriesId
                         && p.Status == TranslationPermissionStatus.GRANTED
-                        && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)));
+                        && (p.Team.LeaderId == userId.Value
+                            || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value && tm.IsActive)));
       }
 
-      // Detect original language from the first original chapter (TeamId == null)
-      var firstOriginalChapter = series.Chapters
-          .Where(c => c.TeamId == null && c.Language != null)
-          .OrderBy(c => c.ChapterNumber)
-          .FirstOrDefault();
+
 
       // 1. Map original chapters (bản gốc) — PUBLISHED only
       var chapterDtos = series.Chapters
@@ -560,12 +556,12 @@ namespace Application.Services.Creator
     Price = c.UnlockPriceCoins ?? 0,
     PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
     ViewCount = c.Views,
-    GroupName = c.Team?.TeamName,
-    TeamId = c.TeamId,
-    IsOriginal = c.TeamId == null,
-    IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-    LanguageCode = c.Language?.Code,
-    LanguageName = c.Language?.Name,
+    GroupName = null,
+    TeamId = null,
+    IsOriginal = true,
+    IsOfficialTranslation = false,
+    LanguageCode = null,
+    LanguageName = null,
     CommentCount = 0,
     PageCount = c.PageCount ?? c.Pages?.Count ?? 0,
     IsUnlockedByUser = userUnlocks.Any(u => u.ChapId == c.ChapterId && u.TransId == null) || isAuthorizedTranslator,
@@ -650,7 +646,7 @@ namespace Application.Services.Creator
         CreatorUserId = series.Creator.UserId,
         CreatorName = series.Creator.PenName,
         Genres = series.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
-        OriginalLanguage = firstOriginalChapter?.Language?.Code,
+        OriginalLanguage = null,
         Chapters = chapterDtos
       };
     }
@@ -824,12 +820,12 @@ namespace Application.Services.Creator
                 Price = c.UnlockPriceCoins ?? 0,
                 PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
                 ViewCount = c.Views,
-                GroupName = c.Team?.TeamName,
-                TeamId = c.TeamId,
-                IsOriginal = c.TeamId == null,
-                IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-                LanguageCode = c.Language?.Code,
-                LanguageName = c.Language?.Name,
+                GroupName = null,
+                TeamId = null,
+                IsOriginal = true,
+                IsOfficialTranslation = (c.Translations != null && c.Translations.Any(t => t.IsOfficial)),
+                LanguageCode = null,
+                LanguageName = null,
                 CommentCount = 0
               }).ToList()
       };
@@ -843,12 +839,7 @@ namespace Application.Services.Creator
     /// </summary>
     private static bool IsChapterOfficialTranslation(Chapter c, HashSet<int>? grantedTeamIds)
     {
-      // Case 1: Check Translation table (for chapters that use the Translation workflow)
       if (c.Translations != null && c.Translations.Any(t => t.IsOfficial))
-        return true;
-
-      // Case 2: Check if the chapter's team has a GRANTED permission for this series
-      if (c.TeamId != null && grantedTeamIds != null && grantedTeamIds.Contains(c.TeamId.Value))
         return true;
 
       return false;

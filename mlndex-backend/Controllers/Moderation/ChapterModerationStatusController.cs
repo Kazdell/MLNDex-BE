@@ -56,7 +56,7 @@ public class ChapterModerationStatusController : BaseController
       return OkResponse<object?>(null, "Đã đưa chapter vào hàng đợi kiểm duyệt lại.");
     }
 
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }

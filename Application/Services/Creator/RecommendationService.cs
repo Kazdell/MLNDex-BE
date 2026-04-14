@@ -246,8 +246,7 @@ namespace Application.Services.Creator
       var recItems = await _context.Series
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Team)
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Language)
+
           .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
           .Where(s => finalRecIds.Contains(s.SeriesId))
           .ToListAsync();
@@ -281,7 +280,7 @@ namespace Application.Services.Creator
         CreatorUserId = s.Creator.UserId,
         CreatorName = s.Creator.PenName,
         Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
-        LatestChapters = s.Chapters
+        LatestChapters = (s.Chapters ?? Enumerable.Empty<Chapter>())
                 .Where(c => c.Status == ChapterStatus.PUBLISHED)
                 .OrderByDescending(c => c.ChapterNumber)
                 .Take(2)
@@ -293,12 +292,12 @@ namespace Application.Services.Creator
                   Price = c.UnlockPriceCoins ?? 0,
                   PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
                   ViewCount = c.Views,
-                  GroupName = c.Team?.TeamName,
-                  TeamId = c.TeamId,
-                  IsOriginal = c.TeamId == null,
-                  IsOfficialTranslation = IsChapterOfficialTranslation(c, grantedTeamIds),
-                  LanguageCode = c.Language?.Code,
-                  LanguageName = c.Language?.Name,
+                  GroupName = null,
+                  TeamId = null,
+                  IsOriginal = true,
+                  IsOfficialTranslation = (c.Translations != null && c.Translations.Any(t => t.IsOfficial)),
+                  LanguageCode = null,
+                  LanguageName = null,
                   CommentCount = 0
                 }).ToList()
       };
@@ -307,9 +306,6 @@ namespace Application.Services.Creator
     private static bool IsChapterOfficialTranslation(Chapter c, HashSet<int>? grantedTeamIds)
     {
       if (c.Translations != null && c.Translations.Any(t => t.IsOfficial))
-        return true;
-
-      if (c.TeamId != null && grantedTeamIds != null && grantedTeamIds.Contains(c.TeamId.Value))
         return true;
 
       return false;

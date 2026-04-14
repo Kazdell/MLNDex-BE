@@ -48,6 +48,7 @@ namespace Domain.Entities
 
   public enum AgeRating
   {
+    ALL,        // Legacy value stored in DB
     ALL_AGES,
     TEEN,
     MATURE,

@@ -153,9 +153,7 @@ namespace Application.Services.Moderation
           var chapter = await _context.Chapters.Include(c => c.Series).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
           if (chapter != null)
           {
-            ownerUserId = chapter.TeamId != null ?
-                (await _context.TranslationTeams.FindAsync(chapter.TeamId))?.LeaderId :
-                chapter.Series.CreatorId;
+            ownerUserId = chapter.Series.CreatorId;
             contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
             actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
           }

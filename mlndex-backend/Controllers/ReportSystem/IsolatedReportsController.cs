@@ -48,7 +48,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _reportService.CreateReportAsync(userId, request);
         return OkResponse(result);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -85,7 +85,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _reportService.ResolveReportAsync(id, modId, request);
         return OkResponse(result);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -101,7 +101,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var data = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
         return OkResponse(data);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -124,7 +124,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
         return OkResponse(result);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -147,7 +147,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _trustScoreService.CreateAppealAsync(userId, request);
         return OkResponse(result);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -175,7 +175,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
         return OkResponse(result);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }
@@ -195,7 +195,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         var history = await _trustScoreService.GetUserTranslationHistoryAsync(userId);
         return OkResponse(history);
       }
-      catch (System.Exception ex)
+      catch (System.Exception)
       {
         throw new AppException(ErrorCodes.INVALID_INPUT);
       }

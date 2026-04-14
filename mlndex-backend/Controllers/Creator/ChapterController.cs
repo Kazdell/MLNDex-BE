@@ -30,6 +30,7 @@ public class ChapterController : BaseController
     _moderationService = moderationService;
     _db = db;
   }
+
   [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpPost("creator/chapters/create")]
   [RequestSizeLimit(300 * 1024 * 1024)]
@@ -94,7 +95,7 @@ public class ChapterController : BaseController
       var result = await _service.CreateAsync(userId, dto, cancellationToken);
       return OkResponse(result, "Đăng chương truyện thành công.");
     }
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }
@@ -106,24 +107,22 @@ public class ChapterController : BaseController
 
   [AllowAnonymous]
   [HttpGet("chapters/{id:int}")]
-    public async Task<IActionResult> GetById(
+  public async Task<IActionResult> GetById(
     int id,
-    [FromQuery] int? translationId, // ASP.NET tự động lấy từ ?translationId=...
+    [FromQuery] int? translationId,
     CancellationToken cancellationToken)
   {
-        // Lấy UserId từ Claims (giữ nguyên logic của bạn)
     int? userId = null;
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
-        if (int.TryParse(claim, out var parsed)) userId = parsed;
-
+    var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+    if (int.TryParse(claim, out var parsed)) userId = parsed;
 
     try
     {
       var result = await _service.GetChapterDetailAsync(
           id,
           userId,
-          translationId,                  // int? — có thể null
-          cancellationToken);             // named arg tránh nhầm slot
+          translationId,
+          cancellationToken);
       if (result == null) throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
       return OkResponse(result);
     }
@@ -145,7 +144,6 @@ public class ChapterController : BaseController
       var result = await _service.GetBySeriesAsync(seriesId, userId, cancellationToken);
       return OkResponse(result);
     }
-
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
@@ -203,7 +201,6 @@ public class ChapterController : BaseController
     if (currentUser?.CannotUpload == true)
       return StatusCode(403, new { message = "Tài khoản bị khoá chức năng upload do vi phạm nội quy. Vui lòng liên hệ mod để kháng cáo." });
 
-    // Validate new files if provided
     if (pages != null && pages.Count > 0)
     {
       foreach (var file in pages)
@@ -230,7 +227,6 @@ public class ChapterController : BaseController
       Title = title,
       LanguageId = languageId,
       RetainedPageIds = retainedPageIds,
-      // ✅ Gán vào DTO
       LockStatus = parsedLockStatus,
       UnlockPriceCoins = unlockPriceCoins,
       FreeAfterDays = freeAfterDays,
@@ -248,12 +244,11 @@ public class ChapterController : BaseController
       var result = await _service.UpdateAsync(id, userId, dto, newPages, cancellationToken);
       return OkResponse(result, "Cập nhật chương thành công.");
     }
-
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
     }
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }
@@ -266,9 +261,9 @@ public class ChapterController : BaseController
   [Authorize(Roles = "CREATOR,ADMIN")]
   [HttpPatch("creator/chapters/{chapterId:int}/lock")]
   public async Task<IActionResult> UpdateLockStatus(
-  int chapterId,
-  [FromBody] UpdateChapterLockDto dto,
-  CancellationToken cancellationToken)
+    int chapterId,
+    [FromBody] UpdateChapterLockDto dto,
+    CancellationToken cancellationToken)
   {
     int userId = GetUserId();
     if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
@@ -278,12 +273,11 @@ public class ChapterController : BaseController
       var result = await _service.UpdateChapterLockStatusAsync(chapterId, userId, dto, cancellationToken);
       return OkResponse(result, "Cập nhật trạng thái khóa thành công.");
     }
-
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
     }
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }
@@ -304,8 +298,7 @@ public class ChapterController : BaseController
       var result = await _contentUnlockService.UnlockChapterAsync(userId, chapterId, ct);
       return OkResponse(result, "Mở khóa chương thành công.");
     }
-
-    catch (InvalidOperationException ex)
+    catch (InvalidOperationException)
     {
       throw new AppException(ErrorCodes.INVALID_INPUT);
     }
@@ -326,7 +319,6 @@ public class ChapterController : BaseController
       await _service.DeleteAsync(id, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương thành công.");
     }
-
     catch (UnauthorizedAccessException ex)
     {
       return UnauthorizedResponse(ex.Message);
