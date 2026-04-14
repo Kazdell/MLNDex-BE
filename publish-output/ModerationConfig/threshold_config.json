@@ -1,0 +1,55 @@
+{
+  "_comment": "Cấu hình Ngưỡng Kiểm duyệt (Dành cho Người Số 5 - Scoring Engine)",
+  "version": "1.0",
+  "ai_provider": "openai-omni-moderation-latest",
+  "logic_rules": {
+    "worst_score_wins": true,
+    "actions": ["AUTO_REJECT", "FLAG_FOR_REVIEW", "AUTO_PASS"]
+  },
+  
+  "thresholds": {
+    "violence": {
+      "AUTO_REJECT": 0.85,
+      "FLAG_FOR_REVIEW": 0.50
+    },
+    "violence/graphic": {
+      "AUTO_REJECT": 0.70,
+      "FLAG_FOR_REVIEW": 0.35
+    },
+    "sexual": {
+      "AUTO_REJECT": 0.90,
+      "FLAG_FOR_REVIEW": 0.60
+    },
+    "sexual/minors": {
+      "AUTO_REJECT": 0.20,
+      "FLAG_FOR_REVIEW": 0.05
+    },
+    "hate": {
+      "AUTO_REJECT": 0.80,
+      "FLAG_FOR_REVIEW": 0.40
+    },
+    "self-harm": {
+      "AUTO_REJECT": 0.75,
+      "FLAG_FOR_REVIEW": 0.30
+    }
+  },
+
+  "age_rating_mapping": {
+    "All_Ages": {
+      "max_allowed_score": 0.10,
+      "description": "Nội dung an toàn tuyệt đối (Không bạo lực, không tình dục)"
+    },
+    "13_Plus": {
+      "max_allowed_score": 0.35,
+      "description": "Bạo lực nhẹ, ngôn từ có thể hơi mạnh"
+    },
+    "16_Plus": {
+      "max_allowed_score": 0.59,
+      "description": "Bạo lực, máu me vừa phải, yếu tố nhạy cảm nhưng không lộ liễu"
+    },
+    "18_Plus": {
+      "max_allowed_score": 0.89,
+      "description": "Trưởng thành, giáp ranh mức Auto-Reject của hệ thống"
+    }
+  }
+}

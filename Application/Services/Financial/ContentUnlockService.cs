@@ -114,7 +114,8 @@ namespace Application.Services.Financial
             {
                 UserId = authorUserId,
                 WalletId = authorWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
                 AmountCoins = price,
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Hoa hồng 100% từ mở khóa chapter {chapterId} — series {chapter.SeriesId}",
@@ -160,8 +161,9 @@ namespace Application.Services.Financial
                     .ThenInclude(c => c.Series)
                         .ThenInclude(s => s.Creator)
                             .ThenInclude(cr => cr.User)
-                .Include(t => t.Team)
-                    .ThenInclude(team => team!.Leader)
+                .Include(t => t.Permission)
+                    .ThenInclude(p => p!.Team)
+                        .ThenInclude(team => team.Leader)
                 .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
                 ?? throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
@@ -202,9 +204,11 @@ namespace Application.Services.Financial
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
             // ── 6. Team phải bật monetization & có giá ────────────────────────
-            var team = translation.Team;
+            var team = translation.Permission?.Team;
             if (team == null || !team.IsMonetizationEnabled)
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            var teamId = team.TeamId;
 
             var rawPrice = team.DefaultUnlockPriceCoins
                 ?? chapter.UnlockPriceCoins
@@ -271,7 +275,8 @@ namespace Application.Services.Financial
             {
                 UserId = authorUserId,
                 WalletId = authorWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
                 AmountCoins = authorShare,
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Hoa hồng {authorCommissionPct}% từ bản dịch {translationId} — Ch.{chapter.ChapterNumber}",
@@ -282,10 +287,13 @@ namespace Application.Services.Financial
             {
                 UserId = teamLeaderUserId,
                 WalletId = teamLeaderWallet.WalletId,
-                Type = TransactionType.BONUS,
+                Type = TransactionType.TEAM_ROYALTY,
                 AmountCoins = teamShare,
                 Status = TransactionStatus.COMPLETED,
-                Note = $"Hoa hồng {teamCommissionPct}% từ bản dịch {translationId} — Ch.{chapter.ChapterNumber} — nhóm {team.TeamName}",
+                RelatedEntityId = teamId,
+                RelatedEntityType = "TEAM",
+                RelatedSeriesId = chapter.SeriesId,
+                Note = $"Hoa hồng {teamCommissionPct}% từ bản dịch {translationId}...",
                 CreatedAt = now,
             });
 

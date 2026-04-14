@@ -330,20 +330,18 @@ namespace Infrastructure.Adapters.AIModeration
         //  HTTP + Parsing
         // ═══════════════════════════════════════════════════════════════════
 
-        private async Task<HttpResponseMessage> SendRequestWithRetryAsync(StringContent content)
-        {
-            HttpResponseMessage response;
-            try
-            {
-                response = await _httpClient.PostAsync(
-                        "https://gateway.ai.cloudflare.com/v1/37a714edab65119e71904259d5c1f144/mlndex-ai/openai/moderations",
-                        content);
-            }
-            catch (TaskCanceledException)
-            {
-                _logger.LogError("OpenAI API timeout khi kiểm duyệt ảnh");
-                throw new TimeoutException("OpenAI moderation API timeout sau 120 giây");
-            }
+    private async Task<HttpResponseMessage> SendRequestWithRetryAsync(StringContent content)
+    {
+      HttpResponseMessage response;
+      try
+      {
+        response = await _httpClient.PostAsync("https://gateway.ai.cloudflare.com/v1/37a714edab65119e71904259d5c1f144/mlndex-ai/openai/moderations", content);
+      }
+      catch (TaskCanceledException)
+      {
+        _logger.LogError("OpenAI API timeout khi kiểm duyệt ảnh");
+        throw new TimeoutException("OpenAI moderation API timeout sau 120 giây");
+      }
 
             if (!response.IsSuccessStatusCode)
             {
