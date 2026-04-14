@@ -65,94 +65,95 @@ namespace mlndex_backend
 
             var PORT = Environment.GetEnvironmentVariable("PORT") ?? "5285";
 
-            if (builder.Environment.IsProduction())
-                builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
-            else
-                builder.WebHost.UseUrls($"http://localhost:{PORT}");
+      if (builder.Environment.IsProduction())
+        builder.WebHost.UseUrls($"http://0.0.0.0:{PORT}");
+      else
+        builder.WebHost.UseUrls($"http://localhost:{PORT}");
 
-            // Localization Configuration
-            builder.Services.AddLocalization();
+      // Localization Configuration
+      builder.Services.AddLocalization();
 
-            // Standard API Services
-            builder.Services.AddControllers()
-                .AddDataAnnotationsLocalization(options =>
-                {
-                    options.DataAnnotationLocalizerProvider = (type, factory) =>
-                  factory.Create(typeof(Application.Resources.SharedResource));
-                })
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                    options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
-                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-                });
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddHttpClient();
-            builder.Services.AddSignalR();
+      // Standard API Services
+      builder.Services.AddControllers()
+          .AddDataAnnotationsLocalization(options =>
+          {
+            options.DataAnnotationLocalizerProvider = (type, factory) =>
+                factory.Create(typeof(Application.Resources.SharedResource));
+          })
+          .AddJsonOptions(options =>
+          {
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+          });
+      builder.Services.AddEndpointsApiExplorer();
+      builder.Services.AddSwaggerGen();
+      builder.Services.AddHttpContextAccessor();
+      builder.Services.AddHttpClient();
+      builder.Services.AddSignalR();
 
-            // ── Memory Cache (cho OTP + Token Blacklist) ────────────
-            builder.Services.AddMemoryCache();
+      // ── Memory Cache (cho OTP + Token Blacklist) ────────────
+      builder.Services.AddMemoryCache();
 
-            // Database Configuration
-            builder.Services.AddDbContext<MlndexDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
-                sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
-                    .EnableRetryOnFailure()
-            ));
-            builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
+      // Database Configuration
+      builder.Services.AddDbContext<MlndexDbContext>(options =>
+          options.UseSqlServer(builder.Configuration.GetConnectionString("DB"),
+          sqlOptions => sqlOptions.MigrationsAssembly("Infrastructure")
+              .EnableRetryOnFailure()
+      ));
+      builder.Services.AddScoped<IMlndexDbContext>(provider => provider.GetRequiredService<MlndexDbContext>());
 
-            // ── Auth Services ───────────────────────────────────────
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<IOtpService, OtpService>();
-            builder.Services.AddScoped<IEmailService, EmailService>();
-            builder.Services.AddScoped<IUserContext, UserContext>();
-            builder.Services.AddHttpClient<IGoogleOAuthService, GoogleOAuthService>();
-            builder.Services.AddHttpClient<IFacebookOAuthService, FacebookOAuthService>();
+      // ── Auth Services ───────────────────────────────────────
+      builder.Services.AddScoped<IAuthService, AuthService>();
+      builder.Services.AddScoped<ITokenService, TokenService>();
+      builder.Services.AddScoped<IOtpService, OtpService>();
+      builder.Services.AddScoped<IEmailService, EmailService>();
+      builder.Services.AddScoped<IUserContext, UserContext>();
+      builder.Services.AddHttpClient<IGoogleOAuthService, GoogleOAuthService>();
+      builder.Services.AddHttpClient<IFacebookOAuthService, FacebookOAuthService>();
 
 
-            // Storage & Content Services
-            builder.Services.AddSingleton<IStorageService, CloudinaryService>();
+      // Storage & Content Services
+      builder.Services.AddSingleton<IStorageService, CloudinaryService>();
 
-            // Creator Services
-            builder.Services.AddScoped<ISeriesService, SeriesService>();
-            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
-            builder.Services.AddScoped<IChapterService, ChapterService>();
-            builder.Services.AddScoped<IGenreService, GenreService>();
-            builder.Services.AddScoped<ICreatorService, CreatorService>();
+      // Creator Services
+      builder.Services.AddScoped<ISeriesService, SeriesService>();
+      builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+      builder.Services.AddScoped<IChapterService, ChapterService>();
+      builder.Services.AddScoped<IGenreService, GenreService>();
+      builder.Services.AddScoped<ICreatorService, CreatorService>();
 
-            // Core Moderation Engine
-            var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
-            builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
-            builder.Services.AddScoped<IModerationService, ModerationService>();
-            builder.Services.AddScoped<IReportService, ReportService>();
-            builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
-            builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
-            builder.Services.AddScoped<ICommentModerationService, CommentModerationService>();
+      // Core Moderation Engine
+      var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
+      builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
+      builder.Services.AddScoped<IModerationService, ModerationService>();
+      builder.Services.AddScoped<IContentModerationService, ContentModerationService>();
+      builder.Services.AddScoped<IReportService, ReportService>();
+      builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
+      builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();
+      builder.Services.AddScoped<ICommentModerationService, CommentModerationService>();
 
-            // Isolated Report & TrustScore Services
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
+      // Isolated Report & TrustScore Services
+      builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
+      builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
 
-            // AI & Chapter Processing
-            builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
-            builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
-                sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
-            builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
-            builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
-            builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
-            builder.Services.AddHostedService<ChapterUnlockWorker>();
+      // AI & Chapter Processing
+      builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
+      builder.Services.AddSingleton<Application.Interfaces.Queue.IModerationQueue>(sp =>
+          sp.GetRequiredService<Infrastructure.BackgroundJobs.Queue.ModerationQueue>());
+      builder.Services.AddHostedService<Infrastructure.BackgroundJobs.Workers.ModerationWorker>();
+      builder.Services.AddHostedService<mlndex_backend.BackgroundServices.NotificationCleanupService>();
+      builder.Services.AddHostedService<mlndex_backend.BackgroundServices.TranslationRequestCleanupService>();
+      builder.Services.AddHostedService<ChapterUnlockWorker>();
 
-            builder.Services.AddHttpClient();
-            builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
+      builder.Services.AddHttpClient();
+      builder.Services.AddScoped<IAiModerationClient, AiModerationClient>();
 
-            // Translation Team Services
-            builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
-            builder.Services.AddScoped<ITranslationService, TranslationService>();
-            builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
-            builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
+      // Translation Team Services
+      builder.Services.AddScoped<ITranslationTeamService, TranslationTeamService>();
+      builder.Services.AddScoped<ITranslationService, TranslationService>();
+      builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
+      builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
       // OCR Services — with fallback for deployments without native DLLs
       var ocrAvailable = File.Exists(Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll"));
