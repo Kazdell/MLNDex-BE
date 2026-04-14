@@ -526,9 +526,12 @@ namespace Application.Services.Creator
         userUnlocks = unlockData.Select(u => (u.ChapterId, u.TranslationId)).ToList();
 
         isAuthorizedTranslator = await _context.TranslationPermissions
-            .AnyAsync(p => p.SeriesId == seriesId 
+            .Include(p => p.Team)
+                .ThenInclude(t => t.TeamMembers)
+            .AnyAsync(p => p.SeriesId == seriesId
                         && p.Status == TranslationPermissionStatus.GRANTED
-                        && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)));
+                        && (p.Team.LeaderId == userId.Value
+                            || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value && tm.IsActive)));
       }
 
       // Detect original language from the first original chapter (TeamId == null)

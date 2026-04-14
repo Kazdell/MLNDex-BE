@@ -322,9 +322,12 @@ namespace Application.Services.Creator
                 if (userId.HasValue)
                 {
                     isAuthorizedTranslator = await _db.TranslationPermissions
+                        .Include(p => p.Team)
+                            .ThenInclude(t => t.TeamMembers)
                         .AnyAsync(p => p.SeriesId == chapter.SeriesId
                                     && p.Status == TranslationPermissionStatus.GRANTED
-                                    && (p.Team.LeaderId == userId.Value || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value)),
+                                    && (p.Team.LeaderId == userId.Value
+                                        || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value && tm.IsActive)),
                                   cancellationToken);
                 }
                 // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend

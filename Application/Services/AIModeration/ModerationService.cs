@@ -551,6 +551,16 @@ namespace Application.Services.AIModeration
         translation.QualityStatus = TranslationQualityStatus.PUBLISHED;
         translation.PublishedAt = DateTime.UtcNow;
 
+        // ── Publish Chapter liên kết để hiện trên SeriesDetail ──────────
+        // SeriesService chỉ hiện Chapter có Status == PUBLISHED.
+        // Translation chapter (TeamId != null) cần được publish khi moderation pass.
+        if (translation.Chapter != null)
+        {
+          translation.Chapter.Status = ChapterStatus.PUBLISHED;
+          translation.Chapter.ModerationStatus = ModerationStatus.APPROVED;
+          translation.Chapter.PublishedAt ??= DateTime.UtcNow;
+        }
+
         var approvedQueueItem = await _db.ModerationQueues
             .FirstOrDefaultAsync(q => q.ContentId == translationId
                 && q.ContentType == ModerationQueueContentType.TRANSLATION);
