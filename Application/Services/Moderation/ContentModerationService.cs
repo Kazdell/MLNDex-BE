@@ -141,21 +141,21 @@ namespace Application.Services.Moderation
       switch (queue.ContentType)
       {
         case ModerationQueueContentType.SERIES:
-          var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+          var series = await _context.Series.FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
           if (series != null)
           {
-            ownerUserId = series.Creator.UserId;
+            ownerUserId = series.CreatorId;
             contentTitle = series.Title;
             actionUrl = $"/series/{series.SeriesId}";
           }
           break;
         case ModerationQueueContentType.CHAPTER:
-          var chapter = await _context.Chapters.Include(c => c.Series).ThenInclude(s => s.Creator).Include(c => c.Team).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+          var chapter = await _context.Chapters.Include(c => c.Series).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
           if (chapter != null)
           {
             ownerUserId = chapter.TeamId != null ?
                 (await _context.TranslationTeams.FindAsync(chapter.TeamId))?.LeaderId :
-                chapter.Series.Creator.UserId;
+                chapter.Series.CreatorId;
             contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
             actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
           }
