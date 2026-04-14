@@ -51,6 +51,16 @@ namespace Application.Services.Translation
       if (language == null)
         throw new AppException(ErrorCodes.LANGUAGE_NOT_FOUND);
 
+      if (!dto.IsUnofficial)
+      {
+        var alreadyGranted = await _context.TranslationPermissions
+            .AnyAsync(p => p.SeriesId == dto.SeriesId && p.LanguageId == dto.LanguageId && p.Status == TranslationPermissionStatus.GRANTED);
+        if (alreadyGranted)
+        {
+          throw new AppException(ErrorCodes.LANGUAGE_ALREADY_TRANSLATED);
+        }
+      }
+
       var existingPermission = await _context.TranslationPermissions
           .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
 
@@ -137,8 +147,49 @@ namespace Application.Services.Translation
 
       if (dto.IsApproved)
       {
+        var alreadyGranted = await _context.TranslationPermissions
+            .AnyAsync(p => p.SeriesId == permission.SeriesId && p.LanguageId == permission.LanguageId && p.Status == TranslationPermissionStatus.GRANTED && p.PermissionId != permissionId);
+        if (alreadyGranted)
+        {
+          throw new AppException(ErrorCodes.LANGUAGE_ALREADY_TRANSLATED);
+        }
+
         permission.Status = TranslationPermissionStatus.GRANTED;
         permission.GrantedAt = DateTime.UtcNow;
+
+        // Auto-deny other pending requests for the same series and language
+        var pendingRequests = await _context.TranslationPermissions
+            .Where(p => p.SeriesId == permission.SeriesId && p.LanguageId == permission.LanguageId && p.Status == TranslationPermissionStatus.PENDING && p.PermissionId != permissionId)
+            .ToListAsync();
+
+        foreach (var pr in pendingRequests)
+        {
+          pr.Status = TranslationPermissionStatus.DENIED;
+          pr.RevokedAt = DateTime.UtcNow;
+          pr.Note = "Đã có nhóm dịch chính thức phụ trách ngôn ngữ này.";
+
+          // Notify the denied groups
+          var prTeamMembers = await _context.TeamMembers
+              .Where(m => m.TeamId == pr.TeamId && m.IsActive)
+              .Select(m => m.UserId)
+              .ToListAsync();
+
+          var prLangName = await _context.Languages
+              .Where(l => l.LanguageId == pr.LanguageId)
+              .Select(l => l.Name)
+              .FirstOrDefaultAsync();
+
+          foreach (var memberId in prTeamMembers)
+          {
+            await _notificationService.CreateNotificationAsync(
+                memberId,
+                "Yêu cầu dịch truyện bị từ chối",
+                $"Yêu cầu dịch bộ truyện {permission.Series.Title} sang ngôn ngữ {prLangName} của nhóm bạn đã bị từ chối do tác giả đã cấp quyền cho một nhóm khác.",
+                $"/translation/sent-requests/{pr.TeamId}",
+                NotificationType.TRANSLATION_REVOKED
+            );
+          }
+        }
       }
       else
       {
@@ -184,6 +235,72 @@ namespace Application.Services.Translation
             resultMessage,
             link,
             dto.IsApproved ? NotificationType.TRANSLATION_GRANTED : NotificationType.TRANSLATION_REVOKED
+        );
+      }
+
+      return await MapToDtoAsync(permission);
+    }
+
+    public async Task<TranslationPermissionResponse> RevokePermissionAsync(int permissionId)
+    {
+      var creatorId = _userContext.UserId;
+      if (creatorId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
+
+      var permission = await _context.TranslationPermissions
+          .Include(p => p.Series)
+          .FirstOrDefaultAsync(p => p.PermissionId == permissionId);
+
+      if (permission == null)
+        throw new AppException(ErrorCodes.PERMISSION_REQUEST_NOT_FOUND);
+
+      var seriesCreatorUserId = await _context.CreatorProfiles
+          .Where(c => c.CreatorId == permission.Series.CreatorId)
+          .Select(c => c.UserId)
+          .FirstOrDefaultAsync();
+
+      if (seriesCreatorUserId != creatorId)
+        throw new AppException(ErrorCodes.CREATOR_ONLY_REVIEW);
+
+      if (permission.Status != TranslationPermissionStatus.GRANTED)
+        throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+      permission.Status = TranslationPermissionStatus.REVOKED;
+      permission.RevokedAt = DateTime.UtcNow;
+
+      // Sync the official status to all existing translations associated with this permission
+      var existingTranslations = await _context.Translations
+          .Where(t => t.PermissionId == permissionId)
+          .ToListAsync();
+
+      foreach (var t in existingTranslations)
+      {
+        t.IsOfficial = false;
+      }
+
+      await _context.SaveChangesAsync();
+
+      var teamMembers = await _context.TeamMembers
+          .Where(m => m.TeamId == permission.TeamId && m.IsActive)
+          .Select(m => m.UserId)
+          .ToListAsync();
+
+      var languageName = await _context.Languages
+          .Where(l => l.LanguageId == permission.LanguageId)
+          .Select(l => l.Name)
+          .FirstOrDefaultAsync();
+
+      var resultTitle = "Quyền dịch truyện bị thu hồi";
+      var resultMessage = $"Tác giả bộ truyện {permission.Series.Title} đã thu hồi quyền dịch sang ngôn ngữ {languageName} của nhóm không còn là nhóm dịch chính thức. Các chương đã đăng sẽ chuyển về dạng Unofficial.";
+      var link = $"/translation/sent-requests/{permission.TeamId}";
+
+      foreach (var memberId in teamMembers)
+      {
+        await _notificationService.CreateNotificationAsync(
+            memberId,
+            resultTitle,
+            resultMessage,
+            link,
+            NotificationType.TRANSLATION_REVOKED
         );
       }
 

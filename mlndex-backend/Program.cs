@@ -125,6 +125,7 @@ namespace mlndex_backend
       var moderationConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ModerationConfig");
       builder.Services.AddSingleton<IBlacklistProvider>(new BlacklistProvider(moderationConfigPath));
       builder.Services.AddScoped<IModerationService, ModerationService>();
+      builder.Services.AddScoped<IContentModerationService, ContentModerationService>();
       builder.Services.AddScoped<IReportService, ReportService>();
       builder.Services.AddScoped<IAccountModerationService, AccountModerationService>();
       builder.Services.AddScoped<IModeratorAdminService, ModeratorAdminService>();

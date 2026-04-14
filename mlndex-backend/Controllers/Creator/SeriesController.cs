@@ -148,13 +148,15 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> GetSeriesDetails(int id)
     {
       int? userId = null;
+      bool isModOrAdmin = false;
       if (User.Identity?.IsAuthenticated == true)
       {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (int.TryParse(claim, out var parsedId)) userId = parsedId;
+        if (User.IsInRole("ADMIN") || User.IsInRole("MODERATOR")) isModOrAdmin = true;
       }
 
-      var result = await _service.GetSeriesDetailsAsync(id, userId);
+      var result = await _service.GetSeriesDetailsAsync(id, userId, isModOrAdmin);
       if (result == null)
         throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
 
