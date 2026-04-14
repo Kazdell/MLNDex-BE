@@ -161,9 +161,8 @@ namespace Application.Services.Financial
                     .ThenInclude(c => c.Series)
                         .ThenInclude(s => s.Creator)
                             .ThenInclude(cr => cr.User)
-                .Include(t => t.Permission)
-                    .ThenInclude(p => p!.Team)
-                        .ThenInclude(team => team.Leader)
+                .Include(t => t.Team)
+                    .ThenInclude(team => team!.Leader)
                 .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
                 ?? throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
 
@@ -204,7 +203,7 @@ namespace Application.Services.Financial
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
             // ── 6. Team phải bật monetization & có giá ────────────────────────
-            var team = translation.Permission?.Team;
+            var team = translation.Team;
             if (team == null || !team.IsMonetizationEnabled)
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 

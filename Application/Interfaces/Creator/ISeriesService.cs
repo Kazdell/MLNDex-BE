@@ -27,7 +27,7 @@ namespace Application.Interfaces.Creator
 
     Task<PaginatedList<SeriesDto>> GetSeriesListAsync(string sortBy = "newest", int page = 1, int pageSize = 20);
     Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request);
-    Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null);
+    Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null, bool isModOrAdmin = false);
     Task<CreateSeriesDto?> GetForEditAsync(int seriesId, int userId);
     Task DeleteAsync(int seriesId, int userId, CancellationToken cancellationToken = default);
     Task UpdateStatusAsync(int seriesId, int userId, string status, CancellationToken cancellationToken = default);

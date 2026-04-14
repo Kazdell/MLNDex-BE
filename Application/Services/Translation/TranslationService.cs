@@ -132,7 +132,14 @@ namespace Application.Services.Translation
 
         if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
         {
-            throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+            // Authorized teams (GRANTED permission) bypass the lock — they have rights to translate locked chapters
+            var hasGrantedPermission = await _context.TranslationPermissions
+                .AnyAsync(p => p.SeriesId == chapter.SeriesId
+                            && p.TeamId == resolvedTeamId
+                            && p.Status == TranslationPermissionStatus.GRANTED);
+
+            if (!hasGrantedPermission)
+                throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
         }
 
         isOfficial = false;
@@ -175,6 +182,7 @@ namespace Application.Services.Translation
       bool translationExists = await _context.Translations.AnyAsync(t =>
         t.ChapterId == dto.ChapterId
         && t.LanguageId == dto.LanguageId
+        && t.ModerationStatus != ModerationStatus.REJECTED
         && (
           t.TeamId == resolvedTeamId
           || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)
@@ -570,13 +578,13 @@ namespace Application.Services.Translation
         .Include(t => t.TranslationText)
         .Where(t =>
           t.Chapter.SeriesId == seriesId
-          && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
+          && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
         )
         .OrderByDescending(t => t.Chapter.ChapterNumber)
         .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
         {
-          ChapterId = t.ChapterId, // ID gốc của truyện
-          TranslationId = t.TranslationId, // ID bản dịch
+          ChapterId = t.ChapterId,
+          TranslationId = t.TranslationId,
           ChapterNumber = t.Chapter.ChapterNumber,
           Title = t.Chapter.Title,
           Status = t.QualityStatus.ToString(),
@@ -613,7 +621,7 @@ namespace Application.Services.Translation
         .FirstOrDefaultAsync(
           t =>
             t.TranslationId == translationId
-            && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
+            && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
           ct
         );
 

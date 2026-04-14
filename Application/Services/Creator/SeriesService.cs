@@ -312,7 +312,7 @@ namespace Application.Services.Creator
                     : 0,
         ChapterCount = s.Chapters.Count,
 
-        TotalViews = s.Chapters.Sum(c => (long)(c.ReadingHistories?.Count ?? 0)),
+        TotalViews = s.Chapters.Sum(c => (long)c.Views),
 
         Status = s.Status.ToString(),
         ModerationStatus = s.ModerationStatus.ToString(),
@@ -336,7 +336,7 @@ namespace Application.Services.Creator
     private async Task<PaginatedList<SeriesDto>> GetSeriesListInternalAsync(string sortBy = "newest", int page = 1, int pageSize = 20)
     {
       var query = _context.Series
-          .Where(s => s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+          .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED) && s.ModerationStatus == ModerationStatus.APPROVED)
           .AsQueryable();
 
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
@@ -388,6 +388,7 @@ namespace Application.Services.Creator
     public async Task<PaginatedList<SeriesDto>> SearchSeriesAsync(SeriesSearchRequest request)
     {
       var query = _context.Series
+          .Where(s => s.ModerationStatus == ModerationStatus.APPROVED)
           .AsQueryable();
 
       if (!string.IsNullOrWhiteSpace(request.Keyword))
@@ -464,22 +465,19 @@ namespace Application.Services.Creator
         Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
-
-    /// <summary>
     /// Lấy chi tiết thông tin một bộ truyện bao gồm Tác giả, Thể loại, Chương truyện (bao gồm bản dịch).
     /// Xác định xem bản dịch có phải là chính thức hay không dựa vào TranslationPermissions.
-    /// </summary>
-    public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null)
+    public async Task<SeriesDetailDto?> GetSeriesDetailsAsync(int seriesId, int? userId = null, bool isModOrAdmin = false)
     {
-      var cacheKey = $"SeriesDetails_{seriesId}_User_{userId ?? 0}";
+      var cacheKey = $"SeriesDetails_{seriesId}_User_{userId ?? 0}_Mod_{isModOrAdmin}";
       return await _cache.GetOrCreateAsync(cacheKey, async entry =>
       {
           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
-          return await GetSeriesDetailsInternalAsync(seriesId, userId);
+          return await GetSeriesDetailsInternalAsync(seriesId, userId, isModOrAdmin);
       });
     }
 
-    private async Task<SeriesDetailDto?> GetSeriesDetailsInternalAsync(int seriesId, int? userId = null)
+    private async Task<SeriesDetailDto?> GetSeriesDetailsInternalAsync(int seriesId, int? userId = null, bool isModOrAdmin = false)
     {
       var series = await _context.Series
           .Include(s => s.Creator)
@@ -497,6 +495,15 @@ namespace Application.Services.Creator
           .FirstOrDefaultAsync(s => s.SeriesId == seriesId);
 
       if (series == null) return null;
+
+      // Restrict viewing series if not approved
+      if (series.ModerationStatus != ModerationStatus.APPROVED)
+      {
+         if (!isModOrAdmin && (!userId.HasValue || series.Creator.UserId != userId.Value))
+         {
+             return null;
+         }
+      }
 
       // Preload granted team IDs for this series
       var grantedTeamIdsList = await _context.TranslationPermissions
@@ -552,7 +559,7 @@ namespace Application.Services.Creator
     ChapterNumber = (int)c.ChapterNumber,
     Price = c.UnlockPriceCoins ?? 0,
     PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-    ViewCount = c.ReadingHistories?.Count ?? 0,
+    ViewCount = c.Views,
     GroupName = c.Team?.TeamName,
     TeamId = c.TeamId,
     IsOriginal = c.TeamId == null,
@@ -605,7 +612,7 @@ namespace Application.Services.Creator
       ChapterNumber = (int)c.ChapterNumber,
       Price = teamPrice ?? 0,           // giá hiển thị trên badge
       PublishedAt = t.PublishedAt ?? DateTime.UtcNow,
-      ViewCount = 0,
+      ViewCount = c.Views,
       GroupName = t.Permission?.Team?.TeamName,
       TeamId = t.Permission?.TeamId,
       IsOriginal = false,
@@ -637,6 +644,7 @@ namespace Application.Services.Creator
         Status = series.Status.ToString(),
         AverageRating = series.AverageRating,
         TotalRatings = series.TotalRatings,
+        TotalViews = series.Chapters.Sum(c => (long)c.Views),
         CreatedAt = series.CreatedAt,
         CreatorId = series.CreatorId,
         CreatorUserId = series.Creator.UserId,
@@ -815,7 +823,7 @@ namespace Application.Services.Creator
                 ChapterNumber = (int)c.ChapterNumber,
                 Price = c.UnlockPriceCoins ?? 0,
                 PublishedAt = c.PublishedAt ?? DateTime.UtcNow,
-                ViewCount = c.ReadingHistories?.Count ?? 0,
+                ViewCount = c.Views,
                 GroupName = c.Team?.TeamName,
                 TeamId = c.TeamId,
                 IsOriginal = c.TeamId == null,
