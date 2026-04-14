@@ -132,7 +132,14 @@ namespace Application.Services.Translation
 
         if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
         {
-            throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+            // Authorized teams (GRANTED permission) bypass the lock — they have rights to translate locked chapters
+            var hasGrantedPermission = await _context.TranslationPermissions
+                .AnyAsync(p => p.SeriesId == chapter.SeriesId
+                            && p.TeamId == resolvedTeamId
+                            && p.Status == TranslationPermissionStatus.GRANTED);
+
+            if (!hasGrantedPermission)
+                throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
         }
 
         isOfficial = false;
