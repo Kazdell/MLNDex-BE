@@ -122,27 +122,6 @@ namespace Application.Services.Translation
             .FirstOrDefaultAsync(c => c.ChapterId == dto.ChapterId)
           ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
 
-        // NOTE: Lock check (COIN_LOCK / TIMED_LOCK)
-        var effectiveLock = chapter.LockStatus;
-        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED 
-            && chapter.UnlockTime.HasValue 
-            && chapter.UnlockTime.Value <= DateTime.UtcNow)
-        {
-            effectiveLock = Domain.Entities.ChapterLockStatus.UNLOCKED;
-        }
-
-        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
-        {
-            // Authorized teams (GRANTED permission) bypass the lock — they have rights to translate locked chapters
-            var hasGrantedPermission = await _context.TranslationPermissions
-                .AnyAsync(p => p.SeriesId == chapter.SeriesId
-                            && p.TeamId == resolvedTeamId
-                            && p.Status == TranslationPermissionStatus.GRANTED);
-
-            if (!hasGrantedPermission)
-                throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
-        }
-
         isOfficial = false;
 
         // ---- AUTO-RESOLVE OR CREATE UNOFFICIAL PERMISSION ----
@@ -155,6 +134,9 @@ namespace Application.Services.Translation
         if (existingPerm != null)
         {
           dto.PermissionId = existingPerm.PermissionId;
+          // If existing permission is GRANTED, this upload is actually official
+          if (existingPerm.Status == TranslationPermissionStatus.GRANTED)
+            isOfficial = true;
         }
         else
         {
@@ -179,21 +161,41 @@ namespace Application.Services.Translation
         }
       }
 
-      // ── VALIDATION: Prevent duplicate translation per team and language ──
+      // ── LOCK CHECK (Applies to both paths if not strictly Official) ──
+      if (!isOfficial)
+      {
+        var effectiveLock = chapter.LockStatus;
+        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED 
+            && chapter.UnlockTime.HasValue 
+            && chapter.UnlockTime.Value <= DateTime.UtcNow)
+        {
+            effectiveLock = Domain.Entities.ChapterLockStatus.UNLOCKED;
+        }
+
+        if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
+        {
+            // Check if the team happens to have a GRANTED permission for this series
+            var hasGrantedPermission = await _context.TranslationPermissions
+                .AnyAsync(p => p.SeriesId == chapter.SeriesId
+                            && p.TeamId == resolvedTeamId
+                            && p.Status == TranslationPermissionStatus.GRANTED);
+
+            if (!hasGrantedPermission)
+                throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+        }
+      }
+
+      // ── VALIDATION: Prevent duplicate translation per language (Global rule) ──
       bool translationExists = await _context.Translations.AnyAsync(t =>
         t.ChapterId == dto.ChapterId
         && t.LanguageId == dto.LanguageId
         && t.ModerationStatus != ModerationStatus.REJECTED
-        && (
-          t.TeamId == resolvedTeamId
-          || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)
-        )
       );
 
       if (translationExists)
       {
         throw new AppException(
-          ErrorCodes.DUPLICATE_TRANSLATION_TEAM
+          ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE
         );
       }
 
@@ -457,16 +459,13 @@ namespace Application.Services.Translation
           t.ChapterId == translation.ChapterId
           && t.LanguageId == dto.LanguageId
           && t.TranslationId != translationId
-          && (
-            t.TeamId == translation.Permission.TeamId
-            || (t.PermissionId != null && t.Permission!.TeamId == translation.Permission.TeamId)
-          )
+          && t.ModerationStatus != ModerationStatus.REJECTED
         );
 
         if (translationExists)
         {
           throw new AppException(
-            ErrorCodes.DUPLICATE_TRANSLATION_TEAM
+            ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE
           );
         }
 
@@ -637,6 +636,7 @@ namespace Application.Services.Translation
                 Views = t.Chapter.Views,
                 PublishedAt = t.PublishedAt,
                 CreatedAt = t.Chapter.CreatedAt,
+                IsOfficial = t.Permission != null && t.Permission.Status == Domain.Entities.TranslationPermissionStatus.GRANTED
             })
             .ToListAsync(ct);
     }

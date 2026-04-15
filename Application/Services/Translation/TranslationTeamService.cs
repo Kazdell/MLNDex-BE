@@ -637,6 +637,7 @@ namespace Application.Services.Translation
         CoverImageUrl = p.Series?.CoverImageUrl,
         Status = (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL) ? "active" :
                    p.Status == TranslationPermissionStatus.PENDING ? "pending" : "dropped",
+        IsOfficial = p.Status == TranslationPermissionStatus.GRANTED,
         TotalChapters = _context.Translations.Count(t => t.PermissionId == p.PermissionId),
         LastUpdate = _context.Translations
               .Where(t => t.PermissionId == p.PermissionId)

@@ -69,6 +69,7 @@ namespace Application.DTOs.Common
     public const string NOT_TEAM_MEMBER = "NOT_TEAM_MEMBER";
     public const string INVITATION_NOT_FOUND = "INVITATION_NOT_FOUND";
     public const string DUPLICATE_TRANSLATION_TEAM = "DUPLICATE_TRANSLATION_TEAM";
+    public const string DUPLICATE_TRANSLATION_LANGUAGE = "DUPLICATE_TRANSLATION_LANGUAGE";
     public const string TRANSLATION_NOT_FOUND = "TRANSLATION_NOT_FOUND";
     public const string CHAPTER_ALREADY_UNLOCKED = "CHAPTER_ALREADY_UNLOCKED";
     public const string CHAPTER_LOCKED = "CHAPTER_LOCKED";

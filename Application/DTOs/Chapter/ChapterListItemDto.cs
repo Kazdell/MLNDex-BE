@@ -12,5 +12,9 @@ namespace Application.DTOs.Chapter
     public int Views { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsOfficial { get; set; }
+    public int? LanguageId { get; set; }
+    public string? LanguageCode { get; set; }
+    public string? LanguageName { get; set; }
   }
 }
