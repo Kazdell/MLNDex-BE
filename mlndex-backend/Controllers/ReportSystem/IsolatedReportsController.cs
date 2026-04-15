@@ -1,5 +1,3 @@
-using Application.DTOs.Common;
-using Application.Exceptions;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -8,7 +6,7 @@ using Application.Interfaces.ReportSystem;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace mlndex_backend.Controllers.ReportSystem
+namespace mlndex_backend.Controllers
 {
   [ApiController]
   [Route("api/[controller]")]
@@ -41,16 +39,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> CreateReport([FromBody] CreatePlagiarismReportRequest request)
     {
       var userId = GetCurrentUserId();
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
       try
       {
         var result = await _reportService.CreateReportAsync(userId, request);
-        return OkResponse(result);
+        return OkResponse(result, "Đã gửi báo cáo thành công.");
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -78,16 +76,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> ResolveReport(int id, [FromBody] ResolvePlagiarismReportRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
       try
       {
         var result = await _reportService.ResolveReportAsync(id, modId, request);
-        return OkResponse(result);
+        return OkResponse(result, "Đã xử lý báo cáo thành công.");
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -101,9 +99,9 @@ namespace mlndex_backend.Controllers.ReportSystem
         var data = await _reportService.GetCompareDataAsync(id, referenceTranslationId);
         return OkResponse(data);
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -117,16 +115,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> RestoreTrustScore([FromBody] RestoreTrustScoreRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
       try
       {
         var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
-        return OkResponse(result);
+        return OkResponse(result, "Đã phục hồi điểm uy tín thành công.");
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -140,16 +138,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> CreateAppeal([FromBody] CreateAppealRequest request)
     {
       var userId = GetCurrentUserId();
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
       try
       {
         var result = await _trustScoreService.CreateAppealAsync(userId, request);
-        return OkResponse(result);
+        return OkResponse(result, "Đã gửi đơn kháng cáo thành công.");
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -168,16 +166,16 @@ namespace mlndex_backend.Controllers.ReportSystem
     public async Task<IActionResult> ReviewAppeal(int id, [FromBody] ReviewAppealRequest request)
     {
       var modId = GetCurrentUserId();
-      if (modId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (modId == 0) return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
       try
       {
         var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
-        return OkResponse(result);
+        return OkResponse(result, "Đã xử lý đơn kháng cáo.");
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
 
@@ -195,9 +193,9 @@ namespace mlndex_backend.Controllers.ReportSystem
         var history = await _trustScoreService.GetUserTranslationHistoryAsync(userId);
         return OkResponse(history);
       }
-      catch (System.Exception)
+      catch (System.Exception ex)
       {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
+        return BadRequestResponse(ex.Message);
       }
     }
   }
