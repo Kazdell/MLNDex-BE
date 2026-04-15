@@ -48,7 +48,7 @@ namespace mlndex_backend.Controllers.Admin
     {
         var moderatorId = GetUserId();
         await _service.RemoveAsync(userId, moderatorId, cancellationToken);
-        return OkResponse<object?>(null, "Moderator removed");
+        return OkResponse<object?>(null, "Đã xóa Quyền Điều Hành Viên");
 
     }
   }
