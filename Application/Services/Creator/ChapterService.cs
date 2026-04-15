@@ -502,6 +502,7 @@ namespace Application.Services.Creator
                     Title = c.Title,
                     Status = c.Status.ToString(),
                     ModerationStatus = c.ModerationStatus.ToString(),
+                    LockStatus = c.LockStatus.ToString(),
                     PageCount = c.PageCount ?? 0,
                     Views = c.Views,
                     PublishedAt = c.PublishedAt,

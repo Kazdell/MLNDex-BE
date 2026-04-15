@@ -133,9 +133,6 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("LanguageId")
-                        .HasColumnType("int");
-
                     b.Property<string>("LockStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -156,9 +153,6 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("TeamId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .HasMaxLength(255)
@@ -183,11 +177,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("ChapterId");
 
-                    b.HasIndex("LanguageId");
-
                     b.HasIndex("SeriesId");
-
-                    b.HasIndex("TeamId");
 
                     b.ToTable("Chapter", (string)null);
                 });
@@ -317,7 +307,7 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<decimal>("PriceCoins")
+                    b.Property<decimal>("PriceVnd")
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("PackageId");
@@ -1222,6 +1212,9 @@ namespace Infrastructure.Migrations
                     b.Property<string>("RelatedEntityType")
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("RelatedSeriesId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1986,27 +1979,13 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Chapter", b =>
                 {
-                    b.HasOne("Domain.Entities.Language", "Language")
-                        .WithMany("Chapters")
-                        .HasForeignKey("LanguageId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Domain.Entities.Series", "Series")
                         .WithMany("Chapters")
                         .HasForeignKey("SeriesId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.TranslationTeam", "Team")
-                        .WithMany("Chapters")
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Language");
-
                     b.Navigation("Series");
-
-                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("Domain.Entities.ChapterPage", b =>
@@ -2687,8 +2666,6 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Language", b =>
                 {
-                    b.Navigation("Chapters");
-
                     b.Navigation("TranslationPermissions");
 
                     b.Navigation("TranslationTeams");
@@ -2746,8 +2723,6 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.TranslationTeam", b =>
                 {
-                    b.Navigation("Chapters");
-
                     b.Navigation("TeamGenres");
 
                     b.Navigation("TeamJoins");
