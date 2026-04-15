@@ -66,6 +66,9 @@ namespace Application.Services.Translation
 
         if (permission == null)
           throw new AppException(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
+          
+        if (permission.Status == TranslationPermissionStatus.REVOKED || permission.Status == TranslationPermissionStatus.DENIED)
+          throw new AppException(ErrorCodes.PERMISSION_REVOKED);
 
         if (permission.LanguageId != dto.LanguageId)
           throw new AppException(ErrorCodes.LANGUAGE_MISMATCH);
@@ -172,6 +175,7 @@ namespace Application.Services.Translation
       bool translationExists = await _context.Translations.AnyAsync(t =>
         t.ChapterId == dto.ChapterId
         && t.LanguageId == dto.LanguageId
+        && t.ModerationStatus != ModerationStatus.REJECTED
         && (
           t.TeamId == resolvedTeamId
           || (t.PermissionId != null && t.Permission!.TeamId == resolvedTeamId)
@@ -567,13 +571,13 @@ namespace Application.Services.Translation
         .Include(t => t.TranslationText)
         .Where(t =>
           t.Chapter.SeriesId == seriesId
-          && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
+          && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId))
         )
         .OrderByDescending(t => t.Chapter.ChapterNumber)
         .Select(t => new Application.DTOs.Chapter.ChapterListItemDto
         {
-          ChapterId = t.ChapterId, // ID gốc của truyện
-          TranslationId = t.TranslationId, // ID bản dịch
+          ChapterId = t.ChapterId,
+          TranslationId = t.TranslationId,
           ChapterNumber = t.Chapter.ChapterNumber,
           Title = t.Chapter.Title,
           Status = t.QualityStatus.ToString(),
@@ -610,7 +614,7 @@ namespace Application.Services.Translation
         .FirstOrDefaultAsync(
           t =>
             t.TranslationId == translationId
-            && (t.Permission!.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
+            && (t.TeamId == teamId || t.TeamJoins.Any(tj => tj.TeamId == teamId)),
           ct
         );
 

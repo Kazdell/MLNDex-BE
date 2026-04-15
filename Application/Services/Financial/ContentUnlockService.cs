@@ -1,12 +1,13 @@
+using Application.DTOs.Chapter;
 using Application.DTOs.Common;
 using Application.DTOs.Translation.Responses;
-using Application.DTOs.Chapter;
 using Application.Exceptions;
 using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -18,11 +19,16 @@ namespace Application.Services.Financial
     {
         private readonly IMlndexDbContext _db;
         private readonly ILogger<ContentUnlockService> _logger;
+        private readonly IMemoryCache _cache;  
 
-        public ContentUnlockService(IMlndexDbContext db, ILogger<ContentUnlockService> logger)
+        public ContentUnlockService(
+            IMlndexDbContext db,
+            ILogger<ContentUnlockService> logger,
+            IMemoryCache cache)  
         {
             _db = db;
             _logger = logger;
+            _cache = cache;  
         }
 
         public async Task<UnlockChapterResponseDto> UnlockChapterAsync(
@@ -31,6 +37,8 @@ namespace Application.Services.Financial
             // ── 1. Load chapter ────────────────────────────────────────────────
             var chapter = await _db.Chapters
                 .Include(c => c.Series)
+                    .ThenInclude(s => s.Creator)
+                        .ThenInclude(cr => cr.User)
                 .FirstOrDefaultAsync(c => c.ChapterId == chapterId, ct)
                 ?? throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
 
@@ -51,7 +59,7 @@ namespace Application.Services.Financial
             if (effectiveLock == ChapterLockStatus.UNLOCKED)
                 throw new AppException(ErrorCodes.CHAPTER_ALREADY_FREE);
 
-            // ── 4. Idempotency (Mua gốc mở gốc+dịch) ─────────────────────────────────────────────────
+            // ── 4. Idempotency ─────────────────────────────────────────────────
             var alreadyUnlocked = await _db.ChapterUnlocks
                 .AnyAsync(u => u.ChapterId == chapterId
                     && u.UserId == userId
@@ -63,206 +71,262 @@ namespace Application.Services.Financial
             if (chapter.UnlockPriceCoins is null or <= 0)
                 throw new AppException(ErrorCodes.CHAPTER_PRICE_NOT_CONFIGURED);
 
-            var price = chapter.UnlockPriceCoins.Value;
+            var price = (decimal)chapter.UnlockPriceCoins.Value;
 
-            // ── 6. Load wallet ─────────────────────────────────────────────────
-            var wallet = await _db.Wallets
+            // ── 6. Load buyer wallet ───────────────────────────────────────────
+            var buyerWallet = await _db.Wallets
                 .FirstOrDefaultAsync(w => w.UserId == userId, ct)
                 ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
-            if (wallet.CoinBalance < price)
+            if (buyerWallet.CoinBalance < price)
                 throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
 
-            // ── 7. Deduct coins ────────────────────────────────────────────────
-            wallet.CoinBalance -= price;
-            wallet.TotalSpent += price;
+            // ── 7. Load tác giả wallet ─────────────────────────────────────────
+            var authorUserId = chapter.Series.Creator.UserId;
+            var authorWallet = await _db.Wallets
+                .FirstOrDefaultAsync(w => w.UserId == authorUserId, ct)
+                ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
-            // ── 8. Create transaction record ───────────────────────────────────
-            var coinTransaction = new Transaction
+            // ── 8. Trừ coin buyer ──────────────────────────────────────────────
+            buyerWallet.CoinBalance -= price;
+            buyerWallet.TotalSpent += price;
+
+            // ── 9. Cộng 100% cho tác giả ──────────────────────────────────────
+            authorWallet.CoinBalance += price;
+            authorWallet.TotalEarned += price;
+            chapter.Series.Creator.TotalRevenue += price;
+
+            // ── 10. Transaction: buyer trừ coin ───────────────────────────────
+            var buyerTx = new Transaction
             {
                 UserId = userId,
-                WalletId = wallet.WalletId,
+                WalletId = buyerWallet.WalletId,
                 Type = TransactionType.CHAPTER_UNLOCK,
                 AmountCoins = price,
                 Status = TransactionStatus.COMPLETED,
                 Note = $"Mở khóa chapter {chapterId} — series {chapter.SeriesId}",
                 CreatedAt = now,
             };
-            _db.Transactions.Add(coinTransaction);
+            _db.Transactions.Add(buyerTx);
 
-            // ── 9. Add ChapterUnlock ────────
-            var unlockRecord = new ChapterUnlock
+            // ── 11. Transaction: tác giả nhận coin ────────────────────────────
+            var authorTx = new Transaction
+            {
+                UserId = authorUserId,
+                WalletId = authorWallet.WalletId,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
+                AmountCoins = price,
+                Status = TransactionStatus.COMPLETED,
+                Note = $"Hoa hồng 100% từ mở khóa chapter {chapterId} — series {chapter.SeriesId}",
+                CreatedAt = now,
+            };
+            _db.Transactions.Add(authorTx);
+
+            // ── 12. ChapterUnlock record ───────────────────────────────────────
+            _db.ChapterUnlocks.Add(new ChapterUnlock
             {
                 ChapterId = chapterId,
                 UserId = userId,
-                Transaction = coinTransaction,
-                CoinsPaid = (decimal)price,
+                Transaction = buyerTx,
+                CoinsPaid = price,
                 UnlockSource = UnlockSource.COIN
-            };
-            _db.ChapterUnlocks.Add(unlockRecord);
+            });
 
-            // ── 10. Save changes ────────────────────────────
             await _db.SaveChangesAsync(ct);
 
             _logger.LogInformation(
-                "[ChapterUnlock] UserId={UserId} unlocked ChapterId={ChapterId} for {Price} coins. New balance: {Balance}",
-                userId, chapterId, price, wallet.CoinBalance);
+                "[ChapterUnlock] UserId={UserId} unlocked ChapterId={ChapterId} for {Price} coins. " +
+                "AuthorUserId={AuthorUserId} received {Price} coins.",
+                userId, chapterId, price, authorUserId, price);
+
+            _cache.Remove($"SeriesDetails_{chapter.SeriesId}_User_{userId}");
+            _cache.Remove($"SeriesDetails_{chapter.SeriesId}_User_0");
 
             return new UnlockChapterResponseDto
             {
                 ChapterId = chapterId,
                 CoinsSpent = price,
-                NewCoinBalance = wallet.CoinBalance,
+                NewCoinBalance = buyerWallet.CoinBalance,
                 Message = $"Mở khóa thành công! Đã trừ {price} coin.",
             };
         }
 
-    public async Task<UnlockTranslationResponseDto> UnlockTranslationAsync(
-      int userId,
-      int translationId,
-      CancellationToken ct = default
-    )
-    {
-      // ── 1. Load translation + chapter + team ─────────────────────────────
-      var translation =
-        await _db
-          .Translations.Include(t => t.Chapter)
-            .ThenInclude(c => c.Series)
-          .Include(t => t.Permission)
-            .ThenInclude(p => p!.Team)
-          .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
-        ?? throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
-
-      var chapter =
-        translation.Chapter
-        ?? throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 2. Chapter phải được published ───────────────────────────────────
-      if (chapter.Status != ChapterStatus.PUBLISHED)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 3. Translation chỉ có giá khi chapter gốc đang bị lock ──────────
-      var now = DateTime.UtcNow;
-      var effectiveChapterLock = chapter.LockStatus;
-      if (
-        effectiveChapterLock == ChapterLockStatus.LOCKED
-        && chapter.UnlockTime.HasValue
-        && now >= chapter.UnlockTime.Value
-      )
-      {
-        effectiveChapterLock = ChapterLockStatus.UNLOCKED;
-      }
-
-      if (effectiveChapterLock == ChapterLockStatus.UNLOCKED)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 4. User đã unlock chapter gốc rồi → đọc được tất cả translation ─
-      var hasChapterUnlock = await _db.ChapterUnlocks.AnyAsync(
-        u => u.ChapterId == chapter.ChapterId && u.UserId == userId && u.TranslationId == null, // null = đã mua chapter gốc
-        ct
-      );
-
-      if (hasChapterUnlock)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 5. Idempotency: đã mua translation này chưa? ─────────────────────
-      var alreadyUnlocked = await _db.ChapterUnlocks.AnyAsync(
-        u =>
-          u.ChapterId == chapter.ChapterId
-          && u.UserId == userId
-          && u.TranslationId == translationId,
-        ct
-      );
-
-      if (alreadyUnlocked)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 6. Team phải bật monetization & có giá ───────────────────────────
-      var team = translation.Permission?.Team;
-
-      if (team == null || !team.IsMonetizationEnabled)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      var rawPrice =
-        team.DefaultUnlockPriceCoins
-        ?? chapter.UnlockPriceCoins
-        ?? throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      if (rawPrice <= 0)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      var price = (decimal)rawPrice;
-
-      // ── 7. Kiểm tra ví ───────────────────────────────────────────────────
-      var wallet =
-        await _db.Wallets.FirstOrDefaultAsync(w => w.UserId == userId, ct)
-        ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
-
-      if (wallet.CoinBalance < price)
-        throw new AppException(
-          ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // ── 8. Trừ coin ──────────────────────────────────────────────────────
-      wallet.CoinBalance -= price;
-      wallet.TotalSpent += price;
-
-      // ── 9. Transaction record ─────────────────────────────────────────────
-      var coinTransaction = new Transaction
-      {
-        UserId = userId,
-        WalletId = wallet.WalletId,
-        Type = TransactionType.CHAPTER_UNLOCK,
-        AmountCoins = price,
-        Status = TransactionStatus.COMPLETED,
-        Note =
-          $"Mở khóa bản dịch {translationId} — Ch.{chapter.ChapterNumber} — nhóm {team.TeamName}",
-        CreatedAt = now,
-      };
-      _db.Transactions.Add(coinTransaction);
-
-      // ── 10. ChapterUnlock với TranslationId để phân biệt loại unlock ─────
-      _db.ChapterUnlocks.Add(
-        new ChapterUnlock
+        public async Task<UnlockTranslationResponseDto> UnlockTranslationAsync(
+            int userId, int translationId, CancellationToken ct = default)
         {
-          ChapterId = chapter.ChapterId,
-          UserId = userId,
-          TranslationId = translationId, // khác null → unlock bản dịch cụ thể
-          Transaction = coinTransaction, // EF tự map TransactionId
-          CoinsPaid = (decimal)price,
-          UnlockSource = UnlockSource.COIN,
+            // ── 1. Load translation + chapter + team + tác giả ────────────────
+            var translation = await _db.Translations
+                .Include(t => t.Chapter)
+                    .ThenInclude(c => c.Series)
+                        .ThenInclude(s => s.Creator)
+                            .ThenInclude(cr => cr.User)
+                .Include(t => t.Permission)
+                    .ThenInclude(p => p!.Team)
+                        .ThenInclude(team => team.Leader)
+                .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct)
+                ?? throw new AppException(ErrorCodes.TRANSLATION_NOT_FOUND);
+
+            var chapter = translation.Chapter
+                ?? throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            // ── 2. Chapter phải published ──────────────────────────────────────
+            if (chapter.Status != ChapterStatus.PUBLISHED)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            // ── 3. Chapter gốc phải đang locked ───────────────────────────────
+            var now = DateTime.UtcNow;
+            var effectiveChapterLock = chapter.LockStatus;
+            if (effectiveChapterLock == ChapterLockStatus.LOCKED
+                && chapter.UnlockTime.HasValue
+                && now >= chapter.UnlockTime.Value)
+            {
+                effectiveChapterLock = ChapterLockStatus.UNLOCKED;
+            }
+
+            if (effectiveChapterLock == ChapterLockStatus.UNLOCKED)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            // ── 4. Đã mua chapter gốc rồi thì không cần mua dịch ──────────────
+            var hasChapterUnlock = await _db.ChapterUnlocks
+                .AnyAsync(u => u.ChapterId == chapter.ChapterId
+                    && u.UserId == userId
+                    && u.TranslationId == null, ct);
+            if (hasChapterUnlock)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            // ── 5. Idempotency ─────────────────────────────────────────────────
+            var alreadyUnlocked = await _db.ChapterUnlocks
+                .AnyAsync(u => u.ChapterId == chapter.ChapterId
+                    && u.UserId == userId
+                    && u.TranslationId == translationId, ct);
+            if (alreadyUnlocked)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            // ── 6. Team phải bật monetization & có giá ────────────────────────
+            var team = translation.Permission?.Team;
+            if (team == null || !team.IsMonetizationEnabled)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            var teamId = team.TeamId;
+
+            var rawPrice = team.DefaultUnlockPriceCoins
+                ?? chapter.UnlockPriceCoins
+                ?? throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            if (rawPrice <= 0)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            var price = (decimal)rawPrice;
+
+            // ── 7. Load SystemConfig để lấy tỉ lệ hoa hồng ───────────────────
+            var config = await _db.SystemConfigs.FirstOrDefaultAsync(ct);
+            var authorCommissionPct = config?.TranslationAuthorCommissionPercent ?? 70m;
+            var teamCommissionPct = 100m - authorCommissionPct;
+
+            var authorShare = Math.Round(price * authorCommissionPct / 100m, 2);
+            var teamShare = price - authorShare; // tránh rounding drift
+
+            // ── 8. Load các wallet liên quan ──────────────────────────────────
+            var buyerWallet = await _db.Wallets
+                .FirstOrDefaultAsync(w => w.UserId == userId, ct)
+                ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
+
+            if (buyerWallet.CoinBalance < price)
+                throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+            var authorUserId = chapter.Series.Creator.UserId;
+            var authorWallet = await _db.Wallets
+                .FirstOrDefaultAsync(w => w.UserId == authorUserId, ct)
+                ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
+
+            var teamLeaderUserId = team.LeaderId;
+            var teamLeaderWallet = await _db.Wallets
+                .FirstOrDefaultAsync(w => w.UserId == teamLeaderUserId, ct)
+                ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
+
+            // ── 9. Trừ coin buyer ──────────────────────────────────────────────
+            buyerWallet.CoinBalance -= price;
+            buyerWallet.TotalSpent += price;
+
+            // ── 10. Cộng hoa hồng cho tác giả ────────────────────────────────
+            authorWallet.CoinBalance += authorShare;
+            authorWallet.TotalEarned += authorShare;
+            chapter.Series.Creator.TotalRevenue += authorShare;
+
+            // ── 11. Cộng phần còn lại cho team leader ─────────────────────────
+            teamLeaderWallet.CoinBalance += teamShare;
+            teamLeaderWallet.TotalEarned += teamShare;
+
+            // ── 12. Transactions ───────────────────────────────────────────────
+            var buyerTx = new Transaction
+            {
+                UserId = userId,
+                WalletId = buyerWallet.WalletId,
+                Type = TransactionType.CHAPTER_UNLOCK,
+                AmountCoins = price,
+                Status = TransactionStatus.COMPLETED,
+                Note = $"Mở khóa bản dịch {translationId} — Ch.{chapter.ChapterNumber} — nhóm {team.TeamName}",
+                CreatedAt = now,
+            };
+            _db.Transactions.Add(buyerTx);
+
+            _db.Transactions.Add(new Transaction
+            {
+                UserId = authorUserId,
+                WalletId = authorWallet.WalletId,
+                Type = TransactionType.AUTHOR_ROYALTY,
+                RelatedSeriesId = chapter.SeriesId,
+                AmountCoins = authorShare,
+                Status = TransactionStatus.COMPLETED,
+                Note = $"Hoa hồng {authorCommissionPct}% từ bản dịch {translationId} — Ch.{chapter.ChapterNumber}",
+                CreatedAt = now,
+            });
+
+            _db.Transactions.Add(new Transaction
+            {
+                UserId = teamLeaderUserId,
+                WalletId = teamLeaderWallet.WalletId,
+                Type = TransactionType.TEAM_ROYALTY,
+                AmountCoins = teamShare,
+                Status = TransactionStatus.COMPLETED,
+                RelatedEntityId = teamId,
+                RelatedEntityType = "TEAM",
+                RelatedSeriesId = chapter.SeriesId,
+                Note = $"Hoa hồng {teamCommissionPct}% từ bản dịch {translationId}...",
+                CreatedAt = now,
+            });
+
+            // ── 13. ChapterUnlock record ───────────────────────────────────────
+            _db.ChapterUnlocks.Add(new ChapterUnlock
+            {
+                ChapterId = chapter.ChapterId,
+                UserId = userId,
+                TranslationId = translationId,
+                Transaction = buyerTx,
+                CoinsPaid = price,
+                UnlockSource = UnlockSource.COIN,
+            });
+
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "[TranslationUnlock] UserId={UserId} unlocked TranslationId={TranslationId} ChapterId={ChapterId} " +
+                "for {Price} coins. Author={AuthorUserId} +{AuthorShare}, TeamLeader={TeamLeaderId} +{TeamShare}.",
+                userId, translationId, chapter.ChapterId, price,
+                authorUserId, authorShare, teamLeaderUserId, teamShare);
+
+            _cache.Remove($"SeriesDetails_{chapter.SeriesId}_User_{userId}");
+            _cache.Remove($"SeriesDetails_{chapter.SeriesId}_User_0");
+
+            return new UnlockTranslationResponseDto
+            {
+                TranslationId = translationId,
+                ChapterId = chapter.ChapterId,
+                CoinsSpent = price,
+                NewCoinBalance = buyerWallet.CoinBalance,
+                Message = $"Mở khóa bản dịch thành công! Đã trừ {price} coin.",
+            };
         }
-      );
-
-      // ── 11. Một lần SaveChanges duy nhất ──────────────────────────────────
-      await _db.SaveChangesAsync(ct);
-
-      _logger.LogInformation(
-        "[TranslationUnlock] UserId={UserId} unlocked TranslationId={TranslationId} "
-          + "ChapterId={ChapterId} Team={TeamName} for {Price} coins. Balance={Balance}",
-        userId,
-        translationId,
-        chapter.ChapterId,
-        team.TeamName,
-        price,
-        wallet.CoinBalance
-      );
-
-      return new UnlockTranslationResponseDto
-      {
-        TranslationId = translationId,
-        ChapterId = chapter.ChapterId,
-        CoinsSpent = price,
-        NewCoinBalance = wallet.CoinBalance,
-        Message = $"Mở khóa bản dịch thành công! Đã trừ {price} coin.",
-      };
     }
-        }
-    }
+}

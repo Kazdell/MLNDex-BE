@@ -11,6 +11,7 @@ namespace Application.Interfaces.Translation
     Task<TranslationPermissionResponse> ReviewPermissionAsync(int permissionId, ReviewPermissionRequest dto);
     Task<IEnumerable<TranslationPermissionResponse>> GetTeamPermissionsAsync(int teamId);
     Task<IEnumerable<TranslationPermissionResponse>> GetCreatorPermissionsAsync(int userId);
+    Task<TranslationPermissionResponse> RevokePermissionAsync(int permissionId);
     Task<int> AutoDenyExpiredRequestsAsync(int expireHours = 72);
   }
 }

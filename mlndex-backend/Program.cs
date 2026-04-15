@@ -15,6 +15,7 @@ using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
 using Application.Interfaces.OCR;
 using Application.Interfaces.Payment;
+using Application.Interfaces.Revenue;
 using Application.Interfaces.Services;
 using Application.Interfaces.System;
 using Application.Interfaces.Translation;
@@ -29,6 +30,7 @@ using Application.Services.Creator;
 using Application.Services.Financial;
 using Application.Services.Moderation;
 using Application.Services.Payment;
+using Application.Services.Revenue;
 using Application.Services.System;
 using Application.Services.Translation;
 using Application.Services.User;
@@ -246,6 +248,7 @@ namespace mlndex_backend
             builder.Services.AddScoped<IContentUnlockService, ContentUnlockService>();
             builder.Services.AddScoped<IVipService, VipService>();
             builder.Services.AddScoped<VipExpirationJob>();
+            builder.Services.AddScoped<IRevenueService, RevenueService>();
 
             // System Services — SystemConfigService now uses DbContext
             builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();

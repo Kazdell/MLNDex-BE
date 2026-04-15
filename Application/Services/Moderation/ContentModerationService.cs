@@ -7,230 +7,274 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.Moderation
 {
-  public class ContentModerationService : IContentModerationService
-  {
-    private readonly IMlndexDbContext _context;
-    private readonly INotificationService _notificationService;
-
-    public ContentModerationService(IMlndexDbContext context, INotificationService notificationService)
+    public class ContentModerationService : IContentModerationService
     {
-      _context = context;
-      _notificationService = notificationService;
-    }
+        private readonly IMlndexDbContext _context;
+        private readonly INotificationService _notificationService;
 
-    public async Task<ModerationQueueDto> DecideAsync(
-        int queueId,
-        int moderatorId,
-        ContentModerationDecisionRequest request,
-        CancellationToken cancellationToken = default
-    )
-    {
-      try
-      {
-        var queue =
-            await _context.ModerationQueues.FirstOrDefaultAsync(
-                q => q.QueueId == queueId,
-                cancellationToken
-            ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
-
-        if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
-          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
-
-        var targetStatus = request.Action switch
+        public ContentModerationService(
+            IMlndexDbContext context,
+            INotificationService notificationService
+        )
         {
-          ContentDecisionAction.APPROVE => ModerationStatus.APPROVED,
-          ContentDecisionAction.REJECT => ModerationStatus.REJECTED,
-          ContentDecisionAction.BAN => ModerationStatus.BANNED,
-          _ => ModerationStatus.PENDING,
-        };
-
-        await UpdateContentStatusAsync(queue, targetStatus, cancellationToken);
-
-        queue.Status = QueueStatus.RESOLVED;
-        queue.AssignedTo = moderatorId;
-        queue.AssignedAt = DateTime.UtcNow;
-
-        var actionType = request.Action switch
-        {
-          ContentDecisionAction.APPROVE => ModerationActionType.AutoPass,
-          ContentDecisionAction.REJECT => ModerationActionType.AutoReject,
-          ContentDecisionAction.BAN => ModerationActionType.InstantBan,
-          _ => ModerationActionType.FlagForReview,
-        };
-
-        _context.ModerationActions.Add(
-            new ModerationAction
-            {
-              QueueId = queue.QueueId,
-              ModeratorId = moderatorId,
-              Action = actionType,
-              Reason = request.Reason ?? string.Empty,
-              ActedAt = DateTime.UtcNow,
-            }
-        );
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Send notification to content owner
-        await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
-
-        return new ModerationQueueDto
-        {
-          QueueId = queue.QueueId,
-          ContentId = queue.ContentId,
-          ContentType = queue.ContentType,
-          Priority = queue.Priority,
-          Status = queue.Status,
-          ReportCount = queue.ReportCount,
-          FlaggedAt = queue.FlaggedAt,
-          AppealReason = queue.AppealReason
-        };
-      }
-      catch (Exception ex)
-      {
-        Console.WriteLine($"[MODERATION ERROR] DecideAsync failed for Queue {queueId}: {ex.Message}");
-        Console.WriteLine(ex.StackTrace);
-        if (ex.InnerException != null)
-        {
-            Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+            _context = context;
+            _notificationService = notificationService;
         }
-        throw;
-      }
-    }
 
-    private async Task UpdateContentStatusAsync(
-        ModerationQueue queue,
-        ModerationStatus status,
-        CancellationToken cancellationToken
-    )
-    {
-      switch (queue.ContentType)
-      {
-        case ModerationQueueContentType.SERIES:
-          var series =
-              await _context.Series.FirstOrDefaultAsync(
-                  s => s.SeriesId == queue.ContentId,
-                  cancellationToken
-              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND);
-          series.ModerationStatus = status;
-          break;
-        case ModerationQueueContentType.CHAPTER:
-          var chapter =
-              await _context.Chapters.FirstOrDefaultAsync(
-                  c => c.ChapterId == queue.ContentId,
-                  cancellationToken
-              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND);
-          chapter.ModerationStatus = status;
-          // Auto-publish when approved, keep DRAFT otherwise
-          if (status == ModerationStatus.APPROVED)
-          {
-            chapter.Status = ChapterStatus.PUBLISHED;
-            chapter.PublishedAt = DateTime.UtcNow;
-          }
-          else
-          {
-            chapter.Status = ChapterStatus.DRAFT;
-          }
-          break;
-        case ModerationQueueContentType.TRANSLATION:
-          var translation =
-              await _context.Translations.FirstOrDefaultAsync(
-                  t => t.TranslationId == queue.ContentId,
-                  cancellationToken
-              ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
-          translation.ModerationStatus = status;
-          break;
-        default:
-          throw new ArgumentOutOfRangeException();
-      }
-    }
-
-    private async Task SendModerationNotificationAsync(ModerationQueue queue, ModerationStatus status, string? reason, CancellationToken cancellationToken)
-    {
-      int? ownerUserId = null;
-      string contentTitle = "";
-      string actionUrl = "";
-
-      switch (queue.ContentType)
-      {
-        case ModerationQueueContentType.SERIES:
-          var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
-          if (series != null && series.Creator != null)
-          {
-            ownerUserId = series.Creator.UserId;
-            contentTitle = series.Title;
-            actionUrl = $"/series/{series.SeriesId}";
-          }
-          break;
-        case ModerationQueueContentType.CHAPTER:
-          var chapter = await _context.Chapters
-              .Include(c => c.Series)
-              .ThenInclude(s => s.Creator)
-              .Include(c => c.Team)
-              .FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
-          
-          if (chapter != null)
-          {
-            if (chapter.TeamId != null)
-            {
-                var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == chapter.TeamId, cancellationToken);
-                ownerUserId = team?.LeaderId;
-            }
-            else if (chapter.Series?.Creator != null)
-            {
-                ownerUserId = chapter.Series.Creator.UserId;
-            }
-            
-            contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series?.Title ?? "Nội dung đã xóa"}";
-            actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
-          }
-          break;
-        case ModerationQueueContentType.TRANSLATION:
-          var translation = await _context.Translations
-              .Include(t => t.Chapter)
-              .ThenInclude(c => c.Series)
-              .Include(t => t.Permission)
-              .ThenInclude(p => p!.Team)
-              .FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
-              
-          if (translation != null)
-          {
-            ownerUserId = translation.Permission?.Team?.LeaderId;
-            contentTitle = $"Bản dịch của {translation.Chapter?.Series?.Title ?? "Nội dung đã xóa"}";
-            actionUrl = $"/series/{translation.Chapter?.SeriesId}/chapters/{translation.ChapterId}";
-          }
-          break;
-      }
-
-      if (ownerUserId.HasValue)
-      {
-        var type = status switch
+        public async Task<ModerationQueueDto> DecideAsync(
+            int queueId,
+            int moderatorId,
+            ContentModerationDecisionRequest request,
+            CancellationToken cancellationToken = default
+        )
         {
-          ModerationStatus.APPROVED => NotificationType.CONTENT_APPROVED,
-          ModerationStatus.REJECTED => NotificationType.CONTENT_REJECTED,
-          ModerationStatus.BANNED => NotificationType.CONTENT_BANNED,
-          _ => NotificationType.SYSTEM
-        };
+            try
+            {
+                var queue =
+                    await _context.ModerationQueues.FirstOrDefaultAsync(
+                        q => q.QueueId == queueId,
+                        cancellationToken
+                    )
+                    ?? throw new Application.Exceptions.AppException(
+                        Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND
+                    );
 
-        var statusText = status switch
+                if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
+                    throw new Application.Exceptions.AppException(
+                        Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED
+                    );
+
+                var targetStatus = request.Action switch
+                {
+                    ContentDecisionAction.APPROVE => ModerationStatus.APPROVED,
+                    ContentDecisionAction.REJECT => ModerationStatus.REJECTED,
+                    ContentDecisionAction.BAN => ModerationStatus.BANNED,
+                    _ => ModerationStatus.PENDING,
+                };
+
+                await UpdateContentStatusAsync(queue, targetStatus, cancellationToken);
+
+                queue.Status = QueueStatus.RESOLVED;
+                queue.AssignedTo = moderatorId;
+                queue.AssignedAt = DateTime.UtcNow;
+
+                var actionType = request.Action switch
+                {
+                    ContentDecisionAction.APPROVE => ModerationActionType.AutoPass,
+                    ContentDecisionAction.REJECT => ModerationActionType.AutoReject,
+                    ContentDecisionAction.BAN => ModerationActionType.InstantBan,
+                    _ => ModerationActionType.FlagForReview,
+                };
+
+                _context.ModerationActions.Add(
+                    new ModerationAction
+                    {
+                        QueueId = queue.QueueId,
+                        ModeratorId = moderatorId,
+                        Action = actionType,
+                        Reason = request.Reason ?? string.Empty,
+                        ActedAt = DateTime.UtcNow,
+                    }
+                );
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                // Send notification to content owner
+                await SendModerationNotificationAsync(
+                    queue,
+                    targetStatus,
+                    request.Reason,
+                    cancellationToken
+                );
+
+                return new ModerationQueueDto
+                {
+                    QueueId = queue.QueueId,
+                    ContentId = queue.ContentId,
+                    ContentType = queue.ContentType,
+                    Priority = queue.Priority,
+                    Status = queue.Status,
+                    ReportCount = queue.ReportCount,
+                    FlaggedAt = queue.FlaggedAt,
+                    AppealReason = queue.AppealReason,
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"[MODERATION ERROR] DecideAsync failed for Queue {queueId}: {ex.Message}"
+                );
+                Console.WriteLine(ex.StackTrace);
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
+
+        private async Task UpdateContentStatusAsync(
+            ModerationQueue queue,
+            ModerationStatus status,
+            CancellationToken cancellationToken
+        )
         {
-          ModerationStatus.APPROVED => "được duyệt",
-          ModerationStatus.REJECTED => "bị từ chối",
-          ModerationStatus.BANNED => "bị khóa",
-          _ => "xử lý"
-        };
+            switch (queue.ContentType)
+            {
+                case ModerationQueueContentType.SERIES:
+                    var series =
+                        await _context.Series.FirstOrDefaultAsync(
+                            s => s.SeriesId == queue.ContentId,
+                            cancellationToken
+                        )
+                        ?? throw new Application.Exceptions.AppException(
+                            Application.DTOs.Common.ErrorCodes.SERIES_NOT_FOUND
+                        );
+                    series.ModerationStatus = status;
+                    break;
+                case ModerationQueueContentType.CHAPTER:
+                    var chapter =
+                        await _context.Chapters.FirstOrDefaultAsync(
+                            c => c.ChapterId == queue.ContentId,
+                            cancellationToken
+                        )
+                        ?? throw new Application.Exceptions.AppException(
+                            Application.DTOs.Common.ErrorCodes.CHAPTER_NOT_FOUND
+                        );
+                    chapter.ModerationStatus = status;
+                    // Auto-publish when approved, keep DRAFT otherwise
+                    if (status == ModerationStatus.APPROVED)
+                    {
+                        chapter.Status = ChapterStatus.PUBLISHED;
+                        chapter.PublishedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        chapter.Status = ChapterStatus.DRAFT;
+                    }
+                    break;
+                case ModerationQueueContentType.TRANSLATION:
+                    var translation =
+                        await _context.Translations.FirstOrDefaultAsync(
+                            t => t.TranslationId == queue.ContentId,
+                            cancellationToken
+                        )
+                        ?? throw new Application.Exceptions.AppException(
+                            Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND
+                        );
+                    translation.ModerationStatus = status;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
 
-        var message = $"Nội dung '{contentTitle}' đã {statusText}.";
-        if (!string.IsNullOrEmpty(reason)) message += $" Lý do: {reason}";
+        private async Task SendModerationNotificationAsync(
+            ModerationQueue queue,
+            ModerationStatus status,
+            string? reason,
+            CancellationToken cancellationToken
+        )
+        {
+            int? ownerUserId = null;
+            string contentTitle = "";
+            string actionUrl = "";
 
-        await _notificationService.CreateNotificationAsync(
-            ownerUserId.Value,
-            "Kiểm duyệt nội dung",
-            message,
-            actionUrl,
-            type
-        );
-      }
+            switch (queue.ContentType)
+            {
+                case ModerationQueueContentType.SERIES:
+                    var series = await _context
+                        .Series.Include(s => s.Creator)
+                        .FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+                    if (series != null && series.Creator != null)
+                    {
+                        ownerUserId = series.CreatorId;
+                        contentTitle = series.Title;
+                        actionUrl = $"/series/{series.SeriesId}";
+                    }
+                    break;
+                case ModerationQueueContentType.CHAPTER:
+                    var chapter = await _context
+                        .Chapters.Include(c => c.Series)
+                            .ThenInclude(s => s.Creator)
+                        .Include(c => c.Team)
+                        .FirstOrDefaultAsync(
+                            c => c.ChapterId == queue.ContentId,
+                            cancellationToken
+                        );
+
+                    if (chapter != null)
+                    {
+                        if (chapter.TeamId != null)
+                        {
+                            var team = await _context.TranslationTeams.FirstOrDefaultAsync(
+                                t => t.TeamId == chapter.TeamId,
+                                cancellationToken
+                            );
+                            ownerUserId = team?.LeaderId;
+                        }
+                        else if (chapter.Series?.Creator != null)
+                        {
+                            ownerUserId = chapter.Series.Creator.UserId;
+                        }
+
+                        contentTitle =
+                            $"Chapter {chapter.ChapterNumber} của {chapter.Series?.Title ?? "Nội dung đã xóa"}";
+                        actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
+                    }
+                    break;
+                case ModerationQueueContentType.TRANSLATION:
+                    var translation = await _context
+                        .Translations.Include(t => t.Chapter)
+                            .ThenInclude(c => c.Series)
+                        .Include(t => t.Permission)
+                            .ThenInclude(p => p!.Team)
+                        .FirstOrDefaultAsync(
+                            t => t.TranslationId == queue.ContentId,
+                            cancellationToken
+                        );
+
+                    if (translation != null)
+                    {
+                        ownerUserId = translation.Permission?.Team?.LeaderId;
+                        contentTitle =
+                            $"Bản dịch của {translation.Chapter?.Series?.Title ?? "Nội dung đã xóa"}";
+                        actionUrl =
+                            $"/series/{translation.Chapter?.SeriesId}/chapters/{translation.ChapterId}";
+                    }
+                    break;
+            }
+
+            if (ownerUserId.HasValue)
+            {
+                var type = status switch
+                {
+                    ModerationStatus.APPROVED => NotificationType.CONTENT_APPROVED,
+                    ModerationStatus.REJECTED => NotificationType.CONTENT_REJECTED,
+                    ModerationStatus.BANNED => NotificationType.CONTENT_BANNED,
+                    _ => NotificationType.SYSTEM,
+                };
+
+                var statusText = status switch
+                {
+                    ModerationStatus.APPROVED => "được duyệt",
+                    ModerationStatus.REJECTED => "bị từ chối",
+                    ModerationStatus.BANNED => "bị khóa",
+                    _ => "xử lý",
+                };
+
+                var message = $"Nội dung '{contentTitle}' đã {statusText}.";
+                if (!string.IsNullOrEmpty(reason))
+                    message += $" Lý do: {reason}";
+
+                await _notificationService.CreateNotificationAsync(
+                    ownerUserId.Value,
+                    "Kiểm duyệt nội dung",
+                    message,
+                    actionUrl,
+                    type
+                );
+            }
+        }
     }
-  }
 }

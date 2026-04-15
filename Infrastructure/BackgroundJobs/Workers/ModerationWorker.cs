@@ -419,14 +419,13 @@ public class ModerationWorker : BackgroundService
       var translation = await db.Translations
           .Include(t => t.Chapter)
               .ThenInclude(c => c.Series)
-          .Include(t => t.Permission)
-              .ThenInclude(p => p.Team)
-                  .ThenInclude(team => team.TeamMembers)
+          .Include(t => t.Team)
+              .ThenInclude(team => team!.TeamMembers)
           .FirstOrDefaultAsync(t => t.TranslationId == translationId, ct);
 
-      if (translation?.Chapter?.Series != null && translation.Permission?.Team != null)
+      if (translation?.Chapter?.Series != null && translation.Team != null)
       {
-        var owners = translation!.Permission!.Team!.TeamMembers
+        var owners = translation!.Team!.TeamMembers
             .Where(m => m.Role == Domain.Entities.TeamMemberRole.LEADER && m.IsActive)
             .ToList();
 

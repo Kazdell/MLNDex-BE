@@ -42,6 +42,7 @@ namespace Application.Services.User
       var history = await _db.ReadingHistories
           .FirstOrDefaultAsync(h => h.UserId == userId && h.SeriesId == dto.SeriesId, cancellationToken);
 
+      bool incrementView = false;
       if (history == null)
       {
         history = new ReadingHistory
@@ -53,12 +54,26 @@ namespace Application.Services.User
           LastReadAt = DateTime.UtcNow
         };
         _db.ReadingHistories.Add(history);
+        incrementView = true;
       }
       else
       {
+        if (history.LastChapterId != resolvedChapterId)
+        {
+          incrementView = true;
+        }
         history.LastChapterId = resolvedChapterId;
         history.LastPageNumber = dto.PageNumber;
         history.LastReadAt = DateTime.UtcNow;
+      }
+
+      if (incrementView)
+      {
+        var chapterToUpdate = await _db.Chapters.FirstOrDefaultAsync(c => c.ChapterId == resolvedChapterId, cancellationToken);
+        if (chapterToUpdate != null)
+        {
+          chapterToUpdate.Views++;
+        }
       }
 
       await _db.SaveChangesAsync(cancellationToken);

@@ -193,6 +193,7 @@ namespace Application.Services.Translation
           {
             UserId = m.UserId,
             Username = m.User!.Username,
+            Email = m.User.Email,
             DisplayName = m.User!.DisplayName ?? m.User.Username,
             Role = m.Role.ToString(),
             JoinedAt = m.JoinedAt
@@ -649,7 +650,7 @@ namespace Application.Services.Translation
     public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
     {
       var translatedChaptersCount = await _context.Translations
-          .CountAsync(t => t.Permission!.TeamId == teamId);
+          .CountAsync(t => t.TeamId == teamId);
 
       var activeSeriesCount = await _context.TranslationPermissions
           .CountAsync(p => p.TeamId == teamId && (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL));

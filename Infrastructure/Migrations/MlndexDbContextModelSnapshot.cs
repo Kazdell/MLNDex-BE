@@ -317,7 +317,7 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<decimal>("PriceCoins")
+                    b.Property<decimal>("PriceVnd")
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("PackageId");
@@ -1221,6 +1221,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("RelatedEntityType")
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("RelatedSeriesId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()

@@ -61,6 +61,7 @@ namespace Application.DTOs.Creator
     public string Title { get; set; } = null!;
     public string? Description { get; set; }
     public string? CoverImageUrl { get; set; }
+    public long TotalViews { get; set; }
     public string SeriesFormat { get; set; } = null!;
     public string AgeRating { get; set; } = null!;
     public string Status { get; set; } = null!;
