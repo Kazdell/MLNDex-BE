@@ -125,40 +125,6 @@ namespace mlndex_backend.Controllers.Translation
             return OkResponse("Invitation rejected.");
         }
 
-        [Authorize]
-        [HttpPost("{id}/join-requests")]
-        public async Task<IActionResult> RequestToJoin(int id, [FromBody] JoinTeamRequest dto)
-        {
-            var requestId = await _service.RequestToJoinAsync(id, dto);
-            return OkResponse(new { requestId });
-        }
-
-        [Authorize]
-        [HttpGet("{id}/join-requests")]
-        public async Task<IActionResult> GetTeamJoinRequests(int id)
-        {
-            var requests = await _service.GetTeamJoinRequestsAsync(id);
-            return OkResponse(requests);
-        }
-
-        [Authorize]
-        [HttpPost("join-requests/{requestId}/approve")]
-        public async Task<IActionResult> ApproveJoinRequest(int requestId)
-        {
-            var success = await _service.ApproveJoinRequestAsync(requestId);
-            if (!success) throw new AppException(ErrorCodes.NOT_FOUND);
-            return OkResponse("Join request approved.");
-        }
-
-        [Authorize]
-        [HttpPost("join-requests/{requestId}/reject")]
-        public async Task<IActionResult> RejectJoinRequest(int requestId)
-        {
-            var success = await _service.RejectJoinRequestAsync(requestId);
-            if (!success) throw new AppException(ErrorCodes.NOT_FOUND);
-            return OkResponse("Join request rejected.");
-        }
-
         // Remove a member from the team.
         [Authorize]
         [HttpDelete("{id}/members/{userId}")]

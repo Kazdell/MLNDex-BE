@@ -23,6 +23,7 @@ namespace Application.Exceptions
 
             { ErrorCodes.DUPLICATE_TRANSLATION_TEAM, "Nhóm dịch đã đăng một bản dịch ngôn ngữ này cho chương gốc." },
             { ErrorCodes.TRANSLATION_NOT_FOUND, "Bản dịch không tồn tại." },
+            { ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE, "Đã tồn tại bản dịch ngôn ngữ này cho chương truyện. Vui lòng chọn ngôn ngữ khác." },
 
             { ErrorCodes.INSUFFICIENT_BALANCE, "Không đủ số dư để thực hiện giao dịch." },
             { ErrorCodes.CHAPTER_ALREADY_UNLOCKED, "Chương này đã được mở khóa từ trước." },
@@ -69,7 +70,6 @@ namespace Application.Exceptions
             { ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED, "Không tìm thấy nhóm hoặc bạn không có thẩm quyền với nhóm này." },
             { ErrorCodes.USER_ALREADY_IN_TEAM, "Thành viên này đã có sẵn trong nhóm." },
             { ErrorCodes.INVITATION_ALREADY_PENDING, "Đã có lời mời đang chờ xử lý gửi đến người dùng này." },
-            { ErrorCodes.JOIN_REQUEST_ALREADY_PENDING, "Bạn đã gửi yêu cầu gia nhập nhóm này và đang chờ duyệt." },
             { ErrorCodes.CANNOT_REMOVE_LEADER, "Không thể xóa Trưởng nhóm khỏi đội." },
             { ErrorCodes.LEADER_CANNOT_LEAVE_TEAM, "Trưởng nhóm không thể rời nhóm. Vui lòng giải tán nhóm hoặc chuyển quyền trước." },
             { ErrorCodes.CANNOT_CHANGE_LEADER_ROLE, "Chức danh Trưởng nhóm không thể thay đổi thông qua thao tác này." },

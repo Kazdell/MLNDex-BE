@@ -161,7 +161,7 @@ namespace Application.Services.Translation
         }
       }
 
-      // ── LOCK CHECK (Applies to both paths if not strictly Official) ──
+      // ── LOCK CHECK: Locked chapters require OFFICIAL path only ──
       if (!isOfficial)
       {
         var effectiveLock = chapter.LockStatus;
@@ -174,14 +174,9 @@ namespace Application.Services.Translation
 
         if (effectiveLock == Domain.Entities.ChapterLockStatus.LOCKED)
         {
-            // Check if the team happens to have a GRANTED permission for this series
-            var hasGrantedPermission = await _context.TranslationPermissions
-                .AnyAsync(p => p.SeriesId == chapter.SeriesId
-                            && p.TeamId == resolvedTeamId
-                            && p.Status == TranslationPermissionStatus.GRANTED);
-
-            if (!hasGrantedPermission)
-                throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+            // Unofficial translations are NEVER allowed for locked chapters.
+            // Teams must use the Official path (with PermissionId + GRANTED status).
+            throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
         }
       }
 
@@ -619,6 +614,7 @@ namespace Application.Services.Translation
         return await _context.Translations
             .Include(t => t.Chapter)
             .Include(t => t.Permission)
+            .Include(t => t.Language)
             .Include(t => t.TranslationPages)
             .Where(t => t.Chapter.SeriesId == seriesId
                      && t.Permission != null
@@ -636,7 +632,10 @@ namespace Application.Services.Translation
                 Views = t.Chapter.Views,
                 PublishedAt = t.PublishedAt,
                 CreatedAt = t.Chapter.CreatedAt,
-                IsOfficial = t.Permission != null && t.Permission.Status == Domain.Entities.TranslationPermissionStatus.GRANTED
+                IsOfficial = t.Permission != null && t.Permission.Status == Domain.Entities.TranslationPermissionStatus.GRANTED,
+                LanguageId = t.LanguageId,
+                LanguageCode = t.Language != null ? t.Language.Code : null,
+                LanguageName = t.Language != null ? t.Language.Name : null
             })
             .ToListAsync(ct);
     }

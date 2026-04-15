@@ -287,6 +287,7 @@ public class ChapterController : BaseController
     }
   }
 
+  [Authorize]
   [HttpPost("chapters/{chapterId:int}/unlock")]
   public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
   {

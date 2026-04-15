@@ -21,11 +21,6 @@ namespace Application.Interfaces.Translation
     Task<bool> RejectInvitationAsync(int invitationId);
     Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId);
 
-    Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto);
-    Task<bool> ApproveJoinRequestAsync(int requestId);
-    Task<bool> RejectJoinRequestAsync(int requestId);
-    Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId);
-
     Task<bool> RemoveMemberAsync(int teamId, int targetUserId);
     Task<bool> LeaveTeamAsync(int teamId);
     Task<TeamMemberResponse> AssignRoleAsync(int teamId, int targetUserId, AssignTeamMemberRoleRequest roleDto);

@@ -226,9 +226,13 @@ namespace Application.Services.Translation
           throw new AppException(ErrorCodes.USER_ALREADY_IN_TEAM);
       }
 
-      if (await _context.TeamInvitations.AnyAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING))
+      // Cancel any existing pending invitation before creating a new one (re-invite)
+      var existingPending = await _context.TeamInvitations
+          .FirstOrDefaultAsync(i => i.TeamId == teamId && i.InviteeId == inviteDto.UserId && i.Status == TeamInvitationStatus.PENDING);
+      if (existingPending != null)
       {
-        throw new AppException(ErrorCodes.INVITATION_ALREADY_PENDING);
+        existingPending.Status = TeamInvitationStatus.REJECTED;
+        existingPending.RespondedAt = DateTime.UtcNow;
       }
 
       var invitation = new TeamInvitation
@@ -249,7 +253,9 @@ namespace Application.Services.Translation
           team.TeamName,
           $"Mời bạn gia nhập nhóm với vai trò {inviteDto.Role}",
           $"/teams/{teamId}",
-          NotificationType.TEAM_INVITATION
+          NotificationType.TEAM_INVITATION,
+          invitation.InvitationId,
+          "TeamInvitation"
       );
 
       return invitation.InvitationId;
@@ -350,115 +356,6 @@ namespace Application.Services.Translation
       return true;
     }
 
-    public async Task<int> RequestToJoinAsync(int teamId, JoinTeamRequest joinDto)
-    {
-      var userId = _userContext.UserId;
-      if (userId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
-
-      // Cooldown 24h check
-      await CheckLeaveTeamCooldownAsync(userId.Value);
-
-      if (await _context.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == userId && m.IsActive))
-      {
-        throw new AppException(ErrorCodes.USER_ALREADY_IN_TEAM);
-      }
-
-      if (await _context.TeamJoinRequests.AnyAsync(r => r.TeamId == teamId && r.UserId == userId && r.Status == TeamJoinRequestStatus.PENDING))
-      {
-        throw new AppException(ErrorCodes.JOIN_REQUEST_ALREADY_PENDING);
-      }
-
-      var request = new TeamJoinRequest
-      {
-        TeamId = teamId,
-        UserId = userId.Value,
-        Message = joinDto.Message,
-        Status = TeamJoinRequestStatus.PENDING,
-        CreatedAt = DateTime.UtcNow
-      };
-
-      _context.TeamJoinRequests.Add(request);
-      await _context.SaveChangesAsync();
-
-      var team = await _context.TranslationTeams.FindAsync(teamId);
-      var requester = await _context.Users.FindAsync(userId.Value);
-      if (team != null && requester != null)
-      {
-        await _notificationService.CreateNotificationAsync(
-            team.LeaderId,
-            team.TeamName,
-            $"{requester.DisplayName ?? requester.Username} đã gửi yêu cầu tham gia nhóm",
-            $"/teams/{teamId}/requests",
-            NotificationType.TEAM_JOIN_REQUEST
-        );
-      }
-
-      return request.RequestId;
-    }
-
-    public async Task<bool> ApproveJoinRequestAsync(int requestId)
-    {
-      var leaderId = _userContext.UserId;
-      var request = await _context.TeamJoinRequests.Include(r => r.Team).FirstOrDefaultAsync(r => r.RequestId == requestId && r.Team.LeaderId == leaderId && r.Status == TeamJoinRequestStatus.PENDING);
-      if (request == null) return false;
-
-      // Cooldown 24h check for the requesting user
-      await CheckLeaveTeamCooldownAsync(request.UserId);
-
-      request.Status = TeamJoinRequestStatus.APPROVED;
-      request.RespondedAt = DateTime.UtcNow;
-
-      var member = new TeamMember
-      {
-        TeamId = request.TeamId,
-        UserId = request.UserId,
-        Role = TeamMemberRole.TRANSLATOR,
-        JoinedAt = DateTime.UtcNow,
-        IsActive = true
-      };
-
-      _context.TeamMembers.Add(member);
-      await _context.SaveChangesAsync();
-
-      if (request.Team != null)
-      {
-        await _notificationService.CreateNotificationAsync(
-            request.UserId,
-            request.Team.TeamName,
-            "Yêu cầu tham gia nhóm của bạn đã được phê duyệt",
-            $"/teams/{request.TeamId}",
-            NotificationType.TEAM_JOIN_APPROVED
-        );
-      }
-
-      return true;
-    }
-
-    public async Task<bool> RejectJoinRequestAsync(int requestId)
-    {
-      var leaderId = _userContext.UserId;
-      var request = await _context.TeamJoinRequests.Include(r => r.Team).FirstOrDefaultAsync(r => r.RequestId == requestId && r.Team.LeaderId == leaderId && r.Status == TeamJoinRequestStatus.PENDING);
-      if (request == null) return false;
-
-      request.Status = TeamJoinRequestStatus.REJECTED;
-      request.RespondedAt = DateTime.UtcNow;
-
-      await _context.SaveChangesAsync();
-
-      if (request.Team != null)
-      {
-        await _notificationService.CreateNotificationAsync(
-            request.UserId,
-            request.Team.TeamName,
-            "Yêu cầu tham gia nhóm của bạn đã bị từ chối",
-            $"/teams/{request.TeamId}",
-            NotificationType.TEAM_JOIN_REJECTED
-        );
-      }
-
-      return true;
-    }
-
     public async Task<IEnumerable<TeamInvitationResponse>> GetTeamInvitationsAsync(int teamId)
     {
       var leaderId = _userContext.UserId;
@@ -480,30 +377,6 @@ namespace Application.Services.Translation
             Status = i.Status.ToString(),
             InvitedAt = i.CreatedAt,
             ExpiresAt = i.CreatedAt.AddDays(7)
-          })
-          .ToListAsync();
-    }
-
-    public async Task<IEnumerable<TeamJoinRequestResponse>> GetTeamJoinRequestsAsync(int teamId)
-    {
-      var leaderId = _userContext.UserId;
-      if (leaderId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
-
-      var team = await _context.TranslationTeams.FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == leaderId);
-      if (team == null) throw new AppException(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
-
-      return await _context.TeamJoinRequests
-          .Include(r => r.User)
-          .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.PENDING)
-          .Select(r => new TeamJoinRequestResponse
-          {
-            RequestId = r.RequestId,
-            TeamId = r.TeamId,
-            UserId = r.UserId,
-            Username = r.User.Username,
-            Message = r.Message,
-            Status = r.Status.ToString(),
-            RequestedAt = r.CreatedAt
           })
           .ToListAsync();
     }

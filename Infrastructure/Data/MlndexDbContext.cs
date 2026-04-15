@@ -38,7 +38,6 @@ namespace Infrastructure.Data
     // ==================== TRANSLATION ====================
     public DbSet<TranslationPermission> TranslationPermissions { get; set; }
     public DbSet<TeamInvitation> TeamInvitations { get; set; }
-    public DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
     public DbSet<Translation> Translations { get; set; }
     public DbSet<TranslationPage> TranslationPages { get; set; }
     public DbSet<TranslationText> TranslationTexts { get; set; }
@@ -245,21 +244,6 @@ namespace Infrastructure.Data
         e.HasOne(x => x.Inviter).WithMany().HasForeignKey(x => x.InviterId).OnDelete(DeleteBehavior.Restrict);
       });
 
-      // ====================================================
-      // TEAM_JOIN_REQUEST
-      // ====================================================
-      modelBuilder.Entity<TeamJoinRequest>(e =>
-      {
-        e.ToTable("TeamJoinRequest");
-        e.HasKey(x => x.RequestId);
-        e.Property(x => x.RequestId).UseIdentityColumn();
-        e.Property(x => x.Status).HasConversion<string>().IsRequired();
-        e.Property(x => x.Message).HasMaxLength(500);
-
-        e.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId);
-        e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
-        e.HasOne(x => x.RespondedByUser).WithMany().HasForeignKey(x => x.RespondedBy).OnDelete(DeleteBehavior.Restrict);
-      });
 
       // ====================================================
       // VIP_SUBSCRIPTION
