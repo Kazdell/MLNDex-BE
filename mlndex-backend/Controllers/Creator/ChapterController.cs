@@ -115,6 +115,9 @@ public class ChapterController : BaseController
     int? userId = null;
     var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
     if (int.TryParse(claim, out var parsed)) userId = parsed;
+    
+    // Check if the caller is an Admin or Moderator
+    bool isModOrAdmin = User.IsInRole("ADMIN") || User.IsInRole("MOD");
 
     try
     {
@@ -122,6 +125,7 @@ public class ChapterController : BaseController
           id,
           userId,
           translationId,
+          isModOrAdmin,
           cancellationToken);
       if (result == null) throw new AppException(ErrorCodes.CHAPTER_NOT_FOUND);
       return OkResponse(result);

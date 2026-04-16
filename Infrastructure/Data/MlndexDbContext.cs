@@ -892,7 +892,12 @@ namespace Infrastructure.Data
         e.ToTable("Notification");
         e.HasKey(x => x.NotificationId);
         e.Property(x => x.NotificationId).UseIdentityColumn();
-        e.Property(x => x.NotificationType).HasConversion<string>().IsRequired();
+        e.Property(x => x.NotificationType)
+          .HasConversion(
+            v => v.ToString(),
+            v => (NotificationType)Enum.Parse(typeof(NotificationType), v, true)
+          )
+          .IsRequired();
         e.Property(x => x.Title).HasMaxLength(50).IsRequired();
         e.Property(x => x.Message).HasMaxLength(255).IsRequired();
         e.Property(x => x.ActionUrl).HasMaxLength(2048).IsRequired();

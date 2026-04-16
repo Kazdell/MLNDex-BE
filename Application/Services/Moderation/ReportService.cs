@@ -76,9 +76,6 @@ namespace Application.Services.Moderation
     {
       var items = await _context.ModerationQueues
           .Include(q => q.Reports)
-          .Where(q =>
-              q.Status == QueueStatus.PENDING || q.Status == QueueStatus.IN_REVIEW
-          )
           .OrderByDescending(q => q.Priority)
           .ThenByDescending(q => q.FlaggedAt)
           .Select(q => new ModerationQueueDto
@@ -103,6 +100,7 @@ namespace Application.Services.Moderation
               ContentId = r.ContentId,
               ContentType = r.ContentType,
               Reason = r.Reason,
+              Status = r.Status,
               Description = r.Description,
               CreatedAt = r.CreatedAt
             }).ToList()
@@ -169,6 +167,7 @@ namespace Application.Services.Moderation
           ContentId = r.ContentId,
           ContentType = r.ContentType,
           Reason = r.Reason,
+          Status = r.Status,
           Description = r.Description,
           CreatedAt = r.CreatedAt
         }).ToList()

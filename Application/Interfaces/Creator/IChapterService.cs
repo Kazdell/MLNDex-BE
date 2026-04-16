@@ -12,7 +12,7 @@ namespace Application.Interfaces.Creator
     Task<ChapterDetailDto?> GetChapterDetailAsync(
 int chapterId,
 int? userId,
-int? translationId = null,
+int? translationId = null, bool isModOrAdmin = false,
 CancellationToken cancellationToken = default);
     Task<List<ChapterListItemDto>> GetBySeriesAsync(int seriesId, int userId, CancellationToken ct = default);
     Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default);
