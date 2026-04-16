@@ -78,7 +78,6 @@ Controllers/
   CreatorController.cs
   GenreController.cs
   SeriesController.cs
-  WithdrawalsController.cs
  Moderation/
   ChapterModerationStatusController.cs
   CommentModerationController.cs
@@ -87,6 +86,7 @@ Controllers/
  Payment/
   AdminPaymentController.cs
   TopUpController.cs
+  WithdrawalController.cs
  Platform/LanguagesController.cs
  ReportSystem/
   IsolatedReportsController.cs

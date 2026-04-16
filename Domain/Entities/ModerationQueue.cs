@@ -51,7 +51,8 @@ namespace Domain.Entities
     PENDING,
     IN_REVIEW,
     RESOLVED,
-    DISMISSED
+    DISMISSED,
+    REJECTED
   }
 
 }
