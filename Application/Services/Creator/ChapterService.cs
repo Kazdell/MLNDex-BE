@@ -224,40 +224,52 @@ namespace Application.Services.Creator
         }
 
         public async Task<ChapterDetailDto?> GetChapterDetailAsync(
-    int chapterId, int? userId, int? translationId = null,
+    int chapterId, int? userId, int? translationId = null, bool isModOrAdmin = false,
     CancellationToken cancellationToken = default)
         {
             if (userId.HasValue)
             {
-                return await GetChapterDetailInternalAsync(chapterId, userId, translationId, cancellationToken);
+                return await GetChapterDetailInternalAsync(chapterId, userId, translationId, isModOrAdmin, cancellationToken);
             }
 
             var cacheKey = $"ChapterDetails_{chapterId}_Trans_{translationId ?? 0}_User_0";
             return await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-                return await GetChapterDetailInternalAsync(chapterId, null, translationId, cancellationToken);
+                return await GetChapterDetailInternalAsync(chapterId, null, translationId, isModOrAdmin, cancellationToken);
             });
         }
 
         private async Task<ChapterDetailDto?> GetChapterDetailInternalAsync(
-    int chapterId, int? userId, int? translationId = null,
+    int chapterId, int? userId, int? translationId = null, bool isModOrAdmin = false,
     CancellationToken cancellationToken = default)
         {
-                var chapter = await _db.Chapters
+                var chapterQuery = _db.Chapters
                     .Include(c => c.Series)
                         .ThenInclude(s => s.Creator)
                     .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-                    .AsNoTracking().AsSplitQuery().FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+                    .AsNoTracking().AsSplitQuery();
+                    
+                var chapter = await chapterQuery.FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
 
                 // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
                 if (chapter == null)
                 {
                     return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
                 }
+                
+                // If chapter is NOT published, ONLY Creator or Mod can view it
+                if (chapter.Status != ChapterStatus.PUBLISHED)
+                {
+                    bool isCreator = userId.HasValue && chapter.Series?.Creator?.UserId == userId.Value;
+                    if (!isCreator && !isModOrAdmin)
+                    {
+                        return null; // Deny access
+                    }
+                }
 
                 var chapters = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && c.Status == ChapterStatus.PUBLISHED)
+                    .Where(c => c.SeriesId == chapter.SeriesId && (c.Status == ChapterStatus.PUBLISHED || isModOrAdmin))
                     .OrderByDescending(c => c.ChapterNumber)
                     .Select(c => new ChapterSummaryDto
                     {
@@ -530,6 +542,7 @@ namespace Application.Services.Creator
             return await _db.Translations
                 .Include(t => t.Chapter)
                 .Include(t => t.Permission)
+                .Include(t => t.Language)
                 .Where(t => t.Chapter.SeriesId == seriesId
                          && t.Permission != null
                          && t.Permission.TeamId == teamId)
@@ -539,6 +552,7 @@ namespace Application.Services.Creator
                     // FE dùng ChapterId để navigate đến chapter viewer.
                     // TranslationId được dùng để load đúng bản dịch.
                     ChapterId = t.Chapter.ChapterId,
+                    TranslationId = t.TranslationId,
                     ChapterNumber = t.Chapter.ChapterNumber,
                     Title = t.Chapter.Title,
                     Status = t.QualityStatus.ToString(),
@@ -547,6 +561,10 @@ namespace Application.Services.Creator
                     Views = t.Chapter.Views,
                     PublishedAt = t.PublishedAt,
                     CreatedAt = t.Chapter.CreatedAt,
+                    LanguageId = t.LanguageId,
+                    LanguageCode = t.Language.Code,
+                    LanguageName = t.Language.Name,
+                    IsOfficial = t.IsOfficial,
                 })
                 .ToListAsync(ct);
         }

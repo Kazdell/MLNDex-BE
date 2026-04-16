@@ -38,7 +38,6 @@ namespace Infrastructure.Data
     // ==================== TRANSLATION ====================
     public DbSet<TranslationPermission> TranslationPermissions { get; set; }
     public DbSet<TeamInvitation> TeamInvitations { get; set; }
-    public DbSet<TeamJoinRequest> TeamJoinRequests { get; set; }
     public DbSet<Translation> Translations { get; set; }
     public DbSet<TranslationPage> TranslationPages { get; set; }
     public DbSet<TranslationText> TranslationTexts { get; set; }
@@ -245,21 +244,6 @@ namespace Infrastructure.Data
         e.HasOne(x => x.Inviter).WithMany().HasForeignKey(x => x.InviterId).OnDelete(DeleteBehavior.Restrict);
       });
 
-      // ====================================================
-      // TEAM_JOIN_REQUEST
-      // ====================================================
-      modelBuilder.Entity<TeamJoinRequest>(e =>
-      {
-        e.ToTable("TeamJoinRequest");
-        e.HasKey(x => x.RequestId);
-        e.Property(x => x.RequestId).UseIdentityColumn();
-        e.Property(x => x.Status).HasConversion<string>().IsRequired();
-        e.Property(x => x.Message).HasMaxLength(500);
-
-        e.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId);
-        e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
-        e.HasOne(x => x.RespondedByUser).WithMany().HasForeignKey(x => x.RespondedBy).OnDelete(DeleteBehavior.Restrict);
-      });
 
       // ====================================================
       // VIP_SUBSCRIPTION
@@ -908,7 +892,12 @@ namespace Infrastructure.Data
         e.ToTable("Notification");
         e.HasKey(x => x.NotificationId);
         e.Property(x => x.NotificationId).UseIdentityColumn();
-        e.Property(x => x.NotificationType).HasConversion<string>().IsRequired();
+        e.Property(x => x.NotificationType)
+          .HasConversion(
+            v => v.ToString(),
+            v => (NotificationType)Enum.Parse(typeof(NotificationType), v, true)
+          )
+          .IsRequired();
         e.Property(x => x.Title).HasMaxLength(50).IsRequired();
         e.Property(x => x.Message).HasMaxLength(255).IsRequired();
         e.Property(x => x.ActionUrl).HasMaxLength(2048).IsRequired();

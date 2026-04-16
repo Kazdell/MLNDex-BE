@@ -26,6 +26,7 @@ namespace Application.DTOs.Moderation
     public int ContentId { get; set; }
     public ReportTargetType ContentType { get; set; }
     public ReportReason Reason { get; set; }
+    public ReportStatus Status { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
   }

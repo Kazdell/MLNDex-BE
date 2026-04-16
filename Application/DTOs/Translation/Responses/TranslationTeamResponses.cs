@@ -68,16 +68,4 @@ namespace Application.DTOs.Translation.Responses
     public DateTime InvitedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }
   }
-
-  // Join request response
-  public class TeamJoinRequestResponse
-  {
-    public int RequestId { get; set; }
-    public int TeamId { get; set; }
-    public int UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public DateTime RequestedAt { get; set; }
-  }
 }

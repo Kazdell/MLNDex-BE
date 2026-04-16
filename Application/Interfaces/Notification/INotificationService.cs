@@ -12,5 +12,6 @@ namespace Application.Interfaces.Notification
     Task<int> DeleteAllAsync(int userId);
     Task<int> CleanupOldNotificationsAsync(int daysOld = 7);
     Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, Domain.Entities.NotificationType type);
+    Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, Domain.Entities.NotificationType type, int relatedEntityId, string? relatedEntityType = null);
   }
 }

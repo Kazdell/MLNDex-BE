@@ -1,7 +1,7 @@
-using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Domain.Entities;
 
 namespace Application.DTOs.ReportSystem
 {
@@ -30,7 +30,7 @@ namespace Application.DTOs.ReportSystem
 
     public ReportTargetType TargetType { get; set; }
     public int TargetId { get; set; }
-    public string TargetName { get; set; } = string.Empty;
+    public string TargetName { get; set; } = string.Empty; 
     public string TargetUrl { get; set; } = string.Empty;
     public ReportReason Reason { get; set; }
     public string Description { get; set; } = string.Empty;
@@ -43,16 +43,16 @@ namespace Application.DTOs.ReportSystem
   public class ResolvePlagiarismReportRequest
   {
     [Required]
-    public ReportStatus NewStatus { get; set; }
+    public ReportStatus NewStatus { get; set; } 
     public string? ResolutionNotes { get; set; }
 
-    public bool StrikeContent { get; set; }
+    public bool StrikeContent { get; set; } 
 
-    public int? PenaltyScore { get; set; }
+    public int? PenaltyScore { get; set; } 
 
-    public bool BanCreator { get; set; }
+    public bool BanCreator { get; set; } 
 
-    public bool SendWarning { get; set; }
+    public bool SendWarning { get; set; } 
   }
 
   public class CompareTranslationResponse

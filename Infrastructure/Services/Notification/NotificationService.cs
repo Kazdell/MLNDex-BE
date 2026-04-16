@@ -45,6 +45,8 @@ namespace Infrastructure.Services.Notification
           Title = n.Title,
           Message = n.Message,
           ActionUrl = n.ActionUrl,
+          RelatedEntityId = n.RelatedEntityId,
+          RelatedEntityType = n.RelatedEntityType,
           IsRead = n.IsRead,
           NotificationType = n.NotificationType.ToString(),
           CreatedAt = n.CreatedAt
@@ -130,6 +132,8 @@ namespace Infrastructure.Services.Notification
         Title = notif.Title,
         Message = notif.Message,
         ActionUrl = notif.ActionUrl,
+        RelatedEntityId = notif.RelatedEntityId,
+        RelatedEntityType = notif.RelatedEntityType,
         IsRead = notif.IsRead,
         NotificationType = notif.NotificationType.ToString(),
         CreatedAt = notif.CreatedAt
@@ -137,6 +141,41 @@ namespace Infrastructure.Services.Notification
 
       await _pusher.PushNotificationAsync(userId, dto);
 
+      return dto;
+    }
+
+    public async Task<NotificationDto> CreateNotificationAsync(int userId, string title, string message, string actionUrl, NotificationType type, int relatedEntityId, string? relatedEntityType = null)
+    {
+      var notif = new Domain.Entities.Notification
+      {
+        UserId = userId,
+        Title = title,
+        Message = message,
+        ActionUrl = actionUrl,
+        NotificationType = type,
+        RelatedEntityId = relatedEntityId,
+        RelatedEntityType = relatedEntityType,
+        IsRead = false,
+        CreatedAt = System.DateTime.UtcNow
+      };
+
+      _db.Notifications.Add(notif);
+      await _db.SaveChangesAsync();
+
+      var dto = new NotificationDto
+      {
+        NotificationId = notif.NotificationId,
+        Title = notif.Title,
+        Message = notif.Message,
+        ActionUrl = notif.ActionUrl,
+        RelatedEntityId = notif.RelatedEntityId,
+        RelatedEntityType = notif.RelatedEntityType,
+        IsRead = notif.IsRead,
+        NotificationType = notif.NotificationType.ToString(),
+        CreatedAt = notif.CreatedAt
+      };
+
+      await _pusher.PushNotificationAsync(userId, dto);
       return dto;
     }
   }

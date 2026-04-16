@@ -62,6 +62,7 @@ namespace Application.DTOs.Translation.Responses
     public string Title { get; set; } = string.Empty;
     public string? CoverImageUrl { get; set; }
     public string Status { get; set; } = string.Empty;
+    public bool IsOfficial { get; set; }
     public int TotalChapters { get; set; }
     public DateTime? LastUpdate { get; set; }
     public int Views { get; set; }

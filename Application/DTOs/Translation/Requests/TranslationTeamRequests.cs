@@ -55,10 +55,4 @@ namespace Application.DTOs.Translation.Requests
   {
     public TeamMemberRole Role { get; set; }
   }
-
-  // Request to join a team
-  public class JoinTeamRequest
-  {
-    public string Message { get; set; } = string.Empty;
-  }
 }
