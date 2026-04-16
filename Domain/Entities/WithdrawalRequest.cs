@@ -9,7 +9,7 @@ namespace Domain.Entities
   public class WithdrawalRequest
   {
     public int WithdrawalId { get; set; }
-    public int CreatorId { get; set; }
+    public int UserId { get; set; }
     public decimal AmountCoins { get; set; }
     public decimal AmountVnd { get; set; }
     public string BankAccountInfo { get; set; } = null!;
@@ -19,7 +19,7 @@ namespace Domain.Entities
     public string? Note { get; set; }
 
     // Navigation
-    public CreatorProfile Creator { get; set; } = null!;
+    public User User { get; set; } = null!;
   }
 
   public enum WithdrawalStatus

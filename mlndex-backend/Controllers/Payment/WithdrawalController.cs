@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Application.Interfaces.Financial;
@@ -54,7 +54,7 @@ namespace mlndex_backend.Controllers.Payment
             var userId = GetCurrentUserId();
             var request = new WithdrawalReviewListRequest
             {
-                CreatorId = userId,
+                UserId = userId,
                 Page = page,
                 PageSize = pageSize,
             };

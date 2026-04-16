@@ -27,7 +27,6 @@ namespace Domain.Entities
     // Navigation
     public User User { get; set; } = null!;
     public ICollection<Series> Series { get; set; } = new List<Series>();
-    public ICollection<WithdrawalRequest> WithdrawalRequests { get; set; } = new List<WithdrawalRequest>();
   }
 
   public enum ModerationStatus

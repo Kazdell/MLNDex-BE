@@ -302,6 +302,25 @@ namespace Application.Services.VIP
 							&& u.UserId == userId.Value,
 						  cancellationToken);
 		}
+
+		// Toggle auto-renew on/off
+		public async Task<VipSubscriptionDto> ToggleAutoRenewAsync(int userId, int subscriptionId)
+		{
+			var sub = await _context.VipSubscriptions
+				.Include(s => s.VipPlan)
+				.FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId
+										   && s.UserId == userId)
+				?? throw new AppException(ErrorCodes.SUBSCRIPTION_NOT_FOUND);
+
+			if (sub.Status != SubscriptionStatus.ACTIVE)
+				throw new AppException(ErrorCodes.OPERATION_NOT_ALLOWED);
+
+			sub.AutoRenew = !sub.AutoRenew;
+			await _context.SaveChangesAsync();
+
+			return MapToDto(sub);
+		}
+
 		// ── Helper ───────────────────────────────────────────────────────────────
 
 		private static VipSubscriptionDto MapToDto(VipSubscription s) => new()

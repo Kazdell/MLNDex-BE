@@ -714,6 +714,7 @@ namespace Infrastructure.Data
         e.ToTable("WithdrawalRequest");
         e.HasKey(x => x.WithdrawalId);
         e.Property(x => x.WithdrawalId).UseIdentityColumn();
+        e.Property(x => x.UserId).HasColumnName("CreatorId");
         e.Property(x => x.AmountCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.AmountVnd).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.BankAccountInfo).IsRequired();
@@ -722,9 +723,9 @@ namespace Infrastructure.Data
         e.Property(x => x.Status).HasConversion<string>().IsRequired();
         e.Property(x => x.Note);
 
-        e.HasOne(x => x.Creator)
-                        .WithMany(c => c.WithdrawalRequests)
-                        .HasForeignKey(x => x.CreatorId)
+        e.HasOne(x => x.User)
+                        .WithMany()
+                        .HasForeignKey(x => x.UserId)
                         .OnDelete(DeleteBehavior.Restrict);
       });
 

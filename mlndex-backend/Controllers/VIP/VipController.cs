@@ -59,6 +59,13 @@ public class VipController : BaseController
 		return OkResponse(result, "Huỷ subscription thành công.");
 	}
 
+	[HttpPatch("subscription/{id}/auto-renew")]
+	public async Task<IActionResult> ToggleAutoRenew(int id)
+	{
+		var result = await _vipService.ToggleAutoRenewAsync(GetUserId(), id);
+		return OkResponse(result, "Cập nhật auto-renew thành công.");
+	}
+
 	[AllowAnonymous]
 	[HttpGet("chapters/{id:int}/access")]
 	public async Task<IActionResult> CheckAccess(int id, CancellationToken cancellationToken)

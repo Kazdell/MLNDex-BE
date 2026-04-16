@@ -13,14 +13,14 @@ namespace Application.DTOs.Financial
 
     public WithdrawalStatus? Status { get; set; }
 
-    public int? CreatorId { get; set; }
+    public int? UserId { get; set; }
   }
 
   public class WithdrawalReviewItemDto
   {
     public int WithdrawalId { get; set; }
-    public int CreatorId { get; set; }
-    public string CreatorName { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
     public decimal AmountCoins { get; set; }
     public decimal AmountVnd { get; set; }
     public string BankAccountInfo { get; set; } = string.Empty;
@@ -36,6 +36,7 @@ namespace Application.DTOs.Financial
     public string BankName { get; set; } = null!;
     public string AccountNumber { get; set; } = null!;
     public string AccountName { get; set; } = null!;
+    public string? Note { get; set; }
   }
 
   public class WithdrawalReviewListResponse
