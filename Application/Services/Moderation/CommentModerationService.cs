@@ -74,6 +74,23 @@ namespace Application.Services.Moderation
       };
     }
 
+    public async Task<CommentAdminStatsDto> GetAdminStatsAsync(CancellationToken cancellationToken = default)
+    {
+      var total = await _context.Comments.CountAsync(cancellationToken);
+      var active = await _context.Comments.CountAsync(c => !c.IsDeleted && !c.IsHidden, cancellationToken);
+      var hidden = await _context.Comments.CountAsync(c => c.IsHidden && !c.IsDeleted, cancellationToken);
+      var deleted = await _context.Comments.CountAsync(c => c.IsDeleted, cancellationToken);
+
+      return new CommentAdminStatsDto
+      {
+        Total = total,
+        Active = active,
+        Hidden = hidden,
+        Deleted = deleted,
+        Reported = 0
+      };
+    }
+
     public async Task UpdateStatusAsync(
         int commentId,
         int moderatorId,

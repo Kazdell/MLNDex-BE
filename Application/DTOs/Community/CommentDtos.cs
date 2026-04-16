@@ -41,4 +41,13 @@ namespace Application.DTOs.Community
     public int Page { get; set; }
     public int PageSize { get; set; }
   }
+
+  public class CommentAdminStatsDto
+  {
+    public int Total { get; set; }
+    public int Active { get; set; }
+    public int Hidden { get; set; }
+    public int Deleted { get; set; }
+    public int Reported { get; set; }
+  }
 }

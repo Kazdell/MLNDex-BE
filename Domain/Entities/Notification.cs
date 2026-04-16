@@ -50,6 +50,9 @@ namespace Domain.Entities
     TEAM_MEMBER_REMOVED,
     TEAM_MEMBER_LEFT,
     TEAM_ROLE_CHANGED,
+    FOLLOW,
+    PAYMENT,
+    MODERATION,
     SYSTEM
   }
 }

@@ -63,7 +63,7 @@ namespace mlndex_backend.Controllers.Translation
     public async Task<IActionResult> GetCreatorPermissions()
     {
         var userId = GetUserId();
-        if (userId == 0) return UnauthorizedResponse();
+        if (userId < 0) return UnauthorizedResponse();
 
         var permissions = await _service.GetCreatorPermissionsAsync(userId);
         return OkResponse(permissions);

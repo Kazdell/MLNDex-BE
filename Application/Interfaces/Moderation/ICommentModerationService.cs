@@ -13,6 +13,8 @@ namespace Application.Interfaces.Moderation
         CancellationToken cancellationToken = default
     );
 
+    Task<CommentAdminStatsDto> GetAdminStatsAsync(CancellationToken cancellationToken = default);
+
     Task UpdateStatusAsync(
         int commentId,
         int moderatorId,

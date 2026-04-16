@@ -39,7 +39,7 @@ public class TopUpController : BaseController
   public async Task<IActionResult> GetWallet()
   {
     var userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse();
+    if (userId < 0) return UnauthorizedResponse();
     var wallet = await _topUpService.GetWalletAsync(userId);
     return OkResponse(wallet);
   }
@@ -52,7 +52,7 @@ public class TopUpController : BaseController
       [FromQuery] int pageSize = 20)
   {
     var userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse();
+    if (userId < 0) return UnauthorizedResponse();
 
     var result = await _topUpService.GetTransactionHistoryAsync(userId, page, pageSize);
     return OkResponse(result);
@@ -75,7 +75,7 @@ public class TopUpController : BaseController
       throw new AppException(ErrorCodes.INVALID_INPUT);
 
     var userId = GetUserId();
-    if (userId == 0) return UnauthorizedResponse();
+    if (userId < 0) return UnauthorizedResponse();
 
     request.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
 

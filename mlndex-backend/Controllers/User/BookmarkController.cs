@@ -29,7 +29,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpsertBookmark([FromBody] BookmarkRequestDto dto, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _bookmarkService.UpsertBookmarkAsync(userId, dto, ct);
       return OkResponse(result, "Bookmark saved successfully.");
@@ -42,7 +42,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetUserBookmarks(CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _bookmarkService.GetUserBookmarksAsync(userId, ct);
       return OkResponse(result);
@@ -55,7 +55,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetBookmarkForSeries(int seriesId, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _bookmarkService.GetBookmarkForSeriesAsync(userId, seriesId, ct);
       // Return Ok even if null to prevent console 404 errors for unbookmarked series
@@ -69,7 +69,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> DeleteBookmark(int bookmarkId, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _bookmarkService.DeleteBookmarkAsync(userId, bookmarkId, ct);
       if (!result) throw new AppException(ErrorCodes.NOT_FOUND);

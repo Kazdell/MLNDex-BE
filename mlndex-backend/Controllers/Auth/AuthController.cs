@@ -148,7 +148,7 @@ namespace mlndex_backend.Controllers.Auth
         throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var userId = GetUserId();
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _authService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
       return result.Success

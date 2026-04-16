@@ -53,7 +53,7 @@ namespace Application.Services.Financial
           {
             WithdrawalId = w.WithdrawalId,
             UserId = w.UserId,
-            UserName = w.User.DisplayName,
+            UserName = w.User != null ? (w.User.DisplayName ?? "Unknown") : "Unknown",
             AmountCoins = w.AmountCoins,
             AmountVnd = w.AmountVnd,
             BankAccountInfo = w.BankAccountInfo,
@@ -85,7 +85,7 @@ namespace Application.Services.Financial
           {
             WithdrawalId = w.WithdrawalId,
             UserId = w.UserId,
-            UserName = w.User.DisplayName,
+            UserName = w.User != null ? (w.User.DisplayName ?? "Unknown") : "Unknown",
             AmountCoins = w.AmountCoins,
             AmountVnd = w.AmountVnd,
             BankAccountInfo = w.BankAccountInfo,
@@ -149,7 +149,7 @@ namespace Application.Services.Financial
       {
         WithdrawalId = entity.WithdrawalId,
         UserId = entity.UserId,
-        UserName = entity.User.DisplayName,
+        UserName = entity.User?.DisplayName ?? "Unknown",
         AmountCoins = entity.AmountCoins,
         AmountVnd = entity.AmountVnd,
         BankAccountInfo = entity.BankAccountInfo,

@@ -30,7 +30,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpsertRating([FromBody] RatingRequestDto dto, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _ratingService.UpsertRatingAsync(userId, dto, ct);
       return OkResponse(result, "Rating saved successfully.");
@@ -43,7 +43,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetUserRating(int seriesId, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _ratingService.GetUserRatingAsync(userId, seriesId, ct);
       // Return Ok even if null to prevent console 404 errors for unrated series
@@ -57,7 +57,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> DeleteRating(int seriesId, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _ratingService.DeleteRatingAsync(userId, seriesId, ct);
       if (!result) throw new AppException(ErrorCodes.NOT_FOUND);

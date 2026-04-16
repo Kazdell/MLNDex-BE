@@ -27,7 +27,7 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> Register([FromBody] CreatorRegisterDto dto, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
 
       try
       {
@@ -50,7 +50,7 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> GetUnlockSettings(CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
 
             var settings = await _creatorService.GetUnlockSettingsAsync(userId, ct);
             return OkResponse(settings, "Lấy cấu hình mở khóa thành công.");
@@ -65,7 +65,7 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> UpdateUnlockSettings([FromBody] UpdateUnlockSettingsDto dto, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
             var success = await _creatorService.UpdateUnlockSettingsAsync(userId, dto, ct);
 
             if (!success)
@@ -81,7 +81,7 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> GetCreatorRevenue([FromQuery] RevenueQueryDto query, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
             var result = await _revenueService.GetCreatorRevenueAsync(userId, query, ct);
             return OkResponse(result);
         }
@@ -91,7 +91,7 @@ namespace mlndex_backend.Controllers.Creator
         public async Task<IActionResult> GetSeriesRevenue(int seriesId, [FromQuery] RevenueQueryDto query, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
             var result = await _revenueService.GetSeriesRevenueAsync(userId, seriesId, query, ct);
             return OkResponse(result);
         }

@@ -37,11 +37,13 @@ namespace mlndex_backend.Controllers
       return StatusCode(statusCode, response);
     }
 
+    // Returns -1 if no UserId claim is present (unauthenticated).
+    // Admin account has UserId = 0 which is a valid ID — do NOT treat 0 as "not found".
     protected int GetUserId()
     {
       var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
                      ?? User.FindFirst("UserId");
-      return int.TryParse(userIdClaim?.Value, out var id) ? id : 0;
+      return int.TryParse(userIdClaim?.Value, out var id) ? id : -1;
     }
   }
 }

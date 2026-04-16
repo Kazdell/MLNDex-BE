@@ -30,7 +30,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> Follow([FromBody] FollowRequestDto dto, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _followService.FollowAsync(userId, dto, ct);
       return OkResponse(result, "Followed successfully.");
@@ -43,7 +43,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> Unfollow(int targetId, [FromQuery] string type = "SERIES", CancellationToken ct = default)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _followService.UnfollowAsync(userId, targetId, type, ct);
       if (!result) throw new AppException(ErrorCodes.NOT_FOUND);
@@ -58,7 +58,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetFollowedSeries(CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _followService.GetFollowedSeriesAsync(userId, ct);
       return OkResponse(result);
@@ -71,7 +71,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> CheckFollowStatus(int targetId, [FromQuery] string type = "SERIES", CancellationToken ct = default)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _followService.CheckFollowStatusAsync(userId, targetId, type, ct);
       return OkResponse(result);

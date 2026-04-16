@@ -35,7 +35,7 @@ public class TranslationChapterController : BaseController
   public async Task<IActionResult> GetTeamChaptersBySeries(int teamId, int seriesId, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _service.GetTeamTranslationsBySeriesAsync(teamId, seriesId, userId, cancellationToken);
       return OkResponse(result);
@@ -45,7 +45,7 @@ public class TranslationChapterController : BaseController
   public async Task<IActionResult> DeleteTranslationChapter(int teamId, int id, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       await _service.DeleteTeamTranslationAsync(id, teamId, userId, cancellationToken);
       return OkResponse((object?)null, "Xóa chương dịch thành công.");

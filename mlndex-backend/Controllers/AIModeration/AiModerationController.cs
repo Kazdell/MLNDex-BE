@@ -48,7 +48,7 @@ namespace mlndex_backend.Controllers.AIModeration
         throw new AppException(ErrorCodes.INVALID_INPUT);
 
       var userId = GetUserId();
-      if (userId == 0)
+      if (userId < 0)
         return UnauthorizedResponse();
 
       await _moderationService.SubmitAppealAsync(chapterId, userId, request.AppealReason);

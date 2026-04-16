@@ -36,7 +36,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> GetSeriesByCreator(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       var result = await _service.GetByCreatorAsync(userId, cancellationToken);
       return OkResponse(result);
     }
@@ -47,7 +47,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Create([FromForm] CreateSeriesDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var currentUser = await _context.Users.FindAsync(userId);
       if (currentUser?.CannotUpload == true)
@@ -62,7 +62,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> GetForEdit(int id)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       var result = await _service.GetForEditAsync(id, userId);
       if (result == null)
         throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
@@ -75,7 +75,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Update(int id, [FromForm] CreateSeriesDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var currentUser = await _context.Users.FindAsync(userId);
       if (currentUser?.CannotUpload == true)
@@ -90,7 +90,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> Delete(int id)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       await _service.DeleteAsync(id, userId);
       return NoContent();
     }
@@ -100,7 +100,7 @@ namespace mlndex_backend.Controllers.Creator
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateSeriesStatusRequest request, CancellationToken ct)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
       try
       {
         await _service.UpdateStatusAsync(id, userId, request.Status, ct);
@@ -170,7 +170,7 @@ namespace mlndex_backend.Controllers.Creator
       var userId = CurrentUserId;
 
       // If user is not logged in, cache the generalized recommendations
-      if (userId == 0)
+      if (userId < 0)
       {
         var cacheKey = $"GetRecommendations_Anon_{limit}_{currentSeriesId}";
         if (_cache.TryGetValue(cacheKey, out var cachedResult))

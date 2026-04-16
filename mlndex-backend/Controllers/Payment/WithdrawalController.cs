@@ -3,7 +3,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Application.Interfaces.Financial;
 using Application.DTOs.Financial;  
-using Application.Interfaces.Financial;
 
 namespace mlndex_backend.Controllers.Payment
 {
@@ -32,7 +31,7 @@ namespace mlndex_backend.Controllers.Payment
         /// User/Creator tạo yêu cầu rút tiền
         /// </summary>
         [HttpPost("request")]
-        public async Task<IActionResult> Request(
+        public async Task<IActionResult> CreateRequest(
             [FromBody] CreateWithdrawalRequestDto dto,
             CancellationToken cancellationToken = default)
         {

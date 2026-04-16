@@ -31,7 +31,7 @@ namespace mlndex_backend.Controllers.Community
 
       var userId = GetUserId();
 
-      if (userId == 0)
+      if (userId < 0)
         throw new AppException(ErrorCodes.UNAUTHORIZED);
 
         var result = await _service.CreateAsync(userId, request, cancellationToken);
@@ -64,7 +64,7 @@ namespace mlndex_backend.Controllers.Community
     {
       var userId = GetUserId();
 
-      if (userId == 0)
+      if (userId < 0)
         throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       try

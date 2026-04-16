@@ -39,6 +39,13 @@ namespace mlndex_backend.Controllers.Moderation
             return OkResponse(response);
         }
 
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetAdminStats(CancellationToken cancellationToken = default)
+        {
+            var response = await _commentModerationService.GetAdminStatsAsync(cancellationToken);
+            return OkResponse(response);
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCommentStatus(
             int id,

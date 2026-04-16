@@ -56,7 +56,7 @@ namespace mlndex_backend.Controllers.Translation
         public async Task<IActionResult> GetMyTeams([FromQuery] int limit = 5)
         {
             var userId = GetUserId();
-            if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+            if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
             var teams = await _service.GetUserTeamsAsync(userId, limit);
             return OkResponse(teams);
@@ -175,7 +175,7 @@ namespace mlndex_backend.Controllers.Translation
         public async Task<IActionResult> GetTeamRevenue(int id, [FromQuery] RevenueQueryDto query, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
             var result = await _revenueService.GetTeamRevenueAsync(userId, id, query, ct);
             return OkResponse(result);
         }
@@ -185,7 +185,7 @@ namespace mlndex_backend.Controllers.Translation
         public async Task<IActionResult> GetTeamSeriesRevenue(int id, int seriesId, [FromQuery] RevenueQueryDto query, CancellationToken ct)
         {
             var userId = GetUserId();
-            if (userId == 0) return UnauthorizedResponse();
+            if (userId < 0) return UnauthorizedResponse();
             var result = await _revenueService.GetTeamSeriesRevenueAsync(userId, id, seriesId, query, ct);
             return OkResponse(result);
         }

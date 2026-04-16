@@ -46,7 +46,7 @@ public class ChapterController : BaseController
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
     if (currentUser?.CannotUpload == true)
@@ -141,7 +141,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> GetBySeries(int seriesId, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -163,7 +163,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> GetForEdit(int id, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -199,7 +199,7 @@ public class ChapterController : BaseController
       CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     var currentUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
     if (currentUser?.CannotUpload == true)
@@ -270,7 +270,7 @@ public class ChapterController : BaseController
     CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -296,7 +296,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> Unlock(int chapterId, CancellationToken ct)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {
@@ -317,7 +317,7 @@ public class ChapterController : BaseController
   public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
   {
     int userId = GetUserId();
-    if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+    if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
     try
     {

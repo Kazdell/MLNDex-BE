@@ -26,7 +26,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpdateHistory([FromBody] ReadingHistoryUpdateDto dto, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.UpdateHistoryAsync(userId, dto, cancellationToken);
       return OkResponse(result);
@@ -36,7 +36,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetUserHistory(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var history = await _historyService.GetUserHistoryAsync(userId, cancellationToken);
       return OkResponse(history);
@@ -46,7 +46,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> DeleteHistory(int seriesId, CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.RemoveFromHistoryAsync(userId, seriesId, cancellationToken);
       return OkResponse(result);
@@ -56,7 +56,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> ClearHistory(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var result = await _historyService.ClearAllHistoryAsync(userId, cancellationToken);
       return OkResponse(result);
@@ -66,7 +66,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetReadingStats(CancellationToken cancellationToken)
     {
       var userId = CurrentUserId;
-      if (userId == 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
+      if (userId < 0) throw new AppException(ErrorCodes.UNAUTHORIZED);
 
       var stats = await _historyService.GetReadingStatsAsync(userId, cancellationToken);
       return OkResponse(stats);

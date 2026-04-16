@@ -27,7 +27,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetProfile(CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
       var profile = await _userService.GetProfileAsync(userId, cancellationToken);
 
       if (profile == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
@@ -39,7 +39,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto, CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
       var result = await _userService.UpdateProfileAsync(userId, dto, cancellationToken);
       return result ? Ok(new ApiResponse<string>(true, "Profile updated successfully")) : BadRequest();
     }
@@ -48,7 +48,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetReadingHistory(CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
       var history = await _userService.GetReadingHistoryAsync(userId, cancellationToken);
       return Ok(new ApiResponse<List<ReadingHistoryDto>>(true, "Lấy lịch sử đọc thành công", history));
     }
@@ -96,7 +96,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> GetUserSettings(CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
       var settings = await _userService.GetUserSettingsAsync(userId, cancellationToken);
       if (settings == null) throw new AppException(ErrorCodes.USER_NOT_FOUND);
       return OkResponse(settings);
@@ -106,7 +106,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UpdateUserSettings([FromBody] UserSettingsDto dto, CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
       var result = await _userService.UpdateUserSettingsAsync(userId, dto, cancellationToken);
       return result ? Ok(new ApiResponse<string>(true, "Cập nhật cài đặt thành công")) : BadRequest();
     }
@@ -115,7 +115,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UploadAvatar(IFormFile file, [FromServices] IStorageService storageService, CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
 
       if (file == null || file.Length == 0) throw new AppException(ErrorCodes.INVALID_INPUT);
 
@@ -132,7 +132,7 @@ namespace mlndex_backend.Controllers.User
     public async Task<IActionResult> UploadBanner(IFormFile file, [FromServices] IStorageService storageService, CancellationToken cancellationToken)
     {
       var userId = GetUserId();
-      if (userId == 0) return UnauthorizedResponse();
+      if (userId < 0) return UnauthorizedResponse();
 
       if (file == null || file.Length == 0) throw new AppException(ErrorCodes.INVALID_INPUT);
 
