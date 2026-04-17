@@ -197,7 +197,7 @@ namespace Application.Services.AIModeration
 
         if (queueItem != null)
         {
-          // Update Priority dựa vào mức độ vi phạm
+          // Mark the AI-processing queue entry as RESOLVED (AI scan done)
           queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
                                 ? QueuePriority.HIGH : QueuePriority.MEDIUM;
           queueItem.Status = QueueStatus.RESOLVED; // Mark as done
@@ -217,7 +217,26 @@ namespace Application.Services.AIModeration
           _db.Reports.Add(report);
         }
 
-        _logger.LogWarning("Chapter {ChapterId} bị {Action}: {Reason}",
+        // ── Create a NEW PENDING queue entry for human moderator review ──────
+        // Without this, violated chapters never appear in the admin review queue.
+        // Moderators must review AI decisions before they become permanent.
+        var humanReviewPriority = analysis.Action == ModerationActionType.AutoReject.ToString()
+            ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+
+        var humanReviewQueue = new ModerationQueue
+        {
+          ContentId = chapterId,
+          ContentType = ModerationQueueContentType.CHAPTER,
+          Priority = humanReviewPriority,
+          Status = QueueStatus.PENDING,
+          FlaggedAt = DateTime.UtcNow,
+          ReportCount = 1,
+          AppealReason = $"AI Flagged: {aiReason}",
+        };
+        _db.ModerationQueues.Add(humanReviewQueue);
+        // ──────────────────────────────────────────────────────────────────────
+
+        _logger.LogWarning("Chapter {ChapterId} bị {Action}: {Reason} — đã tạo queue PENDING cho human review.",
             chapterId, analysis.Action, aiReason);
       }
       else
@@ -542,7 +561,24 @@ namespace Application.Services.AIModeration
           _db.Reports.Add(report);
         }
 
-        _logger.LogWarning("Translation {TranslationId} bị {Action}: {Reason}",
+        // ── Create a NEW PENDING queue entry for human moderator review ──────
+        var humanReviewPriority = analysis.Action == ModerationActionType.AutoReject.ToString()
+            ? QueuePriority.HIGH : QueuePriority.MEDIUM;
+
+        var humanReviewQueue = new ModerationQueue
+        {
+          ContentId = translationId,
+          ContentType = ModerationQueueContentType.TRANSLATION,
+          Priority = humanReviewPriority,
+          Status = QueueStatus.PENDING,
+          FlaggedAt = DateTime.UtcNow,
+          ReportCount = 1,
+          AppealReason = $"AI Flagged: {aiReason}",
+        };
+        _db.ModerationQueues.Add(humanReviewQueue);
+        // ──────────────────────────────────────────────────────────────────────
+
+        _logger.LogWarning("Translation {TranslationId} bị {Action}: {Reason} — đã tạo queue PENDING cho human review.",
             translationId, analysis.Action, aiReason);
       }
       else

@@ -153,8 +153,11 @@ namespace Application.Services.Translation
     public async Task<bool> DisbandTeamAsync(int teamId)
     {
       var userId = _userContext.UserId;
+      if (userId == null) return false;
+
+      var resolvedUserId = userId.Value; // Unwrap nullable to ensure correct EF Core SQL comparison
       var team = await _context.TranslationTeams
-          .FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == userId);
+          .FirstOrDefaultAsync(t => t.TeamId == teamId && t.LeaderId == resolvedUserId);
 
       if (team == null) return false;
 
