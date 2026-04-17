@@ -1,55 +1,57 @@
 {
-  "_comment": "Cấu hình Ngưỡng Kiểm duyệt (Dành cho Người Số 5 - Scoring Engine)",
+  "_comment": "C\u1EA5u h\u00ECnh Ng\u01B0\u1EE1ng Ki\u1EC3m duy\u1EC7t (D\u00E0nh cho Ng\u01B0\u1EDDi S\u1ED1 5 - Scoring Engine)",
   "version": "1.0",
   "ai_provider": "openai-omni-moderation-latest",
   "logic_rules": {
     "worst_score_wins": true,
-    "actions": ["AUTO_REJECT", "FLAG_FOR_REVIEW", "AUTO_PASS"]
+    "actions": [
+      "AUTO_REJECT",
+      "FLAG_FOR_REVIEW",
+      "AUTO_PASS"
+    ]
   },
-  
   "thresholds": {
     "violence": {
       "AUTO_REJECT": 0.85,
-      "FLAG_FOR_REVIEW": 0.50
+      "FLAG_FOR_REVIEW": 0.65
     },
     "violence/graphic": {
-      "AUTO_REJECT": 0.70,
-      "FLAG_FOR_REVIEW": 0.35
+      "AUTO_REJECT": 0.7,
+      "FLAG_FOR_REVIEW": 0.5
     },
     "sexual": {
-      "AUTO_REJECT": 0.90,
-      "FLAG_FOR_REVIEW": 0.60
+      "AUTO_REJECT": 0.9,
+      "FLAG_FOR_REVIEW": 0.65
     },
     "sexual/minors": {
-      "AUTO_REJECT": 0.20,
-      "FLAG_FOR_REVIEW": 0.05
+      "AUTO_REJECT": 0.2,
+      "FLAG_FOR_REVIEW": 0.1
     },
     "hate": {
-      "AUTO_REJECT": 0.80,
-      "FLAG_FOR_REVIEW": 0.40
+      "AUTO_REJECT": 0.8,
+      "FLAG_FOR_REVIEW": 0.65
     },
     "self-harm": {
       "AUTO_REJECT": 0.75,
-      "FLAG_FOR_REVIEW": 0.30
+      "FLAG_FOR_REVIEW": 0.65
     }
   },
-
   "age_rating_mapping": {
     "All_Ages": {
       "max_allowed_score": 0.10,
-      "description": "Nội dung an toàn tuyệt đối (Không bạo lực, không tình dục)"
+      "description": "N\u1ED9i dung an to\u00E0n tuy\u1EC7t \u0111\u1ED1i (Kh\u00F4ng b\u1EA1o l\u1EF1c, kh\u00F4ng t\u00ECnh d\u1EE5c)"
     },
     "13_Plus": {
       "max_allowed_score": 0.35,
-      "description": "Bạo lực nhẹ, ngôn từ có thể hơi mạnh"
+      "description": "B\u1EA1o l\u1EF1c nh\u1EB9, ng\u00F4n t\u1EEB c\u00F3 th\u1EC3 h\u01A1i m\u1EA1nh"
     },
     "16_Plus": {
       "max_allowed_score": 0.59,
-      "description": "Bạo lực, máu me vừa phải, yếu tố nhạy cảm nhưng không lộ liễu"
+      "description": "B\u1EA1o l\u1EF1c, m\u00E1u me v\u1EEBa ph\u1EA3i, y\u1EBFu t\u1ED1 nh\u1EA1y c\u1EA3m nh\u01B0ng kh\u00F4ng l\u1ED9 li\u1EC5u"
     },
     "18_Plus": {
       "max_allowed_score": 0.89,
-      "description": "Trưởng thành, giáp ranh mức Auto-Reject của hệ thống"
+      "description": "Tr\u01B0\u1EDFng th\u00E0nh, gi\u00E1p ranh m\u1EE9c Auto-Reject c\u1EE7a h\u1EC7 th\u1ED1ng"
     }
   }
 }

@@ -17,6 +17,8 @@ namespace Application.Services.Translation
     private readonly IUserContext _userContext;
     private readonly INotificationService _notificationService;
 
+    private const int MAX_TEAMS_PER_USER = 5;
+
     public TranslationTeamService(IMlndexDbContext context, IUserContext userContext, INotificationService notificationService)
     {
       _context = context;
@@ -24,10 +26,65 @@ namespace Application.Services.Translation
       _notificationService = notificationService;
     }
 
+    // ── ROLE HELPERS ─────────────────────────────────────────────────────────
+
+    /// <summary>Cấp TRANSLATOR role cho user nếu chưa có.</summary>
+    private async Task GrantTranslatorRoleAsync(int userId)
+    {
+      var translatorRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleName.TRANSLATOR);
+      if (translatorRole == null) return;
+
+      var alreadyHas = await _context.UserRoles.AnyAsync(ur => ur.UserId == userId && ur.RoleId == translatorRole.RoleId);
+      if (!alreadyHas)
+      {
+        _context.UserRoles.Add(new UserRole
+        {
+          UserId = userId,
+          RoleId = translatorRole.RoleId,
+          AssignedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+      }
+    }
+
+    /// <summary>Thu hồi TRANSLATOR role nếu user không còn thuộc nhóm dịch nào.</summary>
+    private async Task RevokeTranslatorRoleIfNoTeamsAsync(int userId)
+    {
+      // Kiểm tra user còn nhóm dịch active nào không (member hoặc leader)
+      var stillInTeams = await _context.TeamMembers
+          .AnyAsync(m => m.UserId == userId && m.IsActive && m.TranslationTeam.LockStatus != TeamLockStatus.DISBANDED);
+
+      if (!stillInTeams)
+      {
+        var translatorRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleName.TRANSLATOR);
+        if (translatorRole == null) return;
+
+        var userRole = await _context.UserRoles
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == translatorRole.RoleId);
+        if (userRole != null)
+        {
+          _context.UserRoles.Remove(userRole);
+          await _context.SaveChangesAsync();
+        }
+      }
+    }
+
+    /// <summary>Đếm số nhóm dịch đang active mà user tham gia.</summary>
+    private async Task<int> CountActiveTeamsAsync(int userId)
+    {
+      return await _context.TeamMembers
+          .CountAsync(m => m.UserId == userId && m.IsActive && m.TranslationTeam.LockStatus != TeamLockStatus.DISBANDED);
+    }
+
     public async Task<TranslationTeamResponse> CreateTeamAsync(CreateTranslationTeamRequest createDto)
     {
       var userId = _userContext.UserId;
       if (userId == null) throw new AppException(ErrorCodes.UNAUTHORIZED);
+
+      // Giới hạn tối đa 5 nhóm mỗi user
+      var activeTeamCount = await CountActiveTeamsAsync(userId.Value);
+      if (activeTeamCount >= MAX_TEAMS_PER_USER)
+        throw new AppException(ErrorCodes.MAX_TEAMS_REACHED);
 
       if (await _context.TranslationTeams.AnyAsync(t => t.TeamName == createDto.TeamName))
       {
@@ -85,6 +142,9 @@ namespace Application.Services.Translation
 
       _context.TeamMembers.Add(member);
       await _context.SaveChangesAsync();
+
+      // Cấp TRANSLATOR role cho leader vừa tạo nhóm
+      await GrantTranslatorRoleAsync(userId.Value);
 
       return await GetTeamByIdAsync(team.TeamId) ?? MapToDto(team);
     }
@@ -161,6 +221,12 @@ namespace Application.Services.Translation
 
       if (team == null) return false;
 
+      // Lấy danh sách active members TRƯỚC KHI disband để thu hồi role sau
+      var affectedUserIds = await _context.TeamMembers
+          .Where(m => m.TeamId == teamId && m.IsActive)
+          .Select(m => m.UserId)
+          .ToListAsync();
+
       var members = await _context.TeamMembers.Where(m => m.TeamId == teamId).ToListAsync();
       foreach (var m in members)
       {
@@ -172,6 +238,11 @@ namespace Application.Services.Translation
       team.UpdatedAt = DateTime.UtcNow;
 
       await _context.SaveChangesAsync();
+
+      // Thu hồi TRANSLATOR role với những thành viên không còn nhóm nào khác
+      foreach (var memberId in affectedUserIds)
+        await RevokeTranslatorRoleIfNoTeamsAsync(memberId);
+
       return true;
     }
 
@@ -210,6 +281,7 @@ namespace Application.Services.Translation
           .Include(t => t.TeamGenres)
           .ThenInclude(tg => tg.Genre)
           .Include(t => t.TeamMembers)
+          .Where(t => t.LockStatus != TeamLockStatus.DISBANDED)
           .ToListAsync();
       return teams.Select(MapToDto);
     }
@@ -227,6 +299,14 @@ namespace Application.Services.Translation
       {
         if (inviteDto.Role != TeamMemberRole.LEADER)
           throw new AppException(ErrorCodes.USER_ALREADY_IN_TEAM);
+      }
+
+      // Kiểm tra invitee chưa tham gia đủ 5 nhóm (chỉ khi không phải leadership transfer)
+      if (inviteDto.Role != TeamMemberRole.LEADER)
+      {
+        var inviteeTeamCount = await CountActiveTeamsAsync(inviteDto.UserId);
+        if (inviteeTeamCount >= MAX_TEAMS_PER_USER)
+          throw new AppException(ErrorCodes.MAX_TEAMS_REACHED);
       }
 
       // Cancel any existing pending invitation before creating a new one (re-invite)
@@ -317,6 +397,9 @@ namespace Application.Services.Translation
 
       await _context.SaveChangesAsync();
 
+      // Cấp TRANSLATOR role cho user vừa join nhóm
+      await GrantTranslatorRoleAsync(userId.Value);
+
       var invitee = await _context.Users.FindAsync(userId);
       if (invitee != null)
       {
@@ -401,6 +484,9 @@ namespace Application.Services.Translation
       member.LeftAt = DateTime.UtcNow;
       await _context.SaveChangesAsync();
 
+      // Thu hồi TRANSLATOR role nếu user không còn nhóm nào khác
+      await RevokeTranslatorRoleIfNoTeamsAsync(targetUserId);
+
       await _notificationService.CreateNotificationAsync(
           targetUserId,
           team.TeamName,
@@ -432,6 +518,9 @@ namespace Application.Services.Translation
       member.IsActive = false;
       member.LeftAt = DateTime.UtcNow;
       await _context.SaveChangesAsync();
+
+      // Thu hồi TRANSLATOR role nếu user không còn nhóm nào khác
+      await RevokeTranslatorRoleIfNoTeamsAsync(userId.Value);
 
       // Notify all remaining active members
       var leavingUser = await _context.Users.FindAsync(userId.Value);
@@ -547,7 +636,7 @@ namespace Application.Services.Translation
       var userMembers = await _context.TeamMembers
           .Include(tm => tm.TranslationTeam)
           .ThenInclude(t => t.TeamMembers)
-          .Where(tm => tm.UserId == userId && tm.IsActive)
+          .Where(tm => tm.UserId == userId && tm.IsActive && tm.TranslationTeam.LockStatus != TeamLockStatus.DISBANDED)
           .OrderByDescending(tm => tm.JoinedAt)
           .Take(limit)
           .ToListAsync();
@@ -571,7 +660,7 @@ namespace Application.Services.Translation
       // Also fetch teams where user is leader but might not be in TeamMembers (e.g. from seed data)
       var ledTeams = await _context.TranslationTeams
           .Include(t => t.TeamMembers)
-          .Where(t => t.LeaderId == userId)
+          .Where(t => t.LeaderId == userId && t.LockStatus != TeamLockStatus.DISBANDED)
           .Take(limit)
           .ToListAsync();
 

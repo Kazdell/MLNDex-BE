@@ -75,10 +75,12 @@ namespace Application.Exceptions
             { ErrorCodes.CANNOT_CHANGE_LEADER_ROLE, "Chức danh Trưởng nhóm không thể thay đổi thông qua thao tác này." },
             { ErrorCodes.LEADERSHIP_TRANSFER_REQUIRES_INVITATION, "Việc chuyển giao chức vụ Trưởng nhóm yêu cầu người được chọn phải Chấp Nhận lời mời. Hãy dùng tính năng Mời thành viên." },
             { ErrorCodes.TEAM_JOIN_COOLDOWN, "Bạn phải đợi một khoảng thời gian sau khi rời nhóm trước khi tham gia mới." },
+            { ErrorCodes.MAX_TEAMS_REACHED, "Mỗi người dùng chỉ được tham gia tối đa 5 nhóm dịch cùng lúc." },
             
             { ErrorCodes.CHAPTER_NOT_PUBLISHED, "Chương này chưa được phát hành." },
             { ErrorCodes.CHAPTER_ALREADY_FREE, "Chương này đã miễn phí, không cần mở khóa." },
             { ErrorCodes.CREATOR_NOT_FOUND, "Không tìm thấy hồ sơ tác giả." },
+            { ErrorCodes.PEN_NAME_TAKEN, "Bút danh này đã được sử dụng. Vui lòng chọn bút danh khác." },
             
             { ErrorCodes.COMMENT_NOT_FOUND, "Bình luận không tồn tại." },
             { ErrorCodes.COMMENT_MAX_DEPTH_REACHED, "Không thể phản hồi một bình luận đã là phản hồi (chỉ hỗ trợ 2 cấp độ bình luận)." }

@@ -13,6 +13,10 @@ namespace Application.DTOs.Moderation
   {
     public Dictionary<string, double> Scores { get; set; } = new();
     public string TargetAgeRating { get; set; } = "ALL";
+    /// Creator self-declared intensity per category (0=None, 1=Mild, 2=Moderate, 3=Frequent, 4=Extreme).
+    /// Maps category key (e.g. "violence") to declared level.
+    /// Used to raise per-category thresholds so content matching declarations is not penalized.
+    public Dictionary<string, int> SelfModerationScores { get; set; } = new();
   }
 
   // Response from text moderation check.
