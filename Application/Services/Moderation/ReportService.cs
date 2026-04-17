@@ -125,7 +125,7 @@ namespace Application.Services.Moderation
                   cancellationToken
               ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
 
-      if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED)
+      if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED || queue.Status == QueueStatus.REJECTED)
       {
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
       }
