@@ -27,14 +27,19 @@ namespace Application.Services.System
       if (config == null)
       {
         // Return defaults if no config exists yet
+        const decimal defaultRate = 1000;
+        const decimal defaultMin = 50;
+        const decimal defaultMax = 1000;
         return new SystemConfigDto
         {
-          ExchangeRateCoinToVnd = 1000,
+          ExchangeRateCoinToVnd = defaultRate,
           WithdrawalFeePercent = 10,
-          WithdrawalMinCoins = 50,
-          WithdrawalMaxCoins = 1000,
+          WithdrawalMinCoins = defaultMin,
+          WithdrawalMaxCoins = defaultMax,
           TranslationAuthorCommissionPercent = 70,
-          BlacklistWords = new List<string>()
+          BlacklistWords = new List<string>(),
+          MinWithdrawalAmountVnd = defaultMin * defaultRate,
+          MaxWithdrawalAmountVnd = defaultMax * defaultRate,
         };
       }
 
@@ -47,7 +52,9 @@ namespace Application.Services.System
         TranslationAuthorCommissionPercent = config.TranslationAuthorCommissionPercent,
         BlacklistWords = string.IsNullOrEmpty(config.BlacklistWordsJson)
               ? new List<string>()
-              : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>()
+              : JsonSerializer.Deserialize<List<string>>(config.BlacklistWordsJson) ?? new List<string>(),
+        MinWithdrawalAmountVnd = config.WithdrawalMinCoins * config.ExchangeRateCoinToVnd,
+        MaxWithdrawalAmountVnd = config.WithdrawalMaxCoins * config.ExchangeRateCoinToVnd,
       };
     }
 
