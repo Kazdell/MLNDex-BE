@@ -32,7 +32,7 @@ namespace Application.DTOs.Financial
 
   public class CreateWithdrawalRequestDto
   {
-    public decimal AmountCoins { get; set; }
+    public decimal AmountVnd { get; set; }
     public string BankName { get; set; } = null!;
     public string AccountNumber { get; set; } = null!;
     public string AccountName { get; set; } = null!;

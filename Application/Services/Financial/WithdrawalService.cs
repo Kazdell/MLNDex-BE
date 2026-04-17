@@ -169,49 +169,54 @@ namespace Application.Services.Financial
       var config = await _context.SystemConfigs.FirstOrDefaultAsync(cancellationToken)
           ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
-      // 1. Validate limits
-      if (dto.AmountCoins < config.WithdrawalMinCoins)
+      if (config.ExchangeRateCoinToVnd <= 0)
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_CONFIG_VALUE);
+
+      // 1. Convert VND → Coins (làm tròn xuống, tránh thừa)
+      var amountCoins = Math.Floor(dto.AmountVnd / config.ExchangeRateCoinToVnd);
+
+      // 2. Validate limits (dùng Coins để so sánh với config)
+      if (amountCoins < config.WithdrawalMinCoins)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
-      if (config.WithdrawalMaxCoins > 0 && dto.AmountCoins > config.WithdrawalMaxCoins)
+      if (config.WithdrawalMaxCoins > 0 && amountCoins > config.WithdrawalMaxCoins)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.INVALID_WITHDRAWAL_AMOUNT);
 
-      // 2. Check wallet balance
+      // 3. Check wallet balance
       var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId, cancellationToken)
           ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
-      if (wallet.CoinBalance < dto.AmountCoins)
+      if (wallet.CoinBalance < amountCoins)
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
-      // 3. Calculate VND amount after fee
-      var amountVnd = dto.AmountCoins * config.ExchangeRateCoinToVnd * (1 - config.WithdrawalFeePercent / 100);
+      // 4. Tính VND thực nhận sau phí
+      var amountVndAfterFee = dto.AmountVnd * (1 - config.WithdrawalFeePercent / 100m);
 
-      // 4. Create request
+      // 5. Create request
       var entity = new WithdrawalRequest
       {
         UserId = userId,
-        AmountCoins = dto.AmountCoins,
-        AmountVnd = amountVnd,
+        AmountCoins = amountCoins,
+        AmountVnd = amountVndAfterFee,
         BankAccountInfo = $"{dto.BankName} | {dto.AccountNumber} | {dto.AccountName}",
         RequestedAt = DateTime.UtcNow,
         Status = WithdrawalStatus.PENDING,
         Note = dto.Note
       };
 
-      // 5. Deduct coins from balance (or mark as pending - here we deduct immediately for simplicity)
-      wallet.CoinBalance -= dto.AmountCoins;
-      // Optionally add to total spent or similar? 
+      // 6. Deduct coins from wallet balance
+      wallet.CoinBalance -= amountCoins;
 
       _context.WithdrawalRequests.Add(entity);
 
-      // Add a system transaction record
+      // 7. Add a system transaction record
       _context.Transactions.Add(new Transaction
       {
         UserId = userId,
         WalletId = wallet.WalletId,
         Type = TransactionType.WITHDRAWAL,
-        AmountCoins = dto.AmountCoins,
+        AmountCoins = amountCoins,
         Status = TransactionStatus.PENDING,
-        Note = $"Yêu cầu rút {dto.AmountCoins} coins ({amountVnd:N0} VND)",
+        Note = $"Yêu cầu rút {amountCoins} coins ({dto.AmountVnd:N0} VND → nhận {amountVndAfterFee:N0} VND sau phí)",
         CreatedAt = DateTime.UtcNow
       });
 

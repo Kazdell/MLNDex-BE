@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Application.DTOs.System
 {
@@ -20,5 +20,9 @@ namespace Application.DTOs.System
     public decimal TranslationAuthorCommissionPercent { get; set; } = 70; // % hoa hồng trả cho tác giả khi mua bản dịch
 
     public List<string> BlacklistWords { get; set; } = new();
+
+    public decimal MinWithdrawalAmountVnd { get; set; }
+    
+    public decimal MaxWithdrawalAmountVnd { get; set; }
   }
 }
