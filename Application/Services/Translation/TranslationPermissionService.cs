@@ -32,7 +32,10 @@ namespace Application.Services.Translation
       var isMember = await _context.TeamMembers
           .AnyAsync(m => m.TeamId == dto.TeamId && m.UserId == requesterId && m.IsActive);
 
-      if (!isMember)
+      var isLeader = await _context.TranslationTeams
+          .AnyAsync(t => t.TeamId == dto.TeamId && t.LeaderId == requesterId);
+
+      if (!isMember && !isLeader)
         throw new AppException(ErrorCodes.NOT_TEAM_MEMBER);
 
       var series = await _context.Series

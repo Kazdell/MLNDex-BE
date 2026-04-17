@@ -212,5 +212,72 @@ namespace mlndex_backend.Controllers.Translation
         await moderationService.EnqueueTranslationForModerationAsync(id);
         return OkResponse(new { message = "Translation enqueued for moderation successfully." });
     }
+
+    // ── TEXT LAYER ENDPOINTS (AI OCR / Internal Translator) ─────────────────
+    [HttpGet("page-layer/{pageId:int}")]
+    public async Task<IActionResult> GetPageTextLayers(int pageId)
+    {
+        var page = await _db.ChapterPages.FindAsync(pageId);
+        if (page == null) return NotFoundResponse();
+
+        var layers = await _db.PageTextLayers
+            .Where(l => l.PageId == pageId)
+            .OrderBy(l => l.LayerId)
+            .Select(l => new
+            {
+                l.LayerId,
+                l.PageId,
+                l.X,
+                l.Y,
+                l.Width,
+                l.Height,
+                l.OriginalText,
+                l.TranslatedText,
+                l.IsVerified,
+                l.IsUserAdjusted,
+                l.AdjustmentCount,
+                l.SourceLanguage,
+                l.TargetLanguage,
+                l.TranslationProvider,
+                l.CreatedAt,
+                l.UpdatedAt
+            })
+            .ToListAsync();
+
+        return OkResponse(layers);
+    }
+
+    /// Trigger AI OCR để tạo/cập nhật text layers cho một trang.
+    [HttpPost("page-layer/generate/{pageId:int}")]
+    public async Task<IActionResult> GeneratePageTextLayers(int pageId, [FromQuery] string targetLanguage = "Vietnamese")
+    {
+        // Verify page exists
+        var page = await _db.ChapterPages.FindAsync(pageId);
+        if (page == null) return NotFoundResponse();
+
+        // For now, return existing layers (AI generation is handled by ReaderTranslation endpoints)
+        // This stub exists so the frontend does not get 404; actual AI OCR goes via /readertranslation/*
+        var layers = await _db.PageTextLayers
+            .Where(l => l.PageId == pageId)
+            .Select(l => new
+            {
+                l.LayerId,
+                l.PageId,
+                l.X,
+                l.Y,
+                l.Width,
+                l.Height,
+                l.OriginalText,
+                l.TranslatedText,
+                l.IsVerified,
+                l.IsUserAdjusted,
+                l.SourceLanguage,
+                l.TargetLanguage,
+                l.TranslationProvider
+            })
+            .ToListAsync();
+
+        return OkResponse(layers);
+    }
   }
 }

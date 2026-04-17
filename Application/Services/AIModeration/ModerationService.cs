@@ -170,11 +170,20 @@ namespace Application.Services.AIModeration
           aiResult.FlaggedReason = combinedReason.Length > 200 ? combinedReason[..197] + "..." : combinedReason;
         }
       }
-      // 3. Scoring Engine
+      // 3. Scoring Engine — pass self-moderation declarations so thresholds are adjusted
       var scoreRequest = new OpenAiScoreRequest
       {
         Scores = aiResult.CategoryScores,
-        TargetAgeRating = chapter.Series.AgeRating.ToString()
+        TargetAgeRating = chapter.Series.AgeRating.ToString(),
+        SelfModerationScores = new Dictionary<string, int>
+        {
+          ["violence"]         = chapter.Series.ViolenceScore,
+          ["nudity"]           = chapter.Series.NudityScore,
+          ["sexual"]           = chapter.Series.SexualScore,
+          ["profanity"]        = chapter.Series.LanguageScore,
+          ["substances"]       = chapter.Series.SubstancesScore,
+          ["religion_politics"]= chapter.Series.SensitiveScore,
+        }
       };
 
       var analysis = AnalyzeOpenAiScores(scoreRequest);
@@ -189,37 +198,24 @@ namespace Application.Services.AIModeration
 
         var queueItem = await _db.ModerationQueues
             .FirstOrDefaultAsync(q => q.ContentId == chapterId
-                && q.ContentType == ModerationQueueContentType.CHAPTER);
+                && q.ContentType == ModerationQueueContentType.CHAPTER
+                && q.Status == QueueStatus.IN_REVIEW);
 
         var aiReason = aiResult.Flagged
             ? aiResult.FlaggedReason
             : $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
 
+        // Mark old IN_REVIEW entry as RESOLVED (AI scan done)
         if (queueItem != null)
         {
-          // Mark the AI-processing queue entry as RESOLVED (AI scan done)
           queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
                                 ? QueuePriority.HIGH : QueuePriority.MEDIUM;
-          queueItem.Status = QueueStatus.RESOLVED; // Mark as done
+          queueItem.Status = QueueStatus.RESOLVED;
           queueItem.FlaggedAt = DateTime.UtcNow;
           queueItem.ReportCount += 1;
-
-          var report = new Report
-          {
-            ContentId = chapterId,
-            ContentType = ReportTargetType.ChapterTranslation,
-            Reason = ReportReason.Inappropriate,
-            Description = "AI_" + aiReason,
-            ReporterId = 1,
-            Queue = queueItem,
-            CreatedAt = DateTime.UtcNow
-          };
-          _db.Reports.Add(report);
         }
 
         // ── Create a NEW PENDING queue entry for human moderator review ──────
-        // Without this, violated chapters never appear in the admin review queue.
-        // Moderators must review AI decisions before they become permanent.
         var humanReviewPriority = analysis.Action == ModerationActionType.AutoReject.ToString()
             ? QueuePriority.HIGH : QueuePriority.MEDIUM;
 
@@ -234,6 +230,19 @@ namespace Application.Services.AIModeration
           AppealReason = $"AI Flagged: {aiReason}",
         };
         _db.ModerationQueues.Add(humanReviewQueue);
+
+        // ── Always create Report linked to humanReviewQueue (not queueItem which may be null) ──
+        var report = new Report
+        {
+          ContentId = chapterId,
+          ContentType = ReportTargetType.ChapterTranslation,
+          Reason = ReportReason.Inappropriate,
+          Description = "AI_" + aiReason,
+          ReporterId = 1,
+          Queue = humanReviewQueue, // link to the NEW queue, always non-null
+          CreatedAt = DateTime.UtcNow
+        };
+        _db.Reports.Add(report);
         // ──────────────────────────────────────────────────────────────────────
 
         _logger.LogWarning("Chapter {ChapterId} bị {Action}: {Reason} — đã tạo queue PENDING cho human review.",
@@ -518,7 +527,16 @@ namespace Application.Services.AIModeration
         var scoreRequest = new OpenAiScoreRequest
         {
           Scores = aiResult.CategoryScores,
-          TargetAgeRating = translation.Chapter.Series.AgeRating.ToString()
+          TargetAgeRating = translation.Chapter.Series.AgeRating.ToString(),
+          SelfModerationScores = new Dictionary<string, int>
+          {
+            ["violence"]         = translation.Chapter.Series.ViolenceScore,
+            ["nudity"]           = translation.Chapter.Series.NudityScore,
+            ["sexual"]           = translation.Chapter.Series.SexualScore,
+            ["profanity"]        = translation.Chapter.Series.LanguageScore,
+            ["substances"]       = translation.Chapter.Series.SubstancesScore,
+            ["religion_politics"]= translation.Chapter.Series.SensitiveScore,
+          }
         };
 
         analysis = AnalyzeOpenAiScores(scoreRequest);
@@ -538,27 +556,17 @@ namespace Application.Services.AIModeration
 
         var queueItem = await _db.ModerationQueues
             .FirstOrDefaultAsync(q => q.ContentId == translationId
-                && q.ContentType == ModerationQueueContentType.TRANSLATION);
+                && q.ContentType == ModerationQueueContentType.TRANSLATION
+                && q.Status == QueueStatus.IN_REVIEW);
 
+        // Mark old IN_REVIEW entry as RESOLVED (AI scan done)
         if (queueItem != null)
         {
           queueItem.Priority = analysis.Action == ModerationActionType.AutoReject.ToString()
                                 ? QueuePriority.HIGH : QueuePriority.MEDIUM;
-          queueItem.Status = QueueStatus.RESOLVED; // Mark as done
+          queueItem.Status = QueueStatus.RESOLVED;
           queueItem.FlaggedAt = DateTime.UtcNow;
           queueItem.ReportCount += 1;
-
-          var report = new Report
-          {
-            ContentId = translationId,
-            ContentType = ReportTargetType.ChapterTranslation,
-            Reason = ReportReason.Inappropriate,
-            Description = "AI_" + aiReason,
-            ReporterId = 1,
-            Queue = queueItem,
-            CreatedAt = DateTime.UtcNow
-          };
-          _db.Reports.Add(report);
         }
 
         // ── Create a NEW PENDING queue entry for human moderator review ──────
@@ -576,6 +584,19 @@ namespace Application.Services.AIModeration
           AppealReason = $"AI Flagged: {aiReason}",
         };
         _db.ModerationQueues.Add(humanReviewQueue);
+
+        // ── Always create Report linked to humanReviewQueue (not queueItem which may be null) ──
+        var report = new Report
+        {
+          ContentId = translationId,
+          ContentType = ReportTargetType.ChapterTranslation,
+          Reason = ReportReason.Inappropriate,
+          Description = "AI_" + aiReason,
+          ReporterId = 1,
+          Queue = humanReviewQueue, // link to the NEW queue, always non-null
+          CreatedAt = DateTime.UtcNow
+        };
+        _db.Reports.Add(report);
         // ──────────────────────────────────────────────────────────────────────
 
         _logger.LogWarning("Translation {TranslationId} bị {Action}: {Reason} — đã tạo queue PENDING cho human review.",
@@ -926,30 +947,65 @@ int chapterId, CancellationToken ct = default)
       double worstScore = 0;
       ModerationActionType worstAction = ModerationActionType.AutoPass;
 
-      // 2. Chế độ Aging-based Scoring (Yêu cầu của Sếp)
-      // Lấy max_allowed_score từ config cho rating được chọn
+      // 2. Age-rating baseline threshold
       double maxAllowed = 0.5; // Fallback
       switch (request.TargetAgeRating.ToUpper())
       {
-        case "ALL": maxAllowed = 0.1; break;
-        case "TEEN": maxAllowed = 0.35; break;
-        case "MATURE": maxAllowed = 0.6; break;
-        case "ADULT": maxAllowed = 0.89; break;
+        case "ALL":
+        case "ALL_AGES": maxAllowed = 0.1; break;   // ALL_AGES was missing — fixed
+        case "TEEN":     maxAllowed = 0.35; break;
+        case "MATURE":   maxAllowed = 0.6; break;
+        case "ADULT":    maxAllowed = 0.89; break;
       }
+
+      // 3. Self-moderation boost: map category key → OpenAI score key
+      // Each declared level (0-4) adds +0.08 tolerance, capped at (AUTO_REJECT - 0.05)
+      // so the absolute reject floor is never crossed.
+      // Level mapping: 0=None, 1=Mild, 2=Moderate, 3=Frequent, 4=Extreme
+      var categoryBoostMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+      {
+        ["violence"]         = "violence",
+        ["nudity"]           = "sexual",
+        ["sexual"]           = "sexual",
+        ["profanity"]        = "harassment",
+        ["substances"]       = "violence",      // no direct OpenAI key; use violence as proxy
+        ["religion_politics"]= "hate",
+      };
 
       foreach (var kvp in request.Scores)
       {
         if (!_blacklist.Thresholds.TryGetValue(kvp.Key, out var rule)) continue;
 
+        // Effective FLAG threshold:
+        // Start from the higher of [AgeRating baseline] and [config FLAG_FOR_REVIEW].
+        // This prevents ALL_AGES (0.10) from flagging every mild action panel
+        // because OpenAI always returns some violence score for motion/action art.
+        // Self-moderation boost is applied on top of this combined floor.
+        double effectiveThreshold = Math.Max(maxAllowed, rule.FLAG_FOR_REVIEW);
+
+        // Find if any self-moderation key maps to this OpenAI category
+        foreach (var boost in request.SelfModerationScores)
+        {
+          if (categoryBoostMap.TryGetValue(boost.Key, out var mappedKey)
+              && string.Equals(mappedKey, kvp.Key, StringComparison.OrdinalIgnoreCase)
+              && boost.Value > 0)
+          {
+            // Each level grants +0.15 tolerance, max capped at AUTO_REJECT - 0.05
+            double boosted = effectiveThreshold + (boost.Value * 0.15);
+            effectiveThreshold = Math.Min(boosted, rule.AUTO_REJECT - 0.05);
+          }
+        }
+
         ModerationActionType currentAction = ModerationActionType.AutoPass;
 
-        // Nếu score vượt quá ngưỡng của Rating đã chọn -> Flag hoặc Reject
         if (kvp.Value >= rule.AUTO_REJECT)
         {
           currentAction = ModerationActionType.AutoReject;
         }
-        else if (kvp.Value >= maxAllowed || kvp.Value >= rule.FLAG_FOR_REVIEW)
+        else if (kvp.Value >= effectiveThreshold)
         {
+          // effectiveThreshold already accounts for AgeRating baseline + self-moderation boost.
+          // The condition is: score exceeds the creator-adjusted threshold.
           currentAction = ModerationActionType.FlagForReview;
         }
 

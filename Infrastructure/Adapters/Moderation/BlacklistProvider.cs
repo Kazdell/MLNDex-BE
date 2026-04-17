@@ -103,6 +103,105 @@ namespace Infrastructure.Adapters.Moderation
       // or we can handle them separately in the moderation logic.
     }
 
+    public async Task AddBlacklistWordAsync(string word, string category, string severity)
+    {
+      var path = Path.Combine(_configPath, "blacklist.json");
+      BlacklistFile data = new BlacklistFile { Profanity = new(), HateSpeech = new(), IllegalContent = new() };
+      
+      if (File.Exists(path))
+      {
+        var json = await File.ReadAllTextAsync(path);
+        data = JsonSerializer.Deserialize<BlacklistFile>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? data;
+      }
+
+      data.Profanity ??= new();
+      data.HateSpeech ??= new();
+      data.IllegalContent ??= new();
+
+      // Check if word already exists to prevent duplicates
+      bool wordExists = data.Profanity.Any(x => x.Word.Equals(word, StringComparison.OrdinalIgnoreCase)) ||
+                        data.HateSpeech.Any(x => x.Word.Equals(word, StringComparison.OrdinalIgnoreCase)) ||
+                        data.IllegalContent.Any(x => x.Word.Equals(word, StringComparison.OrdinalIgnoreCase));
+
+      if (!wordExists)
+      {
+        var newEntry = new BlacklistEntry { Word = word, Severity = severity, Variants = new List<string>() };
+
+        switch (category?.ToLower())
+        {
+          case "hatespeech":
+            data.HateSpeech.Add(newEntry);
+            break;
+          case "illegalcontent":
+            data.IllegalContent.Add(newEntry);
+            break;
+          case "profanity":
+          default:
+            data.Profanity.Add(newEntry);
+            break;
+        }
+
+        var newJson = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, newJson);
+        LoadBlacklist();
+      }
+    }
+
+    public async Task<string> GetBlacklistJsonAsync()
+    {
+      var path = Path.Combine(_configPath, "blacklist.json");
+      if (File.Exists(path))
+      {
+        return await File.ReadAllTextAsync(path);
+      }
+      return "{}";
+    }
+
+    public async Task UpdateThresholdsAsync(Dictionary<string, ThresholdRule> thresholds)
+    {
+      var path = Path.Combine(_configPath, "threshold_config.json");
+      if (File.Exists(path))
+      {
+        var json = await File.ReadAllTextAsync(path);
+        var jsonNode = System.Text.Json.Nodes.JsonNode.Parse(json) as System.Text.Json.Nodes.JsonObject;
+        if (jsonNode != null)
+        {
+          // Check if "thresholds" exists with lowercase, otherwise use "Thresholds"
+          string key = jsonNode.ContainsKey("thresholds") ? "thresholds" : "Thresholds";
+          jsonNode[key] = JsonSerializer.SerializeToNode(thresholds);
+          
+          var newJson = jsonNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+          await File.WriteAllTextAsync(path, newJson);
+
+          // Update source file so changes persist across builds
+          try
+          {
+            var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (currentDir != null)
+            {
+                var sourcePath = Path.Combine(currentDir.FullName, "Infrastructure", "ModerationConfig", "threshold_config.json");
+                if (File.Exists(sourcePath))
+                {
+                    await File.WriteAllTextAsync(sourcePath, newJson);
+                    break;
+                }
+                currentDir = currentDir.Parent;
+            }
+          }
+          catch (Exception)
+          {
+            // Ignore path errors in production/other environments
+          }
+        }
+      }
+      LoadThresholds();
+    }
+
+    public async Task<Dictionary<string, ThresholdRule>> GetThresholdsAsync()
+    {
+      return await Task.FromResult(Thresholds);
+    }
+
     // New helper to get a combined list if needed, or we just expect the consumer to check both.
     // In this project's ModerationService, it iterates over ProfanityList, HateSpeechList, etc.
     // Let's modify LoadBlacklist to clear and reload, then we can append dynamic words.

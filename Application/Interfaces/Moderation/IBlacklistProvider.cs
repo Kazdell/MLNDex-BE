@@ -13,5 +13,9 @@ namespace Application.Interfaces.Moderation
     Dictionary<string, ThresholdRule> Thresholds { get; }
     void LoadAll();
     void SetDynamicBlacklist(List<string> words);
+    Task AddBlacklistWordAsync(string word, string category, string severity);
+    Task<string> GetBlacklistJsonAsync();
+    Task UpdateThresholdsAsync(Dictionary<string, ThresholdRule> thresholds);
+    Task<Dictionary<string, ThresholdRule>> GetThresholdsAsync();
   }
 }

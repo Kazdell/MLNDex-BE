@@ -102,6 +102,7 @@ namespace Application.DTOs.Common
     public const string CANNOT_CHANGE_LEADER_ROLE = "CANNOT_CHANGE_LEADER_ROLE";
     public const string LEADERSHIP_TRANSFER_REQUIRES_INVITATION = "LEADERSHIP_TRANSFER_REQUIRES_INVITATION";
     public const string TEAM_JOIN_COOLDOWN = "TEAM_JOIN_COOLDOWN";
+    public const string MAX_TEAMS_REACHED = "MAX_TEAMS_REACHED";
 
     //  Creator & Series
     public const string SERIES_NOT_FOUND = "SERIES_NOT_FOUND";
@@ -112,6 +113,7 @@ namespace Application.DTOs.Common
     public const string CHAPTER_NOT_PUBLISHED = "CHAPTER_NOT_PUBLISHED";
     public const string CHAPTER_ALREADY_FREE = "CHAPTER_ALREADY_FREE";
     public const string CREATOR_NOT_FOUND = "CREATOR_NOT_FOUND";
+    public const string PEN_NAME_TAKEN = "PEN_NAME_TAKEN";
 
     //  VIP
     public const string WALLET_NOT_FOUND = "WALLET_NOT_FOUND";

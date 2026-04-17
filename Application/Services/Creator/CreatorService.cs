@@ -26,32 +26,51 @@ namespace Application.Services.Creator
 
     public async Task<CreatorRegisterResponseDto> RegisterAsync(int userId, CreatorRegisterDto dto, CancellationToken ct = default)
     {
-      // 1. Kiểm tra đã là creator chưa
+      // 1. Kiểm tra đã là creator đang hoạt động chưa
       var existing = await _db.CreatorProfiles
           .FirstOrDefaultAsync(c => c.UserId == userId, ct);
+
       if (existing != null)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // 2. Kiểm tra bút danh trùng
-      var penNameTaken = await _db.CreatorProfiles
-          .AnyAsync(c => c.PenName == dto.PenName.Trim(), ct);
-      if (penNameTaken)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
-
-      // 3. Tạo CreatorProfile
-      var profile = new CreatorProfile
       {
-        UserId = userId,
-        PenName = dto.PenName.Trim(),
-        ModerationStatus = ModerationStatus.APPROVED,
-        IsActive = true,
-        ReputationScore = 0,
-        TotalRevenue = 0,
-        HideRevenue = false,
-      };
-      _db.CreatorProfiles.Add(profile);
+        if (existing.IsActive)
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
 
-      // 4. Gán role Creator
+        // Creator bị revoke → Cho phép đăng ký lại bằng cách reactivate profile
+        existing.IsActive = true;
+        existing.ModerationStatus = ModerationStatus.APPROVED;
+        // Chỉ đổi PenName nếu user cung cấp tên mới và không trùng
+        if (!string.IsNullOrWhiteSpace(dto.PenName) && dto.PenName.Trim() != existing.PenName)
+        {
+          var penNameTaken = await _db.CreatorProfiles
+              .AnyAsync(c => c.PenName == dto.PenName.Trim() && c.UserId != userId, ct);
+          if (penNameTaken)
+            throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PEN_NAME_TAKEN);
+          existing.PenName = dto.PenName.Trim();
+        }
+      }
+      else
+      {
+        // 2. Kiểm tra bút danh trùng (chỉ khi tạo mới)
+        var penNameTaken = await _db.CreatorProfiles
+            .AnyAsync(c => c.PenName == dto.PenName.Trim(), ct);
+        if (penNameTaken)
+          throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.PEN_NAME_TAKEN);
+
+        // 3. Tạo CreatorProfile mới
+        existing = new CreatorProfile
+        {
+          UserId = userId,
+          PenName = dto.PenName.Trim(),
+          ModerationStatus = ModerationStatus.APPROVED,
+          IsActive = true,
+          ReputationScore = 0,
+          TotalRevenue = 0,
+          HideRevenue = false,
+        };
+        _db.CreatorProfiles.Add(existing);
+      }
+
+      // 4. Gán role Creator (nếu chưa có)
       var creatorRole = await _db.Roles
           .FirstOrDefaultAsync(r => r.RoleName == RoleName.CREATOR, ct);
       if (creatorRole == null)
@@ -70,6 +89,9 @@ namespace Application.Services.Creator
       }
 
       await _db.SaveChangesAsync(ct);
+
+      // Dùng lại biến existing (đã là profile cuối cùng)
+      var profile = existing;
 
       // 5. Load lại user kèm đầy đủ roles để generate token mới
       var user = await _db.Users
