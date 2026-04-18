@@ -40,6 +40,7 @@ RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
 ENV PORT=5285
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:$LD_LIBRARY_PATH
 
 EXPOSE 5285
 ENTRYPOINT ["dotnet", "mlndex-backend.dll"]

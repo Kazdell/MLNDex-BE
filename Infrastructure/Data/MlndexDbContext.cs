@@ -714,7 +714,6 @@ namespace Infrastructure.Data
         e.ToTable("WithdrawalRequest");
         e.HasKey(x => x.WithdrawalId);
         e.Property(x => x.WithdrawalId).UseIdentityColumn();
-        e.Property(x => x.UserId).HasColumnName("CreatorId");
         e.Property(x => x.AmountCoins).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.AmountVnd).HasColumnType("decimal(10,2)").IsRequired();
         e.Property(x => x.BankAccountInfo).IsRequired();
