@@ -23,6 +23,9 @@ RUN sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list
     sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list 2>/dev/null; \
     apt-get update && apt-get install -y --no-install-recommends \
     libgdiplus libc6-dev libfontconfig1 \
+    libgl1 libglib2.0-0 libgomp1 libsm6 libxext6 libxrender-dev \
+    tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie tesseract-ocr-jpn tesseract-ocr-jpn-vert \
+    libtesseract-dev libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish .
