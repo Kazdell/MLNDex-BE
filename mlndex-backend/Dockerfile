@@ -40,9 +40,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY --from=build /app/publish .
 
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
-# Note: libleptonica-1.82.0.so already exists in /usr/lib/x86_64-linux-gnu via libleptonica-dev package
-RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so \
-    && ldconfig
+RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so
+
+# Fix: InteropDotNet.LibraryLoader (used by Tesseract.NET) does NOT honor LD_LIBRARY_PATH.
+# It searches for the EXACT versioned filename in hardcoded paths.
+# We must find the real .so file and create both versioned and unversioned symlinks
+# in /usr/lib so the loader can discover it by exact name.
+RUN LEPT_SO=$(find /usr/lib /usr/local/lib -name "libleptonica.so.*" | head -1) && \
+    echo "Found leptonica: $LEPT_SO" && \
+    ln -sf "$LEPT_SO" /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
+    TESS_SO=$(find /usr/lib /usr/local/lib -name "libtesseract.so.*" | head -1) && \
+    echo "Found tesseract: $TESS_SO" && \
+    ln -sf "$TESS_SO" /usr/lib/x86_64-linux-gnu/libtesseract50.so && \
+    ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
