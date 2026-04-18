@@ -42,18 +42,16 @@ COPY --from=build /app/publish .
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so
 
-# Fix: InteropDotNet.LibraryLoader (Tesseract.NET) ignores LD_LIBRARY_PATH.
-# On Ubuntu 22.04 jammy, the real leptonica binary is liblept.so.5.0.4
-# The chain libleptonica.so -> liblept.so -> liblept.so.5.0.4 doesn't resolve at runtime.
-# We must point directly to the actual binary file.
-RUN ln -sf /usr/lib/x86_64-linux-gnu/liblept.so.5.0.4 /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
-    ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.4 /usr/lib/x86_64-linux-gnu/libtesseract50.so && \
-    ldconfig
+# Fix: InteropDotNet.LibraryLoader (Tesseract.NET) searches /app/x64/*.so on Linux x64.
+# The LD_LIBRARY_PATH must also include /app/x64 so dlopen() can resolve by name.
+# We copy the actual ELF binaries (not symlinks) with exact names expected by InteropDotNet.
+RUN cp /usr/lib/x86_64-linux-gnu/liblept.so.5.0.4 /app/x64/libleptonica-1.82.0.so && \
+    cp /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 /app/x64/libtesseract50.so
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
 ENV PORT=5285
-ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:/usr/lib/x86_64-linux-gnu
+ENV LD_LIBRARY_PATH=/app/x64:/app/runtimes/linux-x64/native:/usr/lib/x86_64-linux-gnu
 
 EXPOSE 5285
 ENTRYPOINT ["dotnet", "mlndex-backend.dll"]
