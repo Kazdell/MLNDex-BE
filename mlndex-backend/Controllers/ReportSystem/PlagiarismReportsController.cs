@@ -34,7 +34,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         }
 
         [HttpGet("moderator")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Roles = "ADMIN,MODERATOR")]
         public async Task<IActionResult> GetPendingReports(
             [FromQuery] int page = 1,
             [FromQuery] int limit = 20
@@ -45,7 +45,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         }
 
         [HttpPost("moderator/{id}/resolve")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Roles = "ADMIN,MODERATOR")]
         public async Task<IActionResult> ResolveReport(
             int id,
             [FromBody] ResolvePlagiarismReportRequest request
@@ -67,7 +67,7 @@ namespace mlndex_backend.Controllers.ReportSystem
         }
 
         [HttpGet("moderator/{id}/compare")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Roles = "ADMIN,MODERATOR")]
         public async Task<IActionResult> GetCompareData(
             int id,
             [FromQuery] int referenceTranslationId

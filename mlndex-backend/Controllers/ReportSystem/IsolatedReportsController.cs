@@ -26,7 +26,8 @@ namespace mlndex_backend.Controllers
 
         private int GetCurrentUserId()
         {
-            var str = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var str = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                      ?? User.FindFirstValue("UserId");
             return int.TryParse(str, out var id) ? id : 0;
         }
 

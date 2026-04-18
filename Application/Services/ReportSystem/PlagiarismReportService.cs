@@ -63,8 +63,7 @@ namespace Application.Services.ReportSystem
     {
       var query = _context.Reports
           .Include(r => r.Reporter)
-          .Where(r => r.Status == ReportStatus.Pending || r.Status == ReportStatus.Investigating)
-          .OrderBy(r => r.CreatedAt);
+          .OrderByDescending(r => r.CreatedAt);
 
       var reports = await query
           .Skip((page - 1) * limit)
