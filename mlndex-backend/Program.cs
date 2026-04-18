@@ -155,8 +155,10 @@ namespace mlndex_backend
             builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
             builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-      // OCR Services — with fallback for deployments without native DLLs
-      var ocrAvailable = File.Exists(Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll"));
+      // OCR Services — check linux-x64 native libs (app runs on Ubuntu in production)
+      var ocrLinuxLib = Path.Combine(AppContext.BaseDirectory, "runtimes", "linux-x64", "native", "libOpenCvSharpExtern.so");
+      var ocrWinLib = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll");
+      var ocrAvailable = File.Exists(ocrLinuxLib) || File.Exists(ocrWinLib);
       if (ocrAvailable)
       {
         builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
