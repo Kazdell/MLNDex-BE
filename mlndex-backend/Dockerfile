@@ -42,16 +42,14 @@ COPY --from=build /app/publish .
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so
 
-# Fix: InteropDotNet.LibraryLoader (used by Tesseract.NET) does NOT honor LD_LIBRARY_PATH.
-# It searches for the EXACT versioned filename in hardcoded paths.
-# We must find the real .so file and create both versioned and unversioned symlinks
-# in /usr/lib so the loader can discover it by exact name.
-RUN LEPT_SO=$(find /usr/lib /usr/local/lib -name "libleptonica.so.*" | head -1) && \
-    echo "Found leptonica: $LEPT_SO" && \
-    ln -sf "$LEPT_SO" /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
-    TESS_SO=$(find /usr/lib /usr/local/lib -name "libtesseract.so.*" | head -1) && \
-    echo "Found tesseract: $TESS_SO" && \
-    ln -sf "$TESS_SO" /usr/lib/x86_64-linux-gnu/libtesseract50.so && \
+# Fix: InteropDotNet.LibraryLoader (Tesseract.NET) ignores LD_LIBRARY_PATH.
+# On Ubuntu 22.04 jammy:
+#   - libleptonica-dev ships ONLY libleptonica.so (no versioned .so.X file)
+#   - libtesseract ships libtesseract.so.4 (not .so.5)
+# InteropDotNet searches for exact names: libleptonica-1.82.0.so & libtesseract50.so
+# So we create the exact symlinks it expects.
+RUN ln -sf /usr/lib/x86_64-linux-gnu/libleptonica.so /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
+    ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.4 /usr/lib/x86_64-linux-gnu/libtesseract50.so && \
     ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
