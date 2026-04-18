@@ -40,15 +40,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY --from=build /app/publish .
 
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
-# Fix: Tesseract .NET binding looks for 'libleptonica-1.82.0.so' but Ubuntu 22.04 ships 'liblept.so.5'
+# Note: libleptonica-1.82.0.so already exists in /usr/lib/x86_64-linux-gnu via libleptonica-dev package
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so \
-    && ln -sf /lib/x86_64-linux-gnu/liblept.so.5 /lib/x86_64-linux-gnu/libleptonica-1.82.0.so \
     && ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
 ENV PORT=5285
-ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:/usr/lib/x86_64-linux-gnu
 
 EXPOSE 5285
 ENTRYPOINT ["dotnet", "mlndex-backend.dll"]
