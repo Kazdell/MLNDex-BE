@@ -33,7 +33,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 COPY --from=build /app/publish .
 
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
+# Fix: Tesseract .NET binding looks for 'libleptonica-1.82.0.so' but Ubuntu 22.04 ships 'liblept.so.5'
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so \
+    && ln -sf /lib/x86_64-linux-gnu/liblept.so.5 /lib/x86_64-linux-gnu/libleptonica-1.82.0.so \
     && ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
