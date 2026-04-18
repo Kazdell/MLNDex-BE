@@ -24,6 +24,7 @@ RUN sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list
     apt-get update && apt-get install -y --no-install-recommends \
     libgdiplus libc6-dev libfontconfig1 \
     libgl1 libglib2.0-0 libgomp1 libsm6 libxext6 libxrender-dev \
+    libgtk2.0-0 libavcodec-dev libavformat-dev libswscale-dev \
     tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie tesseract-ocr-jpn tesseract-ocr-jpn-vert \
     libtesseract-dev libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -33,7 +34,8 @@ COPY --from=build /app/publish .
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
 # Fix: libtesseract.so.4 → Debian 12 has libtesseract.so.5, create compat symlink
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so \
-    && ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.5 /usr/lib/x86_64-linux-gnu/libtesseract.so.4
+    && ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.5 /usr/lib/x86_64-linux-gnu/libtesseract.so.4 \
+    && ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
