@@ -43,12 +43,10 @@ COPY --from=build /app/publish .
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so
 
 # Fix: InteropDotNet.LibraryLoader (Tesseract.NET) ignores LD_LIBRARY_PATH.
-# On Ubuntu 22.04 jammy:
-#   - libleptonica-dev ships ONLY libleptonica.so (no versioned .so.X file)
-#   - libtesseract ships libtesseract.so.4 (not .so.5)
-# InteropDotNet searches for exact names: libleptonica-1.82.0.so & libtesseract50.so
-# So we create the exact symlinks it expects.
-RUN ln -sf /usr/lib/x86_64-linux-gnu/libleptonica.so /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
+# On Ubuntu 22.04 jammy, the real leptonica binary is liblept.so.5.0.4
+# The chain libleptonica.so -> liblept.so -> liblept.so.5.0.4 doesn't resolve at runtime.
+# We must point directly to the actual binary file.
+RUN ln -sf /usr/lib/x86_64-linux-gnu/liblept.so.5.0.4 /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so && \
     ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.4 /usr/lib/x86_64-linux-gnu/libtesseract50.so && \
     ldconfig
 
