@@ -290,12 +290,14 @@ namespace mlndex_backend
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers.Host.ToString(),
+                        partitionKey: context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                                      ?? context.Connection.RemoteIpAddress?.ToString()
+                                      ?? context.Request.Headers.Host.ToString(),
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
-                            PermitLimit = 120,
-                            QueueLimit = 10,
+                            PermitLimit = 600,
+                            QueueLimit = 20,
                             Window = TimeSpan.FromMinutes(1)
                         }));
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
