@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # ── Stage 1: Build ──
 FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 WORKDIR /src
@@ -7,12 +8,16 @@ COPY ["mlndex-backend/mlndex-backend.csproj", "mlndex-backend/"]
 COPY ["Application/Application.csproj", "Application/"]
 COPY ["Domain/Domain.csproj", "Domain/"]
 COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
-RUN dotnet restore "mlndex-backend/mlndex-backend.csproj"
+
+# Cache mount for NuGet packages — persists across --no-cache rebuilds
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "mlndex-backend/mlndex-backend.csproj"
 
 # Copy full source
 COPY . .
 WORKDIR "/src/mlndex-backend"
-RUN dotnet publish "mlndex-backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish "mlndex-backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # ── Stage 2: Runtime ──
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS final
@@ -21,14 +26,16 @@ WORKDIR /app
 # Install native dependencies required by OpenCvSharp4 and PaddleOCR
 # Ubuntu 22.04 (jammy) natively provides ffmpeg 4.x (libavcodec.so.58, libswscale.so.5, etc.)
 # which exactly matches the dependencies of OpenCvSharp4 linux-x64 binaries.
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+# Cache mount for apt — persists across --no-cache rebuilds
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     libgdiplus libc6-dev libfontconfig1 \
     libgl1 libglib2.0-0 libgomp1 libsm6 libxext6 libxrender-dev \
     libgtk2.0-0 ffmpeg libavcodec-dev libavformat-dev libswscale-dev libavutil-dev \
     libdc1394-25 libopenexr-dev \
     tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie tesseract-ocr-jpn tesseract-ocr-jpn-vert \
-    libtesseract-dev libleptonica-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libtesseract-dev libleptonica-dev
 
 COPY --from=build /app/publish .
 
@@ -41,7 +48,7 @@ RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
 ENV PORT=5285
-ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native
 
 EXPOSE 5285
 ENTRYPOINT ["dotnet", "mlndex-backend.dll"]
