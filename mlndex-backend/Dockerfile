@@ -1,5 +1,5 @@
 # ── Stage 1: Build ──
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 WORKDIR /src
 
 # Copy project files first for layer caching
@@ -15,16 +15,17 @@ WORKDIR "/src/mlndex-backend"
 RUN dotnet publish "mlndex-backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # ── Stage 2: Runtime ──
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS final
 WORKDIR /app
 
-# Use Singapore mirror (closer to VN) for faster apt-get
-RUN sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
-    sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list 2>/dev/null; \
-    apt-get update && apt-get install -y --no-install-recommends \
+# Install native dependencies required by OpenCvSharp4 and PaddleOCR
+# Ubuntu 22.04 (jammy) natively provides ffmpeg 4.x (libavcodec.so.58, libswscale.so.5, etc.)
+# which exactly matches the dependencies of OpenCvSharp4 linux-x64 binaries.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     libgdiplus libc6-dev libfontconfig1 \
     libgl1 libglib2.0-0 libgomp1 libsm6 libxext6 libxrender-dev \
-    libgtk2.0-0 libavcodec-dev libavformat-dev libswscale-dev \
+    libgtk2.0-0 ffmpeg libavcodec-dev libavformat-dev libswscale-dev libavutil-dev \
+    libdc1394-25 libopenexr-dev \
     tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie tesseract-ocr-jpn tesseract-ocr-jpn-vert \
     libtesseract-dev libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -32,9 +33,7 @@ RUN sed -i 's|http://deb.debian.org|http://mirror.sg.gs|g' /etc/apt/sources.list
 COPY --from=build /app/publish .
 
 # Fix: OpenCvSharp looks for 'OpenCvSharpExtern.so' but NuGet ships 'libOpenCvSharpExtern.so'
-# Fix: libtesseract.so.4 → Debian 12 has libtesseract.so.5, create compat symlink
 RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/linux-x64/native/OpenCvSharpExtern.so \
-    && ln -sf /usr/lib/x86_64-linux-gnu/libtesseract.so.5 /usr/lib/x86_64-linux-gnu/libtesseract.so.4 \
     && ldconfig
 
 ENV ASPNETCORE_ENVIRONMENT=Production
