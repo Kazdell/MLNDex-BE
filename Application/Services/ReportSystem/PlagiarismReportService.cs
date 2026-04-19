@@ -150,6 +150,31 @@ namespace Application.Services.ReportSystem
 
             report.Status = request.NewStatus;
 
+            // Thông báo cho người đã gửi báo cáo (reporter) khi báo cáo được xử lý
+            try
+            {
+                var decisionLabel =
+                    request.NewStatus == ReportStatus.Resolved ? "Đã xử lý"
+                    : request.NewStatus == ReportStatus.Rejected ? "Đã bác bỏ"
+                    : request.NewStatus.ToString();
+
+                var note = string.IsNullOrWhiteSpace(request.ResolutionNotes)
+                    ? string.Empty
+                    : $" Ghi chú: {request.ResolutionNotes}";
+
+                await _notificationService.CreateNotificationAsync(
+                    report.ReporterId,
+                    "Báo cáo vi phạm đã được xử lý",
+                    $"Báo cáo #{report.ReportId} của bạn đã được xử lý. Kết quả: {decisionLabel}.{note}",
+                    "/notifications",
+                    NotificationType.SYSTEM
+                );
+            }
+            catch
+            {
+                // best-effort: không chặn luồng xử lý report nếu notification gặp lỗi
+            }
+
             // Chỉ thực hiện xử phạt nếu trạng thái là Resolved
             if (request.NewStatus == ReportStatus.Resolved)
             {
