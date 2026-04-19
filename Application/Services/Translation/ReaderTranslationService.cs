@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Application.DTOs.User;
 using Application.Interfaces.Data;
@@ -184,7 +185,7 @@ namespace Application.Services.Translation
       if (!SupportedProviders.Contains(provider))
         throw new NotSupportedException($"Translation provider '{provider}' is not supported. Supported: {string.Join(", ", SupportedProviders)}");
 
-      using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(80));
+      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(80));
       List<string> translatedTexts;
       try
       {
