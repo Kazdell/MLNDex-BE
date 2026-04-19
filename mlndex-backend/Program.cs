@@ -268,7 +268,9 @@ namespace mlndex_backend
             {
                 "http://localhost:5173", "http://127.0.0.1:5173",
                 "http://localhost:5174", "http://127.0.0.1:5174",
-                "http://localhost:5175", "http://127.0.0.1:5175"
+                "http://localhost:5175", "http://127.0.0.1:5175",
+                // Production origins — always included as fallback
+                "https://mlndex-fe.vercel.app"
             };
             var extraOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
             if (!string.IsNullOrEmpty(extraOrigins))
@@ -328,8 +330,10 @@ namespace mlndex_backend
       app.UseAuthorization();
       app.UseStaticFiles();
 
-            app.MapHub<NotificationHub>("/hubs/notification");
-            app.MapHub<ModerationHub>("/hubs/moderation");
+            // RequireCors is mandatory for SignalR hubs:
+            // The HTTP POST /negotiate preflight must pass CORS before the WebSocket upgrade.
+            app.MapHub<NotificationHub>("/hubs/notification").RequireCors("AllowSpecificOrigin");
+            app.MapHub<ModerationHub>("/hubs/moderation").RequireCors("AllowSpecificOrigin");
 
             app.MapControllers();
             app.Run();
