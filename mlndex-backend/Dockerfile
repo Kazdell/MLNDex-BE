@@ -45,10 +45,12 @@ RUN ln -sf /app/runtimes/linux-x64/native/libOpenCvSharpExtern.so /app/runtimes/
 # Fix: InteropDotNet.LibraryLoader (Tesseract.NET) searches /app/x64/*.so on Linux x64.
 # The LD_LIBRARY_PATH must also include /app/x64 so dlopen() can resolve by name.
 # We copy the actual ELF binaries (not symlinks) with exact names expected by InteropDotNet.
-# Also: on Ubuntu 22.04, libdl is merged into libc6 — InteropDotNet needs explicit symlink.
+# CRITICAL: On Ubuntu 22.04, libdl is merged into libc6.
+# InteropDotNet searches /app/x64/ and /app/ for libdl.so — NOT LD_LIBRARY_PATH paths.
 RUN cp /usr/lib/x86_64-linux-gnu/liblept.so.5.0.4 /app/x64/libleptonica-1.82.0.so && \
     cp /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 /app/x64/libtesseract50.so && \
-    ln -sf /lib/x86_64-linux-gnu/libdl.so.2 /usr/lib/x86_64-linux-gnu/libdl.so
+    ln -sf /lib/x86_64-linux-gnu/libdl.so.2 /app/x64/libdl.so && \
+    ln -sf /lib/x86_64-linux-gnu/libdl.so.2 /app/libdl.so
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5285
