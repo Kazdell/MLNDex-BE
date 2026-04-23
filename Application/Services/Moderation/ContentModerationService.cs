@@ -1,7 +1,9 @@
 using Application.DTOs.Moderation;
+using Application.DTOs.ReportSystem;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.ReportSystem;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +13,16 @@ namespace Application.Services.Moderation
   {
     private readonly IMlndexDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IReputationService _reputationService;
 
-    public ContentModerationService(IMlndexDbContext context, INotificationService notificationService)
+    public ContentModerationService(
+        IMlndexDbContext context,
+        INotificationService notificationService,
+        IReputationService reputationService)
     {
       _context = context;
       _notificationService = notificationService;
+      _reputationService = reputationService;
     }
 
     public async Task<ModerationQueueDto> DecideAsync(
@@ -29,10 +36,10 @@ namespace Application.Services.Moderation
           await _context.ModerationQueues.FirstOrDefaultAsync(
               q => q.QueueId == queueId,
               cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
+          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Moderation queue not found", 404);
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED || queue.Status == QueueStatus.REJECTED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Cannot decide on an already resolved/rejected queue", 409);
 
       var targetStatus = request.Action switch
       {
@@ -70,6 +77,13 @@ namespace Application.Services.Moderation
       );
 
       await _context.SaveChangesAsync(cancellationToken);
+
+      // ── Trừ 10 điểm uy tín khi REJECT / BAN ─────────────────────────
+      if (request.Action == ContentDecisionAction.REJECT || request.Action == ContentDecisionAction.BAN)
+      {
+        await DeductReputationForQueueAsync(queue, cancellationToken);
+      }
+      // ─────────────────────────────────────────────────────────────────
 
       // Send notification to content owner
       await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
@@ -199,6 +213,53 @@ namespace Application.Services.Moderation
             actionUrl,
             type
         );
+      }
+    }
+
+    // ── Trừ 10 điểm uy tín cho Creator/Team sở hữu nội dung bị xử lý ──
+    private async Task DeductReputationForQueueAsync(ModerationQueue queue, CancellationToken cancellationToken)
+    {
+      try
+      {
+        switch (queue.ContentType)
+        {
+          case ModerationQueueContentType.SERIES:
+            var series = await _context.Series
+                .Include(s => s.Creator)
+                .FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+            if (series?.Creator != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Creator, series.Creator.CreatorId,
+                  -10, $"[Moderator] Nội dung vi phạm bị xử lý (Series #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+
+          case ModerationQueueContentType.CHAPTER:
+            var chapter = await _context.Chapters
+                .Include(c => c.Series).ThenInclude(s => s.Creator)
+                .FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+            if (chapter?.Series?.Creator != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Creator, chapter.Series.Creator.CreatorId,
+                  -10, $"[Moderator] Nội dung vi phạm bị xử lý (Chapter #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+
+          case ModerationQueueContentType.TRANSLATION:
+            var translation = await _context.Translations
+                .Include(t => t.Permission).ThenInclude(p => p!.Team)
+                .FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+            if (translation?.Permission?.Team != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Team, translation.Permission.Team.TeamId,
+                  -10, $"[Moderator] Bản dịch vi phạm bị xử lý (Translation #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+        }
+      }
+      catch (Exception)
+      {
+        // Log nhưng không fail toàn bộ request nếu reputation update lỗi
       }
     }
   }

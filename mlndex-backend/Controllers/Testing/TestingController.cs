@@ -31,7 +31,7 @@ namespace mlndex_backend.Controllers.Testing
             u.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
             u.IsEmailVerified = true;
           }
-          testUser.TrustScore = 0;
+          // testUser.TrustScore is replaced by ReputationScore on CreatorProfile
           testUser.CannotUpload = true;
           await _db.SaveChangesAsync(default);
           return Ok(new { message = "Database already seeded. Fixed missing passwords (set to 123456). Set testuser1 to CannotUpload=true. If you need new data, please drop local DB to run again." });

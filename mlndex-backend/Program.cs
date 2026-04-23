@@ -135,7 +135,7 @@ namespace mlndex_backend
 
             // Isolated Report & TrustScore Services
             builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
+            builder.Services.AddScoped<Application.Interfaces.ReportSystem.IReputationService, Application.Services.ReportSystem.ReputationService>();
 
             // AI & Chapter Processing
             builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();

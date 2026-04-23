@@ -12,8 +12,7 @@ namespace Domain.Entities
     public string? Description { get; set; }
     public int LanguageId { get; set; } = 1;
     public bool RequireApproval { get; set; } = true;
-    public int ReputationScore { get; set; }
-    public int TrustScore { get; set; } = 100;
+    public int ReputationScore { get; set; } = 100;
     public TeamLockStatus LockStatus { get; set; }
     public ModerationStatus ModerationStatus { get; set; }
     public bool IsMonetizationEnabled { get; set; }
@@ -45,7 +44,7 @@ namespace Domain.Entities
     public ICollection<Translation> Translations { get; set; } = new List<Translation>();
     public ICollection<TeamGenre> TeamGenres { get; set; } = new List<TeamGenre>();
     public ICollection<TranslationTeamJoin> TeamJoins { get; set; } = new List<TranslationTeamJoin>();
-    public ICollection<TrustScoreHistory> TrustScoreHistories { get; set; } = new List<TrustScoreHistory>();
+    public ICollection<ReputationHistory> ReputationHistories { get; set; } = new List<ReputationHistory>();
   }
 
   public enum TeamLockStatus

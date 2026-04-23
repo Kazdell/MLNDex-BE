@@ -221,10 +221,10 @@ namespace Application.Services.ReportSystem
           var team = await _context.TranslationTeams.FindAsync(new object[] { trans.Permission.TeamId }, ct);
           if (team != null)
           {
-            team.TrustScore -= score;
-            if (team.TrustScore <= 0) team.LockStatus = TeamLockStatus.LOCKED;
+            team.ReputationScore -= score;
+            if (team.ReputationScore <= 0) team.LockStatus = TeamLockStatus.LOCKED;
 
-            _context.TrustScoreHistories.Add(new TrustScoreHistory
+            _context.ReputationHistories.Add(new ReputationHistory
             {
               TranslationTeamId = team.TeamId,
               ScoreChange = -score,
@@ -240,10 +240,10 @@ namespace Application.Services.ReportSystem
         var team = await _context.TranslationTeams.FindAsync(new object[] { report.ContentId }, ct);
         if (team != null)
         {
-          team.TrustScore -= score;
-          if (team.TrustScore <= 0) team.LockStatus = TeamLockStatus.LOCKED;
+          team.ReputationScore -= score;
+          if (team.ReputationScore <= 0) team.LockStatus = TeamLockStatus.LOCKED;
 
-          _context.TrustScoreHistories.Add(new TrustScoreHistory
+          _context.ReputationHistories.Add(new ReputationHistory
           {
             TranslationTeamId = team.TeamId,
             ScoreChange = -score,
@@ -255,15 +255,20 @@ namespace Application.Services.ReportSystem
       }
       else if (report.ContentType == ReportTargetType.User)
       {
-        var user = await _context.Users.FindAsync(new object[] { report.ContentId }, ct);
-        if (user != null)
+        var creator = await _context.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == report.ContentId, ct);
+        if (creator != null)
         {
-          user.TrustScore -= score;
-          if (user.TrustScore <= 0) user.CannotUpload = true;
-
-          _context.TrustScoreHistories.Add(new TrustScoreHistory
+          creator.ReputationScore -= score;
+          
+          if (creator.ReputationScore <= 0) 
           {
-            UserId = user.UserId,
+             var user = await _context.Users.FindAsync(new object[] { report.ContentId }, ct);
+             if (user != null) user.CannotUpload = true;
+          }
+
+          _context.ReputationHistories.Add(new ReputationHistory
+          {
+            CreatorId = creator.CreatorId,
             ScoreChange = -score,
             Reason = reason ?? "Bị phạt do vi phạm nội quy/đạo văn.",
             RelatedReportId = report.ReportId,

@@ -155,7 +155,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team", Slug = "new-slug" }));
-      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
+      ex.ErrorCode.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
     }
 
     [Fact]
@@ -168,7 +168,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).CreateTeamAsync(new CreateTranslationTeamRequest { TeamName = "Hero Team 2", Slug = "hero-team" }));
-      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TEAM_SLUG);
+      ex.ErrorCode.Should().Be(ErrorCodes.DUPLICATE_TEAM_SLUG);
     }
 
     [Fact]
@@ -244,7 +244,7 @@ namespace Application.Tests.Services.Translation
       inv!.Status.Should().Be(TeamInvitationStatus.PENDING);
       _mockNotificationService.Verify(n => n.CreateNotificationAsync(
           99, It.IsAny<string>(), It.IsAny<string>(),
-          It.IsAny<string>(), NotificationType.TEAM_INVITATION), Times.Once);
+          It.IsAny<string>(), NotificationType.TEAM_INVITATION, It.IsAny<int>(), It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -256,7 +256,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 55, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
+      ex.ErrorCode.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -270,16 +270,16 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be(ErrorCodes.USER_ALREADY_IN_TEAM);
+      ex.ErrorCode.Should().Be(ErrorCodes.USER_ALREADY_IN_TEAM);
     }
 
     [Fact]
-    public async Task InviteMemberAsync_ShouldThrow_WhenInvitationAlreadyPending()
+    public async Task InviteMemberAsync_ShouldCancelOldInvitation_AndCreateNewOne_WhenAlreadyPending()
     {
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(1);
       var teamId = await SeedTeamWithLeader(db);
-      db.TeamInvitations.Add(new TeamInvitation
+      var oldInv = new TeamInvitation
       {
         TeamId = teamId,
         InviteeId = 99,
@@ -287,12 +287,18 @@ namespace Application.Tests.Services.Translation
         Role = "TRANSLATOR",
         Status = TeamInvitationStatus.PENDING,
         CreatedAt = DateTime.UtcNow
-      });
+      };
+      db.TeamInvitations.Add(oldInv);
       await db.SaveChangesAsync();
 
-      var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
-          CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR }));
-      ex.Message.Should().Be(ErrorCodes.INVITATION_ALREADY_PENDING);
+      var newInvId = await CreateService(db).InviteMemberAsync(teamId, new InviteTeamMemberRequest { UserId = 99, Role = TeamMemberRole.TRANSLATOR });
+
+      var oldInvUpdated = await db.TeamInvitations.FindAsync(oldInv.InvitationId);
+      oldInvUpdated!.Status.Should().Be(TeamInvitationStatus.REJECTED);
+
+      var newInv = await db.TeamInvitations.FindAsync(newInvId);
+      newInv.Should().NotBeNull();
+      newInv!.Status.Should().Be(TeamInvitationStatus.PENDING);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -327,7 +333,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(teamId, 1));
-      ex.Message.Should().Be(ErrorCodes.CANNOT_REMOVE_LEADER);
+      ex.ErrorCode.Should().Be(ErrorCodes.CANNOT_REMOVE_LEADER);
     }
 
     [Fact]
@@ -340,7 +346,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(teamId, 55));
-      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
+      ex.ErrorCode.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -361,7 +367,7 @@ namespace Application.Tests.Services.Translation
       _mockUserContext.Setup(u => u.UserId).Returns(1);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RemoveMemberAsync(9999, 55));
-      ex.Message.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
+      ex.ErrorCode.Should().Be(ErrorCodes.TEAM_NOT_FOUND_OR_UNAUTHORIZED);
     }
 
     [Fact]
@@ -545,7 +551,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).AcceptInvitationAsync(inv.InvitationId));
-      ex.Message.Should().Be(ErrorCodes.TEAM_JOIN_COOLDOWN);
+      ex.ErrorCode.Should().Be(ErrorCodes.TEAM_JOIN_COOLDOWN);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -636,7 +642,7 @@ namespace Application.Tests.Services.Translation
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() =>
           CreateService(db).AssignRoleAsync(teamId, 1, new AssignTeamMemberRoleRequest { Role = TeamMemberRole.EDITOR }));
-      ex.Message.Should().Be(ErrorCodes.CANNOT_CHANGE_LEADER_ROLE);
+      ex.ErrorCode.Should().Be(ErrorCodes.CANNOT_CHANGE_LEADER_ROLE);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -705,7 +711,7 @@ namespace Application.Tests.Services.Translation
       var teamId = await SeedTeamWithLeader(db);
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).LeaveTeamAsync(teamId));
-      ex.Message.Should().Be(ErrorCodes.LEADER_CANNOT_LEAVE_TEAM);
+      ex.ErrorCode.Should().Be(ErrorCodes.LEADER_CANNOT_LEAVE_TEAM);
     }
 
     [Fact]

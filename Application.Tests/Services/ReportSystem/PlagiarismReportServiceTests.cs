@@ -35,16 +35,17 @@ namespace Application.Tests.Services.ReportSystem
       // Seed shared base data that satisfies all FK constraints
       _db.Users.AddRange(
           new User { UserId = 1, Username = "reporter1", Email = "reporter1@gmail.com", DisplayName = "R1", PasswordHash = "hash" },
-          new User { UserId = 2, Username = "baduser", Email = "baduser@test.com", TrustScore = 100, DisplayName = "B1", PasswordHash = "hash" },
+          new User { UserId = 2, Username = "baduser", Email = "baduser@test.com", DisplayName = "B1", PasswordHash = "hash" },
           new User { UserId = 3, Username = "moderator1", Email = "mod1@test.com", DisplayName = "M1", PasswordHash = "hash" },
           new User { UserId = 10, Username = "leader1", Email = "leader1@test.com", DisplayName = "L1", PasswordHash = "hash" }
       );
       _db.Languages.Add(new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" });
-      _db.CreatorProfiles.Add(new CreatorProfile { CreatorId = 1, UserId = 1, PenName = "Creator1" });
+      _db.CreatorProfiles.Add(new CreatorProfile { CreatorId = 1, UserId = 1, PenName = "Creator1", ReputationScore = 100 });
+      _db.CreatorProfiles.Add(new CreatorProfile { CreatorId = 2, UserId = 2, PenName = "BadCreator", ReputationScore = 100 });
       await _db.SaveChangesAsync();
 
       _db.Series.Add(new Series { SeriesId = 10, Title = "Test Series", CreatorId = 1 });
-      var team = new TranslationTeam { TeamName = "Team A", Slug = "team-a", TrustScore = 100, LeaderId = 10, LanguageId = 1 };
+      var team = new TranslationTeam { TeamName = "Team A", Slug = "team-a", ReputationScore = 100, LeaderId = 10, LanguageId = 1 };
       _db.TranslationTeams.Add(team);
       await _db.SaveChangesAsync();
       _seedTeamId = team.TeamId;
@@ -117,9 +118,9 @@ namespace Application.Tests.Services.ReportSystem
       result.Status.Should().Be(ReportStatus.Resolved);
 
       var teamInDb = await db.TranslationTeams.FindAsync(_seedTeamId);
-      teamInDb?.TrustScore.Should().Be(50); // 100 - 50
+      teamInDb?.ReputationScore.Should().Be(50); // 100 - 50
 
-      var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.TranslationTeamId == _seedTeamId);
+      var history = await db.ReputationHistories.FirstOrDefaultAsync(h => h.TranslationTeamId == _seedTeamId);
       history.Should().NotBeNull();
       history?.ScoreChange.Should().Be(-50);
       history?.RelatedReportId.Should().Be(100);
@@ -154,10 +155,10 @@ namespace Application.Tests.Services.ReportSystem
 
       result.Status.Should().Be(ReportStatus.Resolved);
 
-      var userInDb = await db.Users.FindAsync(2);
-      userInDb?.TrustScore.Should().Be(80); // 100 - 20
+      var creatorInDb = await db.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == 2);
+      creatorInDb?.ReputationScore.Should().Be(80); // 100 - 20
 
-      var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.UserId == 2);
+      var history = await db.ReputationHistories.FirstOrDefaultAsync(h => h.CreatorId == creatorInDb.CreatorId);
       history.Should().NotBeNull();
       history?.ScoreChange.Should().Be(-20);
       history?.RelatedReportId.Should().Be(101);

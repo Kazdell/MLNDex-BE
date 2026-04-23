@@ -1,11 +1,13 @@
 using Application.DTOs.Chapter;
 using Application.DTOs.AIModeration;
 using Application.DTOs.Moderation;
+using Application.DTOs.ReportSystem;
 using Application.Interfaces.AIModeration;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
 using Application.Interfaces.Queue;
+using Application.Interfaces.ReportSystem;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,7 @@ namespace Application.Services.AIModeration
         private readonly IModerationQueue _queue;
         private readonly INotificationService _notificationService;
         private readonly Application.Interfaces.Creator.IStorageService _storage;
+        private readonly IReputationService _reputationService;
 
         private static readonly Dictionary<char, char> TeencodeMap = new()
         {
@@ -47,6 +50,7 @@ namespace Application.Services.AIModeration
             IModerationQueue queue,
             INotificationService notificationService,
             Application.Interfaces.Creator.IStorageService storage,
+            IReputationService reputationService,
             IOCRService? ocr = null)
         {
             _db = db;
@@ -57,6 +61,7 @@ namespace Application.Services.AIModeration
             _queue = queue;
             _notificationService = notificationService;
             _storage = storage;
+            _reputationService = reputationService;
         }
 
         private static string TruncateMessage(string msg, int maxLen = 250)
@@ -262,6 +267,15 @@ namespace Application.Services.AIModeration
                     _logger.LogInformation(
                         "[Reputation] Creator {CreatorId} +5 uy tín → {Score}/100",
                         creatorProfile.CreatorId, creatorProfile.ReputationScore);
+
+                    // Ghi log ReputationHistory
+                    _db.ReputationHistories.Add(new ReputationHistory
+                    {
+                        CreatorId = creatorProfile.CreatorId,
+                        ScoreChange = 5,
+                        Reason = $"[AI] Chapter #{chapterId} được kiểm duyệt tự động thành công",
+                        CreatedAt = DateTime.UtcNow
+                    });
                 }
                 // ──────────────────────────────────────────────────────
 
@@ -626,6 +640,15 @@ namespace Application.Services.AIModeration
                     _logger.LogInformation(
                         "[Reputation] Team {TeamId} +5 uy tín → {Score}/100",
                         team.TeamId, team.ReputationScore);
+
+                    // Ghi log ReputationHistory
+                    _db.ReputationHistories.Add(new ReputationHistory
+                    {
+                        TranslationTeamId = team.TeamId,
+                        ScoreChange = 5,
+                        Reason = $"[AI] Translation #{translationId} được kiểm duyệt tự động thành công",
+                        CreatedAt = DateTime.UtcNow
+                    });
                 }
                 // ──────────────────────────────────────────────────────
 

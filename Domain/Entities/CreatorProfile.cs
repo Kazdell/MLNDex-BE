@@ -12,7 +12,7 @@ namespace Domain.Entities
     public int CreatorId { get; set; }
     public int UserId { get; set; }
     public string PenName { get; set; } = null!;
-    public int ReputationScore { get; set; }
+    public int ReputationScore { get; set; } = 100;
     public decimal TotalRevenue { get; set; }
     public bool HideRevenue { get; set; }
     public bool IsActive { get; set; }
@@ -27,6 +27,7 @@ namespace Domain.Entities
     // Navigation
     public User User { get; set; } = null!;
     public ICollection<Series> Series { get; set; } = new List<Series>();
+    public ICollection<ReputationHistory> ReputationHistories { get; set; } = new List<ReputationHistory>();
   }
 
   public enum ModerationStatus

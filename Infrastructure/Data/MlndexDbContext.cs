@@ -67,7 +67,7 @@ namespace Infrastructure.Data
     public DbSet<Report> Reports { get; set; }
     public DbSet<ModerationQueue> ModerationQueues { get; set; }
     public DbSet<ModerationAction> ModerationActions { get; set; }
-    public DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+    public DbSet<ReputationHistory> ReputationHistories { get; set; }
     public DbSet<Appeal> Appeals { get; set; }
 
     // ==================== LISTS ====================
@@ -98,7 +98,6 @@ namespace Infrastructure.Data
         e.Property(x => x.BannerUrl);
         e.Property(x => x.Bio);
         e.Property(x => x.IsActive).IsRequired();
-        e.Property(x => x.TrustScore).IsRequired();
         e.Property(x => x.CannotUpload).IsRequired();
       });
 
@@ -287,7 +286,6 @@ namespace Infrastructure.Data
         e.Property(x => x.LanguageId).IsRequired().HasDefaultValue(1);
         e.Property(x => x.RequireApproval).IsRequired().HasDefaultValue(true);
         e.Property(x => x.ReputationScore).IsRequired();
-        e.Property(x => x.TrustScore).IsRequired();
         e.Property(x => x.LockStatus)
                 .HasConversion<string>()
                 .IsRequired();
@@ -1068,24 +1066,24 @@ namespace Infrastructure.Data
       });
 
       // ====================================================
-      // TRUST_SCORE_HISTORY
+      // REPUTATION_HISTORY
       // ====================================================
-      modelBuilder.Entity<TrustScoreHistory>(e =>
+      modelBuilder.Entity<ReputationHistory>(e =>
       {
-        e.ToTable("TrustScoreHistories");
+        e.ToTable("ReputationHistories");
         e.HasKey(x => x.Id);
         e.Property(x => x.Id).UseIdentityColumn();
 
         e.Property(x => x.Reason).HasMaxLength(500);
         e.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("GETUTCDATE()");
 
-        e.HasOne(x => x.User)
-                        .WithMany(u => u.TrustScoreHistories)
-                        .HasForeignKey(x => x.UserId)
+        e.HasOne(x => x.Creator)
+                        .WithMany(c => c.ReputationHistories)
+                        .HasForeignKey(x => x.CreatorId)
                         .OnDelete(DeleteBehavior.Cascade);
 
         e.HasOne(x => x.TranslationTeam)
-                        .WithMany(t => t.TrustScoreHistories)
+                        .WithMany(t => t.ReputationHistories)
                         .HasForeignKey(x => x.TranslationTeamId)
                         .OnDelete(DeleteBehavior.Cascade);
 

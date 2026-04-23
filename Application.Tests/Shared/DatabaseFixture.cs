@@ -97,7 +97,7 @@ namespace Application.Tests.Shared
     private static readonly HashSet<string> _entitiesWithManualIds = new() {
             "User", "Role", "CreatorProfile", "Series", "Chapter", "Language",
             "TranslationPermission", "Translation",
-            "Category", "Report", "TrustScoreHistory", "Appeal",
+            "Category", "Report", "ReputationHistory", "Appeal",
             "Genre", "TranslationText", "TranslationPage"
         };
 

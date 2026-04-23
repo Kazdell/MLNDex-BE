@@ -13,15 +13,15 @@ namespace mlndex_backend.Controllers
     public class IsolatedReportsController : BaseController
     {
         private readonly IPlagiarismReportService _reportService;
-        private readonly ITrustScoreService _trustScoreService;
+        private readonly IReputationService _reputationService;
 
         public IsolatedReportsController(
             IPlagiarismReportService reportService,
-            ITrustScoreService trustScoreService
+            IReputationService reputationService
         )
         {
             _reportService = reportService;
-            _trustScoreService = trustScoreService;
+            _reputationService = reputationService;
         }
 
         private int GetCurrentUserId()
@@ -121,14 +121,14 @@ namespace mlndex_backend.Controllers
         }
 
         // ══════════════════════════════════════════════════════
-        // TRUST SCORE ENDPOINTS (Phase A)
+        // REPUTATION ENDPOINTS (Phase A)
         // ══════════════════════════════════════════════════════
 
-        /// <summary>Admin phục hồi điểm uy tín cho User/Team.</summary>
-        [HttpPost("/api/isolated-moderator/trust-score/restore")]
+        /// <summary>Admin phục hồi điểm uy tín cho Creator/Team.</summary>
+        [HttpPost("/api/isolated-moderator/reputation/restore")]
         [Authorize(Roles = "ADMIN,MODERATOR")]
-        public async Task<IActionResult> RestoreTrustScore(
-            [FromBody] RestoreTrustScoreRequest request
+        public async Task<IActionResult> RestoreReputationScore(
+            [FromBody] RestoreReputationRequest request
         )
         {
             var modId = GetCurrentUserId();
@@ -137,8 +137,28 @@ namespace mlndex_backend.Controllers
 
             try
             {
-                var result = await _trustScoreService.RestoreTrustScoreAsync(request, modId);
+                var result = await _reputationService.RestoreReputationScoreAsync(request, modId);
                 return OkResponse(result, "Đã phục hồi điểm uy tín thành công.");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        /// <summary>Lấy danh sách overview uy tín của creator hoặc team.</summary>
+        [HttpGet("/api/isolated-moderator/reputation/overview")]
+        [Authorize(Roles = "ADMIN,MODERATOR")]
+        public async Task<IActionResult> GetReputationOverview(
+            [FromQuery] string type = "creator",
+            [FromQuery] string? search = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var overview = await _reputationService.GetReputationOverviewAsync(type, search, page, pageSize);
+                return OkResponse(overview);
             }
             catch (System.Exception ex)
             {
@@ -161,7 +181,7 @@ namespace mlndex_backend.Controllers
 
             try
             {
-                var result = await _trustScoreService.CreateAppealAsync(userId, request);
+                var result = await _reputationService.CreateAppealAsync(userId, request);
                 return OkResponse(result, "Đã gửi đơn kháng cáo thành công.");
             }
             catch (System.Exception ex)
@@ -178,7 +198,7 @@ namespace mlndex_backend.Controllers
             [FromQuery] int limit = 20
         )
         {
-            var appeals = await _trustScoreService.GetPendingAppealsAsync(page, limit);
+            var appeals = await _reputationService.GetPendingAppealsAsync(page, limit);
             return OkResponse(appeals);
         }
 
@@ -196,8 +216,35 @@ namespace mlndex_backend.Controllers
 
             try
             {
-                var result = await _trustScoreService.ReviewAppealAsync(id, modId, request);
+                var result = await _reputationService.ReviewAppealAsync(id, modId, request);
                 return OkResponse(result, "Đã xử lý đơn kháng cáo.");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // REPUTATION HISTORY (Phase F)
+        // ══════════════════════════════════════════════════════
+
+        /// <summary>Lấy lịch sử uy tín của creator hoặc team.</summary>
+        [HttpGet("/api/reputation/history")]
+        [Authorize]
+        public async Task<IActionResult> GetReputationHistory(
+            [FromQuery] int? creatorId,
+            [FromQuery] int? teamId,
+            [FromQuery] int page = 1,
+            [FromQuery] int limit = 20)
+        {
+            if (!creatorId.HasValue && !teamId.HasValue)
+                return BadRequestResponse("Cần cung cấp creatorId hoặc teamId.");
+
+            try
+            {
+                var history = await _reputationService.GetReputationHistoryAsync(creatorId, teamId, page, limit);
+                return OkResponse(history);
             }
             catch (System.Exception ex)
             {
@@ -216,7 +263,7 @@ namespace mlndex_backend.Controllers
         {
             try
             {
-                var history = await _trustScoreService.GetUserTranslationHistoryAsync(userId);
+                var history = await _reputationService.GetUserTranslationHistoryAsync(userId);
                 return OkResponse(history);
             }
             catch (System.Exception ex)
