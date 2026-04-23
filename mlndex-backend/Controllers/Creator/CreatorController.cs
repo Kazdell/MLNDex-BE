@@ -6,6 +6,7 @@ using Application.Interfaces.Creator;
 using Application.Interfaces.Revenue;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace mlndex_backend.Controllers.Creator
 {
@@ -29,16 +30,27 @@ namespace mlndex_backend.Controllers.Creator
             var userId = GetUserId();
             if (userId < 0) return UnauthorizedResponse();
 
-      try
-      {
-        var result = await _creatorService.RegisterAsync(userId, dto, ct);
-        return OkResponse(result, "Đăng ký nhà sáng tạo thành công!");
-      }
-      catch (InvalidOperationException)
-      {
-        throw new AppException(ErrorCodes.INVALID_INPUT);
-      }
-    }
+            try
+            {
+                var result = await _creatorService.RegisterAsync(userId, dto, ct);
+                return OkResponse(result, "Đăng ký nhà sáng tạo thành công!");
+            }
+            catch (InvalidOperationException)
+            {
+                throw new AppException(ErrorCodes.INVALID_INPUT);
+            }
+        }
+
+        [Authorize(Roles = "CREATOR,ADMIN")]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile(CancellationToken ct)
+        {
+            var userId = GetUserId();
+            if (userId < 0) return UnauthorizedResponse();
+
+            var profile = await _creatorService.GetProfileAsync(userId, ct);
+            return OkResponse(profile, "Lấy thông tin creator thành công.");
+        }
 
         // --- New Unlock Settings Endpoints ---
 

@@ -375,7 +375,6 @@ namespace Infrastructure.Adapters.AIModeration
                 foreach (var result in results.EnumerateArray())
                 {
                     var scores = new Dictionary<string, double>();
-                    bool flagged = result.GetProperty("flagged").GetBoolean();
 
                     var categoryScores = result.GetProperty("category_scores");
                     foreach (var property in categoryScores.EnumerateObject())
@@ -383,7 +382,7 @@ namespace Infrastructure.Adapters.AIModeration
                         scores[property.Name] = property.Value.GetDouble();
                     }
 
-                    allResults.Add((scores, flagged));
+                    allResults.Add((scores, false));
                 }
             }
             catch (JsonException ex)
