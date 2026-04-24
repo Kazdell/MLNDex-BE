@@ -354,7 +354,7 @@ CancellationToken cancellationToken = default)
             }
             // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
             // Nếu đã mua (isUnlockedByUser) hoặc là Creator hoặc là Translator được cấp quyền, thì status trả về PHẢI LÀ UNLOCKED
-            var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
+            var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin)
                               ? ChapterLockStatus.UNLOCKED.ToString()
                               : ChapterLockStatus.LOCKED.ToString();
 
@@ -374,10 +374,10 @@ CancellationToken cancellationToken = default)
                 LockStatus = finalStatus,
                 UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
                 UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-                IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator,
+                IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin,
 
                 // Chặn Pages nếu locked và user chưa unlock
-                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
+                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin)
                 ? chapter.Pages.Select(p => new ChapterPageResponseDto
                 {
                     PageId = p.PageId,
