@@ -23,7 +23,7 @@ namespace Infrastructure.Services.OCR
   /// </summary>
   public class PaddleOcrService : IOCRService, ITextRecognitionService, IDisposable
   {
-    public string ProviderName => "paddle";
+    public string ProviderName => "paddle beta";
 
     private readonly ILogger<PaddleOcrService> _logger;
 
@@ -96,19 +96,91 @@ namespace Infrastructure.Services.OCR
       try
       {
         var result = engine.Run(mat);
-        return result.Regions.Select(r =>
+        var regions = result.Regions;
+        
+        if (regions == null || regions.Length == 0) return new List<OCRRegion>();
+
+        // Calculate median height for threshold
+        var heights = regions.Select(r => r.Rect.BoundingRect().Height).OrderBy(h => h).ToList();
+        double medianHeight = heights[heights.Count / 2];
+        bool hasSpaces = languageCode.Contains("vi", StringComparison.OrdinalIgnoreCase) || 
+                         languageCode.Contains("en", StringComparison.OrdinalIgnoreCase);
+
+        double thresholdX = hasSpaces ? medianHeight * 3.0 : medianHeight * 2.0;
+        double thresholdY = hasSpaces ? medianHeight * 3.0 : medianHeight * 2.25;
+
+        var clusters = new List<List<PaddleOcrResultRegion>>();
+
+        foreach (var region in regions)
         {
-          var bRect = r.Rect.BoundingRect();
-          return new OCRRegion
-          {
-            Text = r.Text,
-            // Convert Quad to standard bounding box
-            X = bRect.X / (double)mat.Width * 100,
-            Y = bRect.Y / (double)mat.Height * 100,
-            Width = bRect.Width / (double)mat.Width * 100,
-            Height = bRect.Height / (double)mat.Height * 100
-          };
-        }).ToList();
+            var rRect = region.Rect.BoundingRect();
+            
+            // Find a cluster to join
+            List<PaddleOcrResultRegion> matchedCluster = null;
+            foreach (var cluster in clusters)
+            {
+                foreach (var cRegion in cluster)
+                {
+                    var cRect = cRegion.Rect.BoundingRect();
+                    
+                    double hDist = Math.Max(0, Math.Max(rRect.Left, cRect.Left) - Math.Min(rRect.Right, cRect.Right));
+                    double vDist = Math.Max(0, Math.Max(rRect.Top, cRect.Top) - Math.Min(rRect.Bottom, cRect.Bottom));
+
+                    if (hDist <= thresholdX && vDist <= thresholdY)
+                    {
+                        matchedCluster = cluster;
+                        break;
+                    }
+                }
+                if (matchedCluster != null) break;
+            }
+
+            if (matchedCluster != null)
+            {
+                matchedCluster.Add(region);
+            }
+            else
+            {
+                clusters.Add(new List<PaddleOcrResultRegion> { region });
+            }
+        }
+
+        // Sort and merge clusters
+        bool isRtl = languageCode.ToLower().Contains("japan");
+        var finalRegions = new List<OCRRegion>();
+
+        foreach (var cluster in clusters)
+        {
+            cluster.Sort((a, b) =>
+            {
+                var rectA = a.Rect.BoundingRect();
+                var rectB = b.Rect.BoundingRect();
+                
+                if (Math.Abs(rectA.Top - rectB.Top) < medianHeight * 0.5)
+                {
+                    return isRtl ? rectB.Left.CompareTo(rectA.Left) : rectA.Left.CompareTo(rectB.Left);
+                }
+                return rectA.Top.CompareTo(rectB.Top);
+            });
+
+            string combinedText = string.Join(isRtl ? "" : " ", cluster.Select(r => r.Text));
+            
+            int minX = cluster.Min(r => r.Rect.BoundingRect().Left);
+            int minY = cluster.Min(r => r.Rect.BoundingRect().Top);
+            int maxX = cluster.Max(r => r.Rect.BoundingRect().Right);
+            int maxY = cluster.Max(r => r.Rect.BoundingRect().Bottom);
+
+            finalRegions.Add(new OCRRegion
+            {
+                Text = combinedText,
+                X = Math.Round(minX / (double)mat.Width * 100, 2),
+                Y = Math.Round(minY / (double)mat.Height * 100, 2),
+                Width = Math.Round((maxX - minX) / (double)mat.Width * 100, 2),
+                Height = Math.Round((maxY - minY) / (double)mat.Height * 100, 2)
+            });
+        }
+
+        return finalRegions;
       }
       catch (Exception ex)
       {
