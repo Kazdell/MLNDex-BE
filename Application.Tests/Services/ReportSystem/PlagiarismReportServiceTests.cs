@@ -68,7 +68,8 @@ namespace Application.Tests.Services.ReportSystem
       var db = _db;
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       var request = new CreatePlagiarismReportRequest
       {
         TargetType = ReportTargetType.Series,
@@ -105,7 +106,8 @@ namespace Application.Tests.Services.ReportSystem
 
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       var request = new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,
@@ -143,7 +145,8 @@ namespace Application.Tests.Services.ReportSystem
 
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       var request = new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,
@@ -182,7 +185,8 @@ namespace Application.Tests.Services.ReportSystem
 
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var service = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       var request = new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,

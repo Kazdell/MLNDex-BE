@@ -233,7 +233,8 @@ namespace Application.Tests.Services.ReportSystem
 
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var reportService = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var reportService = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       await reportService.ResolveReportAsync(1, 99, new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,

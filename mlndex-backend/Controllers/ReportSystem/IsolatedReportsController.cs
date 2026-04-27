@@ -101,6 +101,28 @@ namespace mlndex_backend.Controllers
             }
         }
 
+        /// <summary>Xử lý hàng loạt báo cáo (Moderator) — 1 request thay vì N requests.</summary>
+        [HttpPost("/api/isolated-moderator/reports/bulk-resolve")]
+        [Authorize(Roles = "ADMIN,MODERATOR")]
+        public async Task<IActionResult> BulkResolveReports(
+            [FromBody] BulkResolvePlagiarismReportRequest request
+        )
+        {
+            var modId = GetCurrentUserId();
+            if (modId == 0)
+                return Unauthorized("Phiên đăng nhập không hợp lệ.");
+
+            try
+            {
+                var result = await _reportService.BulkResolveReportsAsync(modId, request);
+                return OkResponse(result, $"Đã xử lý {result.Success} báo cáo.");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequestResponse(ex.Message);
+            }
+        }
+
         /// <summary>So sánh side-by-side (Moderator).</summary>
         [HttpGet("/api/isolated-moderator/reports/{id}/compare-data")]
         [Authorize(Roles = "ADMIN,MODERATOR")]

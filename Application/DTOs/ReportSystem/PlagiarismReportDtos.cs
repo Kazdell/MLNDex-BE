@@ -77,4 +77,25 @@ namespace Application.DTOs.ReportSystem
     public int Severe { get; set; }
     public int Resolved { get; set; }
   }
+  public class BulkResolvePlagiarismReportRequest
+  {
+    [Required]
+    public List<int> ReportIds { get; set; } = new();
+
+    [Required]
+    public ReportStatus NewStatus { get; set; }
+
+    public string? ResolutionNotes { get; set; }
+    public bool StrikeContent { get; set; }
+    public int? PenaltyScore { get; set; }
+    public bool BanCreator { get; set; }
+    public bool SendWarning { get; set; }
+  }
+
+  public class BulkResolveResultDto
+  {
+    public int Success { get; set; }
+    public int Failed { get; set; }
+    public List<int> FailedIds { get; set; } = new();
+  }
 }

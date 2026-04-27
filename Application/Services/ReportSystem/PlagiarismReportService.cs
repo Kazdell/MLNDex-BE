@@ -23,15 +23,18 @@ namespace Application.Services.ReportSystem
     private readonly IMlndexDbContext _context;
     private readonly IAccountModerationService _accountModerationService;
     private readonly INotificationService _notificationService;
+    private readonly INotificationPusher _notificationPusher;
 
     public PlagiarismReportService(
         IMlndexDbContext context,
         IAccountModerationService accountModerationService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        INotificationPusher notificationPusher)
     {
       _context = context;
       _accountModerationService = accountModerationService;
       _notificationService = notificationService;
+      _notificationPusher = notificationPusher;
     }
 
     public async Task<PlagiarismReportDto> CreateReportAsync(int reporterId, CreatePlagiarismReportRequest request, CancellationToken cancellationToken = default)
@@ -157,12 +160,97 @@ namespace Application.Services.ReportSystem
 
       await _context.SaveChangesAsync(cancellationToken);
 
+      await _notificationPusher.PushReportResolvedEventAsync();
+
       var dto = MapToDto(report, report.Reporter.Username);
       dto.TargetName = await GetTargetNameAsync(report.ContentType, report.ContentId, cancellationToken);
       dto.TargetUrl = await GetTargetUrlAsync(report.ContentType, report.ContentId, cancellationToken);
       return dto;
     }
 
+    public async Task<BulkResolveResultDto> BulkResolveReportsAsync(int moderatorId, BulkResolvePlagiarismReportRequest request, CancellationToken cancellationToken = default)
+    {
+      var result = new BulkResolveResultDto();
+      if (request.ReportIds == null || request.ReportIds.Count == 0) return result;
+
+      // Bulk-load all target reports in a single query
+      var reports = await _context.Reports
+          .Include(r => r.Reporter)
+          .Where(r => request.ReportIds.Contains(r.ReportId)
+                      && (r.Status == ReportStatus.Pending || r.Status == ReportStatus.Investigating))
+          .ToListAsync(cancellationToken);
+
+      var singleReq = new ResolvePlagiarismReportRequest
+      {
+        NewStatus = request.NewStatus,
+        ResolutionNotes = request.ResolutionNotes,
+        StrikeContent = request.StrikeContent,
+        PenaltyScore = request.PenaltyScore,
+        BanCreator = request.BanCreator,
+        SendWarning = request.SendWarning
+      };
+
+      foreach (var report in reports)
+      {
+        try
+        {
+          report.Status = request.NewStatus;
+
+          if (request.NewStatus == ReportStatus.Resolved)
+          {
+            if (request.StrikeContent)
+              await StrikeContentAsync(report, cancellationToken);
+
+            if (request.PenaltyScore.HasValue && request.PenaltyScore.Value > 0)
+              await ApplyPenaltyAsync(report, request.PenaltyScore.Value, request.ResolutionNotes, cancellationToken);
+
+            var ownerId = await GetTargetOwnerIdAsync(report.ContentType, report.ContentId, cancellationToken);
+            if (ownerId > 0)
+            {
+              if (request.BanCreator)
+              {
+                await _accountModerationService.ApplyAsync(ownerId, moderatorId, new AccountActionRequest
+                {
+                  Action = AccountActionType.DEACTIVATE,
+                  Reason = $"Bị khóa do vi phạm báo cáo #{report.ReportId}: {request.ResolutionNotes}"
+                }, cancellationToken);
+              }
+              else if (request.SendWarning)
+              {
+                await _notificationService.CreateNotificationAsync(ownerId, "Hệ thống Cảnh cáo",
+                  $"Nội dung của bạn bị báo cáo vi phạm (#{report.ReportId}). Lý do: {request.ResolutionNotes}. Vui lòng tuân thủ nội quy.",
+                  "#", NotificationType.SYSTEM);
+              }
+            }
+          }
+
+          result.Success++;
+        }
+        catch
+        {
+          result.Failed++;
+          result.FailedIds.Add(report.ReportId);
+        }
+      }
+
+      // Single SaveChanges for all reports
+      await _context.SaveChangesAsync(cancellationToken);
+
+      if (result.Success > 0)
+      {
+        await _notificationPusher.PushReportResolvedEventAsync();
+      }
+
+      // Report IDs that weren't found (already resolved or invalid)
+      var processedIds = reports.Select(r => r.ReportId).ToHashSet();
+      foreach (var id in request.ReportIds.Where(id => !processedIds.Contains(id)))
+      {
+        result.Failed++;
+        result.FailedIds.Add(id);
+      }
+
+      return result;
+    }
     public async Task<CompareTranslationResponse> GetCompareDataAsync(int reportId, int referenceTranslationId, CancellationToken cancellationToken = default)
     {
       var report = await _context.Reports.FindAsync(new object[] { reportId }, cancellationToken);
