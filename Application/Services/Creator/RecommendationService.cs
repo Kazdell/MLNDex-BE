@@ -140,26 +140,38 @@ namespace Application.Services.Creator
       }
 
       // 4. Vòng lặp CF cơ sở Genre (tối đa 3 vòng)
+      int numGenresToProcess = Math.Min(targetGenres.Count, 3);
+      int limitPerGenre = (int)Math.Ceiling((double)limit / numGenresToProcess);
+      
       int loopCount = 0;
       foreach (var genreId in targetGenres)
       {
         if (recommendedSeriesIds.Count >= limit) break;
         if (loopCount >= 3) break;
 
-        await CollectCFByGenre(genreId, limit, recommendedSeriesIds, excludedIds, userId);
+        int currentIterationMax = Math.Min(limit, recommendedSeriesIds.Count + limitPerGenre);
+
+        await CollectCFByGenre(genreId, currentIterationMax, recommendedSeriesIds, excludedIds, userId);
+
+        if (recommendedSeriesIds.Count < currentIterationMax && readSeriesIds.Any())
+        {
+          await CollectSameAuthorForGenre(genreId, currentIterationMax, recommendedSeriesIds, excludedIds, userId);
+        }
+
+        if (recommendedSeriesIds.Count < currentIterationMax)
+        {
+          await CollectPopularByGenre(genreId, currentIterationMax, recommendedSeriesIds, excludedIds);
+        }
+
         loopCount++;
       }
 
-      if (recommendedSeriesIds.Count >= limit)
-        return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
-
-      // 5. Mở rộng Series Authors (Tìm thêm từ tác giả đã đọc)
-      if (readSeriesIds.Any())
+      // 5. Nếu sau khi chạy hết vòng lặp vẫn chưa đủ limit -> Fallback về Popular chung
+      if (recommendedSeriesIds.Count < limit)
       {
-        await CollectSameAuthor(limit, recommendedSeriesIds, excludedIds, readSeriesIds);
+        await FillWithPopular(limit, recommendedSeriesIds, excludedIds);
       }
 
-      // KHÔNG CO FALLBACK NẾU CHƯA ĐỦ TRUYỆN. Trả về bao nhiêu có bấy nhiêu.
       return await FetchAndMap(recommendedSeriesIds.Take(limit).ToList());
     }
 
@@ -168,12 +180,20 @@ namespace Application.Services.Creator
       var remaining = limit - recommendedSeriesIds.Count;
       if (remaining <= 0) return;
 
-      // Co-readers who read this genre
+      // Find series the current user has read in this genre
+      var userReadSeriesInGenre = await _context.ReadingHistories
+          .Where(rh => rh.UserId == userId && rh.Series.SeriesGenres.Any(sg => sg.GenreId == genreId))
+          .Select(rh => rh.SeriesId)
+          .ToListAsync();
+
+      if (!userReadSeriesInGenre.Any()) return;
+
+      // True Co-readers who read the same series
       var coReaders = await _context.ReadingHistories
-          .Where(rh => rh.Series.SeriesGenres.Any(sg => sg.GenreId == genreId) && rh.UserId != userId)
+          .Where(rh => userReadSeriesInGenre.Contains(rh.SeriesId) && rh.UserId != userId)
           .Select(rh => rh.UserId)
           .Distinct()
-          .Take(100) // "what other 100 people also read base on genre"
+          .Take(100) // limit to 100 closest co-readers
           .ToListAsync();
 
       if (coReaders.Any())
@@ -194,14 +214,14 @@ namespace Application.Services.Creator
       }
     }
 
-    private async Task CollectSameAuthor(int limit, HashSet<int> recommendedSeriesIds, HashSet<int> excludedIds, List<int> readSeriesIds)
+    private async Task CollectSameAuthorForGenre(int genreId, int limit, HashSet<int> recommendedSeriesIds, HashSet<int> excludedIds, int userId)
     {
       var remaining = limit - recommendedSeriesIds.Count;
       if (remaining <= 0) return;
 
-      var creatorIds = await _context.Series
-          .Where(s => readSeriesIds.Contains(s.SeriesId))
-          .Select(s => s.CreatorId)
+      var creatorIds = await _context.ReadingHistories
+          .Where(rh => rh.UserId == userId && rh.Series.SeriesGenres.Any(sg => sg.GenreId == genreId))
+          .Select(rh => rh.Series.CreatorId)
           .Distinct()
           .ToListAsync();
 
@@ -219,6 +239,25 @@ namespace Application.Services.Creator
 
         recommendedSeriesIds.UnionWith(authorSeries);
       }
+    }
+
+    private async Task CollectPopularByGenre(int genreId, int limit, HashSet<int> recommendedSeriesIds, HashSet<int> excludedIds)
+    {
+      var remaining = limit - recommendedSeriesIds.Count;
+      if (remaining <= 0) return;
+
+      var popularIds = await _context.Series
+          .Where(s => s.SeriesGenres.Any(sg => sg.GenreId == genreId)
+                      && (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
+                      && !excludedIds.Contains(s.SeriesId)
+                      && !recommendedSeriesIds.Contains(s.SeriesId))
+          .OrderByDescending(s => s.TotalRatings)
+          .ThenByDescending(s => s.AverageRating)
+          .Select(s => s.SeriesId)
+          .Take(remaining)
+          .ToListAsync();
+
+      recommendedSeriesIds.UnionWith(popularIds);
     }
 
     private async Task FillWithPopular(int limit, HashSet<int> recommendedSeriesIds, HashSet<int> excludedIds)

@@ -108,6 +108,22 @@ namespace Application.Services.Financial
                 );
             }
 
+            var recentTransactions = await _context
+                .Transactions.Include(t => t.User)
+                .Where(t => t.CreatedAt >= from && t.CreatedAt <= to)
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(50)
+                .Select(t => new ReportTransactionDto
+                {
+                    TxId = t.TransactionId.ToString(),
+                    Type = t.Type.ToString(),
+                    User = t.User.Username,
+                    Amount = t.Type == TransactionType.WITHDRAWAL || t.Type == TransactionType.CHAPTER_UNLOCK ? -t.AmountCoins : t.AmountCoins,
+                    Status = t.Status.ToString(),
+                    Time = t.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                })
+                .ToListAsync(cancellationToken);
+
             return new FinancialReportResponse
             {
                 Summary = new FinancialSummaryDto
@@ -123,6 +139,7 @@ namespace Application.Services.Financial
                 },
                 TopCreators = topCreators,
                 DailyRevenue = dailyRevenue,
+                Transactions = recentTransactions,
             };
         }
     }

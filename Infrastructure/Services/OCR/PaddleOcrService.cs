@@ -49,13 +49,9 @@ namespace Infrastructure.Services.OCR
         _logger.LogWarning("[PaddleOCR] Received empty or invalid image byte array.");
         return string.Empty;
       }
-
-      // PaddleOcrAll.Run() is NOT thread-safe in C++. We must synchronize access.
       await asyncLock.WaitAsync();
       try
       {
-        // Run full OCR pipeline (det + rec) on the cropped box.
-        // Because it's already a single box, this acts directly as Text Recognition.
         var result = engine.Run(mat);
         return result.Text ?? string.Empty;
       }

@@ -125,6 +125,37 @@ namespace Application.Services.Financial
       entity.Status = request.Status;
       entity.ProcessedAt = DateTime.UtcNow;
 
+      // Update related pending transaction if found
+      var pendingTx = await _context.Transactions
+          .Where(t => t.UserId == entity.UserId && t.Type == TransactionType.WITHDRAWAL && t.Status == TransactionStatus.PENDING && t.AmountCoins == entity.AmountCoins)
+          .OrderByDescending(t => t.CreatedAt)
+          .FirstOrDefaultAsync(cancellationToken);
+
+      if (pendingTx != null)
+      {
+          pendingTx.Status = request.Status == WithdrawalStatus.COMPLETED ? TransactionStatus.COMPLETED : TransactionStatus.FAILED;
+          pendingTx.Note += $"\n[Admin processed at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]";
+      }
+
+      if (request.Status == WithdrawalStatus.REJECTED)
+      {
+          var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == entity.UserId, cancellationToken);
+          if (wallet != null)
+          {
+              wallet.CoinBalance += entity.AmountCoins;
+              _context.Transactions.Add(new Transaction
+              {
+                  UserId = entity.UserId,
+                  WalletId = wallet.WalletId,
+                  Type = TransactionType.REFUND,
+                  AmountCoins = entity.AmountCoins,
+                  Status = TransactionStatus.COMPLETED,
+                  Note = $"Hoàn tiền do lệnh rút {entity.AmountCoins} coins bị từ chối",
+                  CreatedAt = DateTime.UtcNow
+              });
+          }
+      }
+
       if (!string.IsNullOrWhiteSpace(request.Note))
       {
         if (string.IsNullOrWhiteSpace(entity.Note))
