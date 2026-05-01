@@ -171,7 +171,10 @@ namespace Application.Services.Moderation
           {
             ownerUserId = chapter.Series.CreatorId;
             contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
-            actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
+            // Rejected/Banned → link to edit page so creator can fix; Approved → link to reader
+            actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
+                ? $"/creator/chapter-upload/{chapter.ChapterId}"
+                : $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
           }
           break;
         case ModerationQueueContentType.TRANSLATION:
@@ -180,7 +183,9 @@ namespace Application.Services.Moderation
           {
             ownerUserId = translation.Permission!.Team!.LeaderId;
             contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
-            actionUrl = $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
+            actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
+                ? $"/creator/moderation-result"
+                : $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
           }
           break;
       }
