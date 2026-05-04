@@ -18,6 +18,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.ReportSystem
 {
+  // TODO: [i18n] All notification title/message strings across the backend are hardcoded in Vietnamese.
+  // Refactor to use i18n keys (e.g. "notification.report_resolved") so the FE can render localized text.
+  // Affected services: PlagiarismReportService, ContentModerationService, TranslationPermissionService,
+  //                    TranslationTeamService, ModerationService.
   public class PlagiarismReportService : IPlagiarismReportService
   {
     private readonly IMlndexDbContext _context;
@@ -58,6 +62,45 @@ namespace Application.Services.ReportSystem
 
       _context.Reports.Add(report);
       await _context.SaveChangesAsync(cancellationToken);
+
+      // Auto-hide threshold logic
+      int threshold = 3;
+      var pendingCount = await _context.Reports.CountAsync(r => 
+          r.ContentType == request.TargetType && 
+          r.ContentId == request.TargetId && 
+          (r.Status == ReportStatus.Pending || r.Status == ReportStatus.Investigating), 
+          cancellationToken);
+
+      if (pendingCount >= threshold)
+      {
+          if (request.TargetType == ReportTargetType.Series)
+          {
+              var series = await _context.Series.FindAsync(new object[] { request.TargetId }, cancellationToken);
+              if (series != null && series.ModerationStatus == ModerationStatus.APPROVED)
+              {
+                  series.ModerationStatus = ModerationStatus.PENDING;
+                  await _context.SaveChangesAsync(cancellationToken);
+              }
+          }
+          else if (request.TargetType == ReportTargetType.ChapterTranslation)
+          {
+              var chapter = await _context.Chapters.FindAsync(new object[] { request.TargetId }, cancellationToken);
+              if (chapter != null && chapter.ModerationStatus == ModerationStatus.APPROVED)
+              {
+                  chapter.ModerationStatus = ModerationStatus.PENDING;
+                  await _context.SaveChangesAsync(cancellationToken);
+              }
+              else if (chapter == null)
+              {
+                  var translation = await _context.Translations.FindAsync(new object[] { request.TargetId }, cancellationToken);
+                  if (translation != null && translation.ModerationStatus == ModerationStatus.APPROVED)
+                  {
+                      translation.ModerationStatus = ModerationStatus.PENDING;
+                      await _context.SaveChangesAsync(cancellationToken);
+                  }
+              }
+          }
+      }
 
       return MapToDto(report, user.Username);
     }
@@ -160,6 +203,16 @@ namespace Application.Services.ReportSystem
 
       await _context.SaveChangesAsync(cancellationToken);
 
+      // Gửi thông báo cho người report biết kết quả xử lý
+      var reporterTitle = request.NewStatus == ReportStatus.Resolved
+          ? "Báo cáo đã được xử lý"
+          : "Báo cáo bị từ chối";
+      var reporterMessage = request.NewStatus == ReportStatus.Resolved
+          ? $"Báo cáo #{report.ReportId} của bạn đã được kiểm duyệt viên xử lý. Cảm ơn bạn đã góp phần giữ gìn cộng đồng!"
+          : $"Báo cáo #{report.ReportId} của bạn đã được xem xét nhưng không đủ cơ sở để xử lý. Cảm ơn bạn đã quan tâm đến cộng đồng.";
+      await _notificationService.CreateNotificationAsync(
+          report.ReporterId, reporterTitle, reporterMessage, "#", NotificationType.SYSTEM);
+
       await _notificationPusher.PushReportResolvedEventAsync();
 
       var dto = MapToDto(report, report.Reporter.Username);
@@ -223,6 +276,16 @@ namespace Application.Services.ReportSystem
               }
             }
           }
+
+          // Gửi thông báo cho người report
+          var rTitle = request.NewStatus == ReportStatus.Resolved
+              ? "Báo cáo đã được xử lý"
+              : "Báo cáo bị từ chối";
+          var rMessage = request.NewStatus == ReportStatus.Resolved
+              ? $"Báo cáo #{report.ReportId} của bạn đã được kiểm duyệt viên xử lý. Cảm ơn bạn đã góp phần giữ gìn cộng đồng!"
+              : $"Báo cáo #{report.ReportId} của bạn đã được xem xét nhưng không đủ cơ sở để xử lý. Cảm ơn bạn đã quan tâm đến cộng đồng.";
+          await _notificationService.CreateNotificationAsync(
+              report.ReporterId, rTitle, rMessage, "#", NotificationType.SYSTEM);
 
           result.Success++;
         }
@@ -305,7 +368,31 @@ namespace Application.Services.ReportSystem
 
     private async Task ApplyPenaltyAsync(Report report, int score, string? reason, CancellationToken ct)
     {
-      if (report.ContentType == ReportTargetType.ChapterTranslation)
+      if (report.ContentType == ReportTargetType.Series)
+      {
+        var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == report.ContentId, ct);
+        if (series?.Creator != null)
+        {
+          series.Creator.ReputationScore -= score;
+          if (series.Creator.ReputationScore <= 0)
+          {
+             var user = await _context.Users.FindAsync(new object[] { series.Creator.UserId }, ct);
+             if (user != null) user.CannotUpload = true;
+          }
+
+          _context.ReputationHistories.Add(new ReputationHistory
+          {
+            CreatorId = series.Creator.CreatorId,
+            ScoreChange = -score,
+            Reason = reason ?? "Bị phạt do vi phạm nội quy/đạo văn.",
+            RelatedReportId = report.ReportId,
+            CreatedAt = DateTime.UtcNow
+          });
+
+          await _notificationService.CreateNotificationAsync(series.Creator.UserId, "Trừ điểm uy tín", $"Tác phẩm của bạn vi phạm và bạn đã bị trừ {score} điểm uy tín. Lý do: {reason ?? "Bị phạt do vi phạm nội quy/đạo văn."}", $"/series/{series.SeriesId}", NotificationType.SYSTEM);
+        }
+      }
+      else if (report.ContentType == ReportTargetType.ChapterTranslation)
       {
         var trans = await _context.Translations
             .Include(t => t.Permission)
@@ -327,6 +414,12 @@ namespace Application.Services.ReportSystem
               RelatedReportId = report.ReportId,
               CreatedAt = DateTime.UtcNow
             });
+
+            var ownerId = await GetTargetOwnerIdAsync(report.ContentType, report.ContentId, ct);
+            if (ownerId > 0)
+            {
+               await _notificationService.CreateNotificationAsync(ownerId, "Trừ điểm uy tín nhóm", $"Bản dịch của bạn vi phạm và nhóm dịch bị trừ {score} điểm uy tín. Lý do: {reason ?? "Bị phạt do vi phạm bản quyền/đạo nhái."}", $"/translation/dashboard/{team.TeamId}", NotificationType.SYSTEM);
+            }
           }
         }
       }
@@ -346,6 +439,13 @@ namespace Application.Services.ReportSystem
             RelatedReportId = report.ReportId,
             CreatedAt = DateTime.UtcNow
           });
+
+          // Lấy owner của team để thông báo
+          var ownerId = await GetTargetOwnerIdAsync(report.ContentType, report.ContentId, ct);
+          if (ownerId > 0)
+          {
+             await _notificationService.CreateNotificationAsync(ownerId, "Trừ điểm uy tín nhóm", $"Nhóm dịch của bạn đã bị trừ {score} điểm uy tín. Lý do: {reason ?? "Bị phạt do vi phạm nội quy."}", $"/translation/dashboard/{team.TeamId}", NotificationType.SYSTEM);
+          }
         }
       }
       else if (report.ContentType == ReportTargetType.User)
@@ -369,18 +469,29 @@ namespace Application.Services.ReportSystem
             RelatedReportId = report.ReportId,
             CreatedAt = DateTime.UtcNow
           });
+
+          await _notificationService.CreateNotificationAsync(creator.UserId, "Trừ điểm uy tín", $"Bạn đã bị trừ {score} điểm uy tín. Lý do: {reason ?? "Bị phạt do vi phạm nội quy/đạo văn."}", "#", NotificationType.SYSTEM);
         }
       }
     }
 
     private async Task StrikeContentAsync(Report report, CancellationToken ct)
     {
-      if (report.ContentType == ReportTargetType.ChapterTranslation)
+      if (report.ContentType == ReportTargetType.Series)
+      {
+        var series = await _context.Series.FindAsync(new object[] { report.ContentId }, ct);
+        if (series != null)
+        {
+          series.ModerationStatus = ModerationStatus.BANNED; // Hide or reject
+        }
+      }
+      else if (report.ContentType == ReportTargetType.ChapterTranslation)
       {
         var trans = await _context.Translations.FindAsync(new object[] { report.ContentId }, ct);
         if (trans != null)
         {
           trans.ModerationStatus = ModerationStatus.REJECTED; // Hide or reject
+          trans.QualityStatus = Domain.Entities.TranslationQualityStatus.DRAFT;
         }
       }
     }
@@ -498,7 +609,7 @@ namespace Application.Services.ReportSystem
     {
       return targetType switch
       {
-        ReportTargetType.Series => await _context.Series.Where(s => s.SeriesId == targetId).Select(s => s.CreatorId).FirstOrDefaultAsync(ct),
+        ReportTargetType.Series => await _context.Series.Where(s => s.SeriesId == targetId).Select(s => s.Creator.UserId).FirstOrDefaultAsync(ct),
         ReportTargetType.ChapterTranslation => await _context.Translations
             .Where(t => t.TranslationId == targetId)
             .Select(t => t.Permission != null ? t.Permission.TeamId : 0)

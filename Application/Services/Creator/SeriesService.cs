@@ -354,7 +354,7 @@ namespace Application.Services.Creator
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
 
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
+          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations.Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED))
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
           .AsSplitQuery()
@@ -434,7 +434,7 @@ namespace Application.Services.Creator
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
 
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
+          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations.Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED))
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
           .AsSplitQuery()
@@ -528,7 +528,7 @@ namespace Application.Services.Creator
 
       // 1. Map original chapters (bản gốc) — PUBLISHED only
       var chapterDtos = series.Chapters
-.Where(c => c.Status == ChapterStatus.PUBLISHED)
+.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
 .OrderByDescending(c => c.ChapterNumber)
 .Select(c =>
 {
@@ -569,7 +569,7 @@ namespace Application.Services.Creator
       //    Each Translation maps to the same ChapterNumber so FE can group them together
       var translationDtos = series.Chapters
 .SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
-  .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
+  .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED)
   .Select(t =>
   {
     // Tính effective lock của chapter gốc
@@ -802,7 +802,7 @@ namespace Application.Services.Creator
         CreatorName = s.Creator.PenName,
         Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
         LatestChapters = s.Chapters
-              .Where(c => c.Status == ChapterStatus.PUBLISHED)
+              .Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
               .OrderByDescending(c => c.ChapterNumber)
               .Take(2)
               .Select(c => new SeriesChapterDto

@@ -142,6 +142,15 @@ namespace Application.Services.Moderation
                   cancellationToken
               ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
           translation.ModerationStatus = status;
+          if (status == ModerationStatus.APPROVED)
+          {
+            translation.QualityStatus = Domain.Entities.TranslationQualityStatus.PUBLISHED;
+            translation.PublishedAt = DateTime.UtcNow;
+          }
+          else
+          {
+            translation.QualityStatus = Domain.Entities.TranslationQualityStatus.DRAFT;
+          }
           break;
         default:
           throw new ArgumentOutOfRangeException();
@@ -157,19 +166,19 @@ namespace Application.Services.Moderation
       switch (queue.ContentType)
       {
         case ModerationQueueContentType.SERIES:
-          var series = await _context.Series.FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
-          if (series != null)
+          var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+          if (series != null && series.Creator != null)
           {
-            ownerUserId = series.CreatorId;
+            ownerUserId = series.Creator.UserId;
             contentTitle = series.Title;
             actionUrl = $"/series/{series.SeriesId}";
           }
           break;
         case ModerationQueueContentType.CHAPTER:
-          var chapter = await _context.Chapters.Include(c => c.Series).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
-          if (chapter != null)
+          var chapter = await _context.Chapters.Include(c => c.Series).ThenInclude(s => s.Creator).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+          if (chapter != null && chapter.Series?.Creator != null)
           {
-            ownerUserId = chapter.Series.CreatorId;
+            ownerUserId = chapter.Series.Creator.UserId;
             contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
             // Rejected/Banned → link to edit page so creator can fix; Approved → link to reader
             actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
