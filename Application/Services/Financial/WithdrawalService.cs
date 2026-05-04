@@ -181,9 +181,8 @@ namespace Application.Services.Financial
           userId: entity.UserId,
           title: "Cập nhật yêu cầu rút tiền",
           message: notifMessage,
-          type: NotificationType.SYSTEM,
-          linkUrl: "/user/wallet", 
-          cancellationToken: cancellationToken
+          actionUrl: "/user/wallet",
+          type: NotificationType.SYSTEM
       );
 
       _logger.LogInformation(
