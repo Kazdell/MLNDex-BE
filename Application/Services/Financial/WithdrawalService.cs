@@ -3,6 +3,7 @@ using Application.Exceptions;
 using Application.DTOs.Financial;
 using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,11 +14,13 @@ namespace Application.Services.Financial
   {
     private readonly IMlndexDbContext _context;
     private readonly ILogger<WithdrawalService> _logger;
+    private readonly INotificationService _notificationService;
 
-    public WithdrawalService(IMlndexDbContext context, ILogger<WithdrawalService> logger)
+    public WithdrawalService(IMlndexDbContext context, ILogger<WithdrawalService> logger, INotificationService notificationService)
     {
       _context = context;
       _logger = logger;
+      _notificationService = notificationService;
     }
 
     public async Task<WithdrawalReviewListResponse> GetPendingAsync(
@@ -169,6 +172,19 @@ namespace Application.Services.Financial
       }
 
       await _context.SaveChangesAsync(cancellationToken);
+
+      string notifMessage = request.Status == WithdrawalStatus.COMPLETED
+          ? $"Yêu cầu rút {entity.AmountCoins} coins của bạn đã được duyệt. Bạn sẽ nhận được {entity.AmountVnd:N0} VND trong thời gian sớm nhất."
+          : $"Yêu cầu rút {entity.AmountCoins} coins của bạn đã bị từ chối." + (!string.IsNullOrWhiteSpace(request.Note) ? $" Lý do: {request.Note}" : "");
+
+      await _notificationService.CreateNotificationAsync(
+          userId: entity.UserId,
+          title: "Cập nhật yêu cầu rút tiền",
+          message: notifMessage,
+          type: NotificationType.SYSTEM,
+          linkUrl: "/user/wallet", 
+          cancellationToken: cancellationToken
+      );
 
       _logger.LogInformation(
           "Withdrawal {WithdrawalId} updated to {Status} by admin.",

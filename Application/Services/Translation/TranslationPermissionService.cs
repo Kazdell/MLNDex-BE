@@ -85,6 +85,7 @@ namespace Application.Services.Translation
 
         _context.TranslationPermissions.Update(existingPermission);
         savedPermission = existingPermission;
+        await _context.SaveChangesAsync();
       }
       else
       {
@@ -100,11 +101,29 @@ namespace Application.Services.Translation
           GrantedAt = dto.IsUnofficial ? DateTime.UtcNow : null
         };
 
-        _context.TranslationPermissions.Add(permission);
-        savedPermission = permission;
+        try 
+        {
+            _context.TranslationPermissions.Add(permission);
+            await _context.SaveChangesAsync();
+            savedPermission = permission;
+        }
+        catch (DbUpdateException)
+        {
+            ((DbContext)_context).ChangeTracker.Clear();
+            existingPermission = await _context.TranslationPermissions
+                .FirstOrDefaultAsync(p => p.SeriesId == dto.SeriesId && p.TeamId == dto.TeamId && p.LanguageId == dto.LanguageId);
+            
+            if (existingPermission != null)
+            {
+                savedPermission = existingPermission;
+                // If it exists, we just return it instead of throwing to mimic idempotency on concurrent requests
+            }
+            else
+            {
+                throw new AppException(ErrorCodes.PERMISSION_DENIED, "Could not create or retrieve translation permission due to a concurrency issue.");
+            }
+        }
       }
-
-      await _context.SaveChangesAsync();
 
       var teamName = await _context.TranslationTeams.Where(t => t.TeamId == dto.TeamId).Select(t => t.TeamName).FirstOrDefaultAsync();
       var creatorUserId = await _context.CreatorProfiles

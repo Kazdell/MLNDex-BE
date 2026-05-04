@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using Application.DTOs.Chapter;
 using Application.DTOs.Translation.Requests;
 using Application.DTOs.Translation.Responses;
@@ -23,6 +24,8 @@ namespace Application.Services.Translation
 {
     public class TranslationService : ITranslationService
     {
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _uploadLocks = new();
+
         private readonly IMlndexDbContext _context;
         private readonly IUserContext _userContext;
         private readonly Application.Interfaces.Creator.IStorageService _storage;
@@ -155,9 +158,35 @@ namespace Application.Services.Translation
                         Status = TranslationPermissionStatus.UNOFFICIAL,
                         GrantedAt = null,
                     };
-                    _context.TranslationPermissions.Add(newPerm);
-                    await _context.SaveChangesAsync();
-                    dto.PermissionId = newPerm.PermissionId;
+                    
+                    try 
+                    {
+                        _context.TranslationPermissions.Add(newPerm);
+                        await _context.SaveChangesAsync();
+                        dto.PermissionId = newPerm.PermissionId;
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Gracefully handle concurrency when another thread creates the permission first
+                        ((DbContext)_context).ChangeTracker.Clear();
+                        
+                        existingPerm = await _context.TranslationPermissions.FirstOrDefaultAsync(p =>
+                          p.TeamId == resolvedTeamId
+                          && p.SeriesId == chapter.SeriesId
+                          && p.LanguageId == dto.LanguageId
+                        );
+
+                        if (existingPerm != null)
+                        {
+                            dto.PermissionId = existingPerm.PermissionId;
+                            if (existingPerm.Status == TranslationPermissionStatus.GRANTED)
+                                isOfficial = true;
+                        }
+                        else
+                        {
+                            throw new AppException(ErrorCodes.PERMISSION_DENIED, "Could not create or retrieve translation permission due to a concurrency issue.");
+                        }
+                    }
                 }
             }
 
@@ -178,20 +207,6 @@ namespace Application.Services.Translation
                     // Teams must use the Official path (with PermissionId + GRANTED status).
                     throw new AppException(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
                 }
-            }
-
-            // ── VALIDATION: Prevent duplicate translation per language (Global rule) ──
-            bool translationExists = await _context.Translations.AnyAsync(t =>
-              t.ChapterId == dto.ChapterId
-              && t.LanguageId == dto.LanguageId
-              && t.ModerationStatus != ModerationStatus.REJECTED
-            );
-
-            if (translationExists)
-            {
-                throw new AppException(
-                  ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE
-                );
             }
 
             var translation = new Domain.Entities.Translation
@@ -215,6 +230,30 @@ namespace Application.Services.Translation
                     );
                 }
             }
+            else
+            {
+                // Auto-fill: credit all active team members with their team role
+                var activeMembers = await _context.TeamMembers
+                    .Where(m => m.TeamId == resolvedTeamId && m.IsActive)
+                    .ToListAsync();
+
+                foreach (var member in activeMembers)
+                {
+                    var translationRole = member.Role switch
+                    {
+                        TeamMemberRole.LEADER => TranslationRole.TRANSLATOR,
+                        TeamMemberRole.TRANSLATOR => TranslationRole.TRANSLATOR,
+                        TeamMemberRole.CLEANER => TranslationRole.CLEANER,
+                        TeamMemberRole.REDRAWER => TranslationRole.REDRAWER,
+                        TeamMemberRole.EDITOR => TranslationRole.TYPESETTER,
+                        TeamMemberRole.PROOFREADER => TranslationRole.PROOFREADER,
+                        _ => TranslationRole.TRANSLATOR,
+                    };
+                    translation.TranslationCredits.Add(
+                        new TranslationCredit { UserId = member.UserId, Role = translationRole }
+                    );
+                }
+            }
 
             if (dto.JointTeamIds != null && dto.JointTeamIds.Any())
             {
@@ -225,10 +264,38 @@ namespace Application.Services.Translation
             }
 
             var uploadedUrls = new List<string>();
+            
+            // ── CONCURRENCY LOCK ──
+            var lockKey = $"{dto.ChapterId}_{dto.LanguageId}";
+            var uploadLock = _uploadLocks.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
+            
+            await uploadLock.WaitAsync();
             try
             {
+                // ── VALIDATION: Prevent duplicate translation per language (Global rule) ──
+                bool translationExists = await _context.Translations.AnyAsync(t =>
+                  t.ChapterId == dto.ChapterId
+                  && t.LanguageId == dto.LanguageId
+                  && t.ModerationStatus != ModerationStatus.REJECTED
+                );
+
+                if (translationExists)
+                {
+                    throw new AppException(
+                      ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE
+                    );
+                }
+
                 _context.Translations.Add(translation);
                 await _context.SaveChangesAsync();
+            }
+            finally
+            {
+                uploadLock.Release();
+            }
+
+            try
+            {
 
                 // Handle Content
                 if (dto.ContentType == ContentType.IMAGE && dto.Pages != null && dto.Pages.Count > 0)

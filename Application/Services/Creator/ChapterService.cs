@@ -275,8 +275,8 @@ CancellationToken cancellationToken = default)
                 return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
             }
 
-            // If chapter is NOT published, ONLY Creator or Mod can view it
-            if (chapter.Status != ChapterStatus.PUBLISHED)
+            // If chapter is NOT published or NOT approved, ONLY Creator or Mod can view it
+            if (chapter.Status != ChapterStatus.PUBLISHED || chapter.ModerationStatus != ModerationStatus.APPROVED)
             {
                 bool isCreator = userId.HasValue && chapter.Series?.Creator?.UserId == userId.Value;
                 if (!isCreator && !isModOrAdmin)
@@ -286,7 +286,7 @@ CancellationToken cancellationToken = default)
             }
 
             var chapters = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && (c.Status == ChapterStatus.PUBLISHED || isModOrAdmin))
+                .Where(c => c.SeriesId == chapter.SeriesId && ((c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED) || isModOrAdmin))
                 .OrderByDescending(c => c.ChapterNumber)
                 .Select(c => new ChapterSummaryDto
                 {
@@ -302,13 +302,13 @@ CancellationToken cancellationToken = default)
                 .ToListAsync(cancellationToken);
 
             var prevChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
                 .OrderByDescending(c => c.ChapterNumber)
                 .Select(c => (int?)c.ChapterId)
                 .FirstOrDefaultAsync(cancellationToken);
 
             var nextChapterId = await _db.Chapters
-                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
                 .OrderBy(c => c.ChapterNumber)
                 .Select(c => (int?)c.ChapterId)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -429,7 +429,8 @@ CancellationToken cancellationToken = default)
                 .Where(t => t.Chapter.SeriesId == chapter.SeriesId
                          && t.Permission != null
                          && t.Permission!.TeamId == translation.Permission!.TeamId
-                         && t.Chapter.Status == ChapterStatus.PUBLISHED)
+                         && t.Chapter.Status == ChapterStatus.PUBLISHED && t.Chapter.ModerationStatus == ModerationStatus.APPROVED
+                         && t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED)
                 .OrderByDescending(t => t.Chapter.ChapterNumber)
                 .Select(t => new ChapterSummaryDto
                 {
