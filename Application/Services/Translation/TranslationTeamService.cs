@@ -395,6 +395,13 @@ namespace Application.Services.Translation
         _context.TeamMembers.Add(member);
       }
 
+      // Mark the original invitation notification as read
+      var notification = await _context.Notifications.FirstOrDefaultAsync(n => n.UserId == userId.Value && n.RelatedEntityId == invitationId && n.NotificationType == NotificationType.TEAM_INVITATION);
+      if (notification != null)
+      {
+        notification.IsRead = true;
+      }
+
       await _context.SaveChangesAsync();
 
       // Cấp TRANSLATOR role cho user vừa join nhóm
@@ -423,6 +430,13 @@ namespace Application.Services.Translation
 
       invitation.Status = TeamInvitationStatus.REJECTED;
       invitation.RespondedAt = DateTime.UtcNow;
+
+      // Mark the original invitation notification as read
+      var notification = await _context.Notifications.FirstOrDefaultAsync(n => n.UserId == userId.Value && n.RelatedEntityId == invitationId && n.NotificationType == NotificationType.TEAM_INVITATION);
+      if (notification != null)
+      {
+        notification.IsRead = true;
+      }
 
       await _context.SaveChangesAsync();
 
@@ -591,26 +605,37 @@ namespace Application.Services.Translation
           .Include(p => p.Language)
           .Where(p => p.TeamId == teamId)
           .ToListAsync();
-
-      return permissions.Select(p => new TeamSeriesResponse
-      {
-        SeriesId = p.SeriesId,
-        PermissionId = p.PermissionId,
-        LanguageId = p.LanguageId,
-        LanguageName = p.Language?.Name ?? "Unknown",
-        Title = p.Series?.Title ?? "Unknown",
-        CoverImageUrl = p.Series?.CoverImageUrl,
-        Status = (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL) ? "active" :
-                   p.Status == TranslationPermissionStatus.PENDING ? "pending" : "dropped",
-        IsOfficial = p.Status == TranslationPermissionStatus.GRANTED,
-        TotalChapters = _context.Translations.Count(t => t.PermissionId == p.PermissionId),
-        LastUpdate = _context.Translations
-              .Where(t => t.PermissionId == p.PermissionId)
-              .Select(t => (DateTime?)t.PublishedAt)
-              .Max(),
-        Views = 0, // Translation views tracking not yet implemented
-        Rating = p.Series?.AverageRating ?? 0
-      });
+      return permissions
+          .GroupBy(p => new { p.SeriesId, p.LanguageId })
+          .Select(g =>
+          {
+            // Prefer GRANTED over UNOFFICIAL over others
+            var p = g.OrderBy(x => x.Status == TranslationPermissionStatus.GRANTED ? 0 :
+                                   x.Status == TranslationPermissionStatus.UNOFFICIAL ? 1 :
+                                   x.Status == TranslationPermissionStatus.PENDING ? 2 : 3).First();
+            
+            return new TeamSeriesResponse
+            {
+              SeriesId = p.SeriesId,
+              PermissionId = p.PermissionId,
+              LanguageId = p.LanguageId,
+              LanguageName = p.Language?.Name ?? "Unknown",
+              Title = p.Series?.Title ?? "Unknown",
+              CoverImageUrl = p.Series?.CoverImageUrl,
+              Status = (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.UNOFFICIAL) ? "active" :
+                         p.Status == TranslationPermissionStatus.PENDING ? "pending" : "dropped",
+              IsOfficial = p.Status == TranslationPermissionStatus.GRANTED,
+              TotalChapters = _context.Translations.Count(t => t.PermissionId == p.PermissionId),
+              LastUpdate = _context.Translations
+                    .Where(t => t.PermissionId == p.PermissionId)
+                    .Select(t => (DateTime?)t.PublishedAt)
+                    .Max(),
+              Views = 0, // Translation views tracking not yet implemented
+              Rating = p.Series?.AverageRating ?? 0
+            };
+          })
+          .OrderByDescending(r => r.LastUpdate ?? DateTime.MinValue)
+          .ToList();
     }
 
     public async Task<TeamStatsResponse> GetTeamStatsAsync(int teamId)
