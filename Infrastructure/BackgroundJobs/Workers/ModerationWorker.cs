@@ -205,18 +205,33 @@ public class ModerationWorker : BackgroundService
             // ── Thêm guard: skip human review queue ───────────────────
             if (job.ContentType == ModerationQueueContentType.CHAPTER)
             {
-                var alreadyScanned = await db.Chapters
-                    .AnyAsync(c => c.ChapterId == job.ContentId
-                                && c.AiScoresJson != null, stoppingToken);
-                if (alreadyScanned)
-                {
-                    job.Status = QueueStatus.PENDING;
-                    await db.SaveChangesAsync(stoppingToken);
+                var chapter = await db.Chapters
+                    .FirstOrDefaultAsync(c => c.ChapterId == job.ContentId, stoppingToken);
 
-                    _logger.LogDebug(
-                        "[ModerationWorker] Skip ChapterId={Id} — human review queue (AiScores exists)",
-                        job.ContentId);
-                    break;
+                if (chapter == null)
+                {
+                    // Chapter bị xóa → dismiss job
+                    job.Status = QueueStatus.DISMISSED;
+                    await db.SaveChangesAsync(stoppingToken);
+                    continue; // ← tiếp tục job khác, không break
+                }
+
+                // Chỉ skip nếu chapter KHÔNG phải PENDING
+                // (đã được human review xong, không cần AI chạy lại)
+                if (chapter.AiScoresJson != null
+                    && chapter.ModerationStatus != ModerationStatus.PENDING)
+                {
+                    job.Status = QueueStatus.RESOLVED;  // ← RESOLVED thay vì PENDING
+                    await db.SaveChangesAsync(stoppingToken);
+                    continue; // ← continue thay vì break
+                }
+
+                // Nếu chapter.ModerationStatus == PENDING (vừa edit xong)
+                // thì clear AiScoresJson để chạy lại AI
+                if (chapter.ModerationStatus == ModerationStatus.PENDING)
+                {
+                    chapter.AiScoresJson = null;
+                    await db.SaveChangesAsync(stoppingToken);
                 }
             }
 

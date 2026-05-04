@@ -803,6 +803,7 @@ CancellationToken cancellationToken = default)
                     // Reset moderation status + re-queue for AI moderation
                     chapter.ModerationStatus = ModerationStatus.PENDING;
                     chapter.Status = ChapterStatus.DRAFT;
+                    chapter.AiScoresJson = null;
                 }
 
                 // ── Đánh dấu Outdated cho các bản dịch ─────────────────────────
