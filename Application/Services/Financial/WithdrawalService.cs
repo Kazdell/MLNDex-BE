@@ -153,7 +153,7 @@ namespace Application.Services.Financial
                   Type = TransactionType.REFUND,
                   AmountCoins = entity.AmountCoins,
                   Status = TransactionStatus.COMPLETED,
-                  Note = $"Hoàn tiền do lệnh rút {entity.AmountCoins} coins bị từ chối",
+                  Note = $"Hoàn tiền do lệnh rút {entity.AmountCoins:N0} coins bị từ chối",
                   CreatedAt = DateTime.UtcNow
               });
           }
@@ -174,8 +174,8 @@ namespace Application.Services.Financial
       await _context.SaveChangesAsync(cancellationToken);
 
       string notifMessage = request.Status == WithdrawalStatus.COMPLETED
-          ? $"Yêu cầu rút {entity.AmountCoins} coins của bạn đã được duyệt. Bạn sẽ nhận được {entity.AmountVnd:N0} VND trong thời gian sớm nhất."
-          : $"Yêu cầu rút {entity.AmountCoins} coins của bạn đã bị từ chối." + (!string.IsNullOrWhiteSpace(request.Note) ? $" Lý do: {request.Note}" : "");
+          ? $"Yêu cầu rút {entity.AmountCoins:N0} coins của bạn đã được duyệt. Bạn sẽ nhận được {entity.AmountVnd:N0} VND trong thời gian sớm nhất."
+          : $"Yêu cầu rút {entity.AmountCoins:N0} coins của bạn đã bị từ chối." + (!string.IsNullOrWhiteSpace(request.Note) ? $" Lý do: {request.Note}" : "");
 
       await _notificationService.CreateNotificationAsync(
           userId: entity.UserId,
@@ -262,7 +262,7 @@ namespace Application.Services.Financial
         Type = TransactionType.WITHDRAWAL,
         AmountCoins = amountCoins,
         Status = TransactionStatus.PENDING,
-        Note = $"Yêu cầu rút {amountCoins} coins ({dto.AmountVnd:N0} VND → nhận {amountVndAfterFee:N0} VND sau phí)",
+        Note = $"Yêu cầu rút {amountCoins:N0} coins ({dto.AmountVnd:N0} VND → nhận {amountVndAfterFee:N0} VND sau phí)",
         CreatedAt = DateTime.UtcNow
       });
 
