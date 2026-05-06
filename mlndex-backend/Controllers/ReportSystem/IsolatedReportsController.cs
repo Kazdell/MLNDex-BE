@@ -43,7 +43,7 @@ namespace mlndex_backend.Controllers
         )
         {
             var userId = GetCurrentUserId();
-            if (userId < 0)
+            if (userId <= 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
@@ -198,7 +198,7 @@ namespace mlndex_backend.Controllers
         public async Task<IActionResult> CreateAppeal([FromBody] CreateAppealRequest request)
         {
             var userId = GetCurrentUserId();
-            if (userId < 0)
+            if (userId <= 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
