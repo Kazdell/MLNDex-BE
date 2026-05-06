@@ -333,7 +333,7 @@ namespace Application.Services.Creator
           .AsQueryable();
 
       if (sortBy.Equals("popular", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.TotalRatings);
+        query = query.OrderByDescending(s => s.Chapters.Sum(c => (long)c.Views));
       else if (sortBy.Equals("newest", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
@@ -341,12 +341,16 @@ namespace Application.Services.Creator
 
       var totalCount = await query.CountAsync();
       var seriesData = await query
-          .Select(s => new { s.SeriesId })
+          .Select(s => new { 
+              s.SeriesId,
+              TotalViews = s.Chapters.Sum(c => (long)c.Views)
+          })
           .Skip((page - 1) * pageSize)
           .Take(pageSize)
           .ToListAsync();
 
       var ids = seriesData.Select(x => x.SeriesId).ToList();
+      var totalViewsDict = seriesData.ToDictionary(x => x.SeriesId, x => (long)x.TotalViews);
 
       if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = page, PageSize = pageSize, Items = new List<SeriesDto>() };
 
@@ -373,7 +377,7 @@ namespace Application.Services.Creator
         TotalCount = totalCount,
         Page = page,
         PageSize = pageSize,
-        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId), totalViewsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
 
@@ -413,7 +417,7 @@ namespace Application.Services.Creator
         query = query.Where(s => s.AverageRating >= request.MinRating.Value);
 
       if (string.Equals(request.SortBy, "popular", StringComparison.OrdinalIgnoreCase))
-        query = query.OrderByDescending(s => s.TotalRatings);
+        query = query.OrderByDescending(s => s.Chapters.Sum(c => (long)c.Views));
       else if (string.Equals(request.SortBy, "newest", StringComparison.OrdinalIgnoreCase))
         query = query.OrderByDescending(s => s.Chapters!.Where(c => c.PublishedAt.HasValue).OrderByDescending(c => c.ChapterNumber).Select(c => c.PublishedAt).FirstOrDefault() ?? s.CreatedAt);
       else
@@ -421,12 +425,16 @@ namespace Application.Services.Creator
 
       var totalCount = await query.CountAsync();
       var seriesData = await query
-          .Select(s => new { s.SeriesId })
+          .Select(s => new { 
+              s.SeriesId,
+              TotalViews = s.Chapters.Sum(c => (long)c.Views)
+          })
           .Skip((request.Page - 1) * request.PageSize)
           .Take(request.PageSize)
           .ToListAsync();
 
       var ids = seriesData.Select(x => x.SeriesId).ToList();
+      var totalViewsDict = seriesData.ToDictionary(x => x.SeriesId, x => (long)x.TotalViews);
 
       if (!ids.Any()) return new PaginatedList<SeriesDto> { TotalCount = totalCount, Page = request.Page, PageSize = request.PageSize, Items = new List<SeriesDto>() };
 
@@ -453,7 +461,7 @@ namespace Application.Services.Creator
         TotalCount = totalCount,
         Page = request.Page,
         PageSize = request.PageSize,
-        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId))).ToList()
+        Items = orderedItems.Select(s => MapToDto(s!, grantedPermsDict.GetValueOrDefault(s!.SeriesId), totalViewsDict.GetValueOrDefault(s!.SeriesId))).ToList()
       };
     }
     /// Lấy chi tiết thông tin một bộ truyện bao gồm Tác giả, Thể loại, Chương truyện (bao gồm bản dịch).
@@ -783,7 +791,7 @@ namespace Application.Services.Creator
       }
     }
 
-    private SeriesDto MapToDto(Series s, HashSet<int>? grantedTeamIds = null)
+    private SeriesDto MapToDto(Series s, HashSet<int>? grantedTeamIds = null, long? totalViewsOverride = null)
     {
       return new SeriesDto
       {
@@ -796,6 +804,7 @@ namespace Application.Services.Creator
         Status = s.Status.ToString(),
         AverageRating = s.AverageRating,
         TotalRatings = s.TotalRatings,
+        TotalViews = totalViewsOverride ?? 0,
         CreatedAt = s.CreatedAt,
         CreatorId = s.CreatorId,
         CreatorUserId = s.Creator.UserId,

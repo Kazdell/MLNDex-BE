@@ -251,7 +251,7 @@ namespace Application.Services.Creator
                       && (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                       && !excludedIds.Contains(s.SeriesId)
                       && !recommendedSeriesIds.Contains(s.SeriesId))
-          .OrderByDescending(s => s.TotalRatings)
+          .OrderByDescending(s => s.Chapters.Sum(c => c.Views))
           .ThenByDescending(s => s.AverageRating)
           .Select(s => s.SeriesId)
           .Take(remaining)
@@ -269,7 +269,7 @@ namespace Application.Services.Creator
           .Where(s => (s.Status == SeriesStatus.ONGOING || s.Status == SeriesStatus.COMPLETED)
                       && !excludedIds.Contains(s.SeriesId)
                       && !recommendedSeriesIds.Contains(s.SeriesId))
-          .OrderByDescending(s => s.TotalRatings)
+          .OrderByDescending(s => s.Chapters.Sum(c => c.Views))
           .ThenByDescending(s => s.AverageRating)
           .Select(s => s.SeriesId)
           .Take(remaining)
@@ -290,6 +290,11 @@ namespace Application.Services.Creator
           .Where(s => finalRecIds.Contains(s.SeriesId))
           .ToListAsync();
 
+      var viewsDict = await _context.Series
+          .Where(s => finalRecIds.Contains(s.SeriesId))
+          .Select(s => new { s.SeriesId, TotalViews = s.Chapters.Sum(c => c.Views) })
+          .ToDictionaryAsync(x => x.SeriesId, x => (long)x.TotalViews);
+
       var grantedPermsDict = await _context.TranslationPermissions
           .Where(p => finalRecIds.Contains(p.SeriesId) && p.Status == TranslationPermissionStatus.GRANTED)
           .GroupBy(p => p.SeriesId)
@@ -297,10 +302,10 @@ namespace Application.Services.Creator
 
       var orderedRecs = finalRecIds.Select(id => recItems.FirstOrDefault(i => i.SeriesId == id)).Where(s => s != null).Select(s => s!).ToList();
 
-      return orderedRecs.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId))).ToList();
+      return orderedRecs.Select(s => MapToDto(s, grantedPermsDict.GetValueOrDefault(s.SeriesId), viewsDict.GetValueOrDefault(s.SeriesId))).ToList();
     }
 
-    private SeriesDto MapToDto(Series s, HashSet<int>? grantedTeamIds = null)
+    private SeriesDto MapToDto(Series s, HashSet<int>? grantedTeamIds = null, long? totalViewsOverride = null)
     {
       return new SeriesDto
       {
@@ -308,7 +313,7 @@ namespace Application.Services.Creator
         Title = s.Title,
         Description = s.Description,
         CoverImageUrl = s.CoverImageUrl,
-        TotalViews = s.Chapters != null ? s.Chapters.Sum(c => (long)c.Views) : 0,
+        TotalViews = totalViewsOverride ?? (s.Chapters != null ? s.Chapters.Sum(c => (long)c.Views) : 0),
         SeriesFormat = s.SeriesFormat.ToString(),
         AgeRating = s.AgeRating.ToString(),
         Status = s.Status.ToString(),

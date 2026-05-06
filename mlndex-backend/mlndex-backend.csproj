@@ -24,6 +24,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.23" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
@@ -52,101 +53,28 @@
 
     <ItemGroup>
       <!-- 1. Remove ALL native OCR/ML DLLs by filename (any platform) -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        %(Filename) == 'mklml' Or
-        %(Filename) == 'OpenCvSharpExtern' Or
-        %(Filename) == 'paddle_inference_c' Or
-        %(Filename) == 'mkldnn' Or
-        %(Filename) == 'paddle2onnx' Or
-        %(Filename) == 'libiomp5md' Or
-        %(Filename) == 'onnxruntime' Or
-        %(Filename) == 'onnxruntime_providers_shared' Or
-        %(Filename) == 'libonnxruntime' Or
-        %(Filename) == 'libonnxruntime_providers_shared' Or
-        %(Filename) == 'libOpenCvSharpExtern' Or
-        %(Filename) == 'libpaddle_inference_c' Or
-        %(Filename) == 'libpaddle2onnx' Or
-        %(Filename) == 'libcommon' Or
-        %(Filename) == 'libonnxifi' Or
-        %(Filename) == 'libphi' Or
-        %(Filename) == 'libphi_core' Or
-        %(Filename) == 'tesseract50' Or
-        $([System.String]::Copy('%(Filename)').StartsWith('leptonica')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('opencv_videoio_ffmpeg')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('libonnxruntime.so')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('libpaddle2onnx.so'))
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        %(Filename) == 'mklml' Or&#xD;&#xA;        %(Filename) == 'OpenCvSharpExtern' Or&#xD;&#xA;        %(Filename) == 'paddle_inference_c' Or&#xD;&#xA;        %(Filename) == 'mkldnn' Or&#xD;&#xA;        %(Filename) == 'paddle2onnx' Or&#xD;&#xA;        %(Filename) == 'libiomp5md' Or&#xD;&#xA;        %(Filename) == 'onnxruntime' Or&#xD;&#xA;        %(Filename) == 'onnxruntime_providers_shared' Or&#xD;&#xA;        %(Filename) == 'libonnxruntime' Or&#xD;&#xA;        %(Filename) == 'libonnxruntime_providers_shared' Or&#xD;&#xA;        %(Filename) == 'libOpenCvSharpExtern' Or&#xD;&#xA;        %(Filename) == 'libpaddle_inference_c' Or&#xD;&#xA;        %(Filename) == 'libpaddle2onnx' Or&#xD;&#xA;        %(Filename) == 'libcommon' Or&#xD;&#xA;        %(Filename) == 'libonnxifi' Or&#xD;&#xA;        %(Filename) == 'libphi' Or&#xD;&#xA;        %(Filename) == 'libphi_core' Or&#xD;&#xA;        %(Filename) == 'tesseract50' Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('leptonica')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('opencv_videoio_ffmpeg')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('libonnxruntime.so')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('libpaddle2onnx.so'))&#xD;&#xA;      " />
 
       <!-- 2. Remove non-Windows runtime folders + win-x64 native OCR DLLs -->
       <!-- KEEP runtimes/win-x86 (Azure Free Tier = 32-bit, needs SNI.dll!) -->
       <!-- KEEP runtimes/win (shared managed DLLs) -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\android')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\ios')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\osx')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\linux')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-arm')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/android')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/ios')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/osx')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/linux')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-arm')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-x64\native')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-x64/native'))
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\android')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\ios')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\osx')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\linux')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-arm')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/android')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/ios')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/osx')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/linux')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-arm')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes\win-x64\native')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes/win-x64/native'))&#xD;&#xA;      " />
 
       <!-- 3. Remove tessdata, x64/x86 Tesseract dirs, ONNX models -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(RelativePath)').StartsWith('tessdata')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('x64\')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('x86\')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('x64/')) Or
-        $([System.String]::Copy('%(RelativePath)').StartsWith('x86/')) Or
-        %(Extension) == '.onnx' Or
-        %(Extension) == '.aar' Or
-        %(Filename) == 'onnxruntime.xcframework'
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('tessdata')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('x64\')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('x86\')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('x64/')) Or&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').StartsWith('x86/')) Or&#xD;&#xA;        %(Extension) == '.onnx' Or&#xD;&#xA;        %(Extension) == '.aar' Or&#xD;&#xA;        %(Filename) == 'onnxruntime.xcframework'&#xD;&#xA;      " />
 
       <!-- 4. Remove CodeGeneration design-time DLLs -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.VisualStudio.Web.CodeGeneration')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.VisualStudio.Web.CodeGenerators')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.DotNet.Scaffolding')) Or
-        %(Filename) == 'dotnet-aspnet-codegenerator-design' Or
-        %(Filename) == 'Microsoft.CodeAnalysis.AnalyzerUtilities' Or
-        %(Filename) == 'Microsoft.CodeAnalysis.Elfie' Or
-        %(Filename) == 'Microsoft.AspNetCore.Razor.Language' Or
-        %(Filename) == 'Microsoft.CodeAnalysis.Razor' Or
-        %(Filename) == 'Mono.TextTemplating' Or
-        %(Filename) == 'Microsoft.DiaSymReader' Or
-        %(Filename) == 'Microsoft.Build' Or
-        %(Filename) == 'Microsoft.Build.Framework' Or
-        %(Filename) == 'Microsoft.NET.StringTools' Or
-        %(Filename) == 'System.CodeDom' Or
-        %(Filename) == 'System.Reflection.MetadataLoadContext' Or
-        %(Filename) == 'System.Management'
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.VisualStudio.Web.CodeGeneration')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.VisualStudio.Web.CodeGenerators')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.DotNet.Scaffolding')) Or&#xD;&#xA;        %(Filename) == 'dotnet-aspnet-codegenerator-design' Or&#xD;&#xA;        %(Filename) == 'Microsoft.CodeAnalysis.AnalyzerUtilities' Or&#xD;&#xA;        %(Filename) == 'Microsoft.CodeAnalysis.Elfie' Or&#xD;&#xA;        %(Filename) == 'Microsoft.AspNetCore.Razor.Language' Or&#xD;&#xA;        %(Filename) == 'Microsoft.CodeAnalysis.Razor' Or&#xD;&#xA;        %(Filename) == 'Mono.TextTemplating' Or&#xD;&#xA;        %(Filename) == 'Microsoft.DiaSymReader' Or&#xD;&#xA;        %(Filename) == 'Microsoft.Build' Or&#xD;&#xA;        %(Filename) == 'Microsoft.Build.Framework' Or&#xD;&#xA;        %(Filename) == 'Microsoft.NET.StringTools' Or&#xD;&#xA;        %(Filename) == 'System.CodeDom' Or&#xD;&#xA;        %(Filename) == 'System.Reflection.MetadataLoadContext' Or&#xD;&#xA;        %(Filename) == 'System.Management'&#xD;&#xA;      " />
 
       <!-- 5. Remove CodeAnalysis DLLs (~30MB) -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.CodeAnalysis')) Or
-        $([System.String]::Copy('%(Filename)').StartsWith('System.Composition'))
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.CodeAnalysis')) Or&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('System.Composition'))&#xD;&#xA;      " />
 
       <!-- 6. Remove NuGet DLLs (design-time only) -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(Filename)').StartsWith('NuGet.'))
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(Filename)').StartsWith('NuGet.'))&#xD;&#xA;      " />
 
       <!-- 7. Remove ANY remaining satellite .resources.dll in language subfolders -->
       <!-- This catches Humanizer, CodeAnalysis, etc. that SatelliteResourceLanguages may miss -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="
-        $([System.String]::Copy('%(RelativePath)').Contains('.resources.dll')) And
-        !$([System.String]::Copy('%(RelativePath)').StartsWith('en\')) And
-        !$([System.String]::Copy('%(RelativePath)').StartsWith('en/')) And
-        !$([System.String]::Copy('%(RelativePath)').StartsWith('Resources\')) And
-        !$([System.String]::Copy('%(RelativePath)').StartsWith('Resources/'))
-      " />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="&#xD;&#xA;        $([System.String]::Copy('%(RelativePath)').Contains('.resources.dll')) And&#xD;&#xA;        !$([System.String]::Copy('%(RelativePath)').StartsWith('en\')) And&#xD;&#xA;        !$([System.String]::Copy('%(RelativePath)').StartsWith('en/')) And&#xD;&#xA;        !$([System.String]::Copy('%(RelativePath)').StartsWith('Resources\')) And&#xD;&#xA;        !$([System.String]::Copy('%(RelativePath)').StartsWith('Resources/'))&#xD;&#xA;      " />
     </ItemGroup>
 
     <!-- Count remaining files for diagnostic -->

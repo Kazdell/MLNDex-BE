@@ -450,7 +450,7 @@ namespace Application.Services.Translation
                     userId: uploaderId.Value,
                     title: notifyTitle,
                     message: notifyMessage,
-                    actionUrl: "/creator/moderation-result",
+                    actionUrl: $"/creator/moderation-result?translationId={translation.TranslationId}",
                     type: Domain.Entities.NotificationType.SYSTEM
                 );
 

@@ -193,7 +193,7 @@ namespace Application.Services.Moderation
             ownerUserId = translation.Permission!.Team!.LeaderId;
             contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
             actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
-                ? $"/creator/moderation-result"
+                ? $"/creator/moderation-result?translationId={translation.TranslationId}"
                 : $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
           }
           break;
