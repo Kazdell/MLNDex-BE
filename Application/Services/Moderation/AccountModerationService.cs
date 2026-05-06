@@ -88,6 +88,58 @@ namespace Application.Services.Moderation
           break;
         case AccountActionType.DEACTIVATE:
           user.IsActive = false;
+          
+          var creatorProfile = await _context.CreatorProfiles
+              .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+              
+          if (creatorProfile != null)
+          {
+              creatorProfile.IsActive = false;
+              creatorProfile.UnlockEnabled = false;
+
+              var lockedChapters = await _context.Chapters
+                  .Include(c => c.Series)
+                  .Where(c => c.Series.CreatorId == creatorProfile.CreatorId && c.LockStatus == Domain.Entities.ChapterLockStatus.LOCKED)
+                  .ToListAsync(cancellationToken);
+
+              foreach (var chapter in lockedChapters)
+              {
+                  chapter.LockStatus = Domain.Entities.ChapterLockStatus.UNLOCKED;
+              }
+          }
+
+          // Disband translation teams led by this user
+          var teamsLed = await _context.TranslationTeams
+              .Where(t => t.LeaderId == userId && t.LockStatus != Domain.Entities.TeamLockStatus.DISBANDED)
+              .ToListAsync(cancellationToken);
+
+          foreach (var team in teamsLed)
+          {
+              team.LockStatus = Domain.Entities.TeamLockStatus.DISBANDED;
+              team.IsMonetizationEnabled = false;
+              team.UnlockEnabled = false;
+              team.UpdatedAt = DateTime.UtcNow;
+
+              var teamMembers = await _context.TeamMembers.Where(m => m.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var m in teamMembers)
+              {
+                  m.IsActive = false;
+                  m.LeftAt = DateTime.UtcNow;
+              }
+
+              var translations = await _context.Translations.Where(t => t.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var t in translations)
+              {
+                  t.IsOfficial = false;
+              }
+
+              var permissions = await _context.TranslationPermissions.Where(p => p.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var p in permissions)
+              {
+                  p.Status = Domain.Entities.TranslationPermissionStatus.UNOFFICIAL;
+              }
+          }
+
           await AddNotificationAsync(
               userId,
               "Tài khoản bị vô hiệu hóa",
@@ -222,6 +274,70 @@ namespace Application.Services.Moderation
             });
           }
         }
+      }
+
+      // If Creator Role was revoked, disable monetization and unlock chapters
+      var hadCreatorRole = currentRoles.Contains(RoleName.CREATOR);
+      var hasCreatorRoleNow = newRoles.Contains(RoleName.CREATOR);
+
+      if (hadCreatorRole && !hasCreatorRoleNow)
+      {
+          var creatorProfile = await _context.CreatorProfiles
+              .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+              
+          if (creatorProfile != null)
+          {
+              creatorProfile.IsActive = false;
+              creatorProfile.UnlockEnabled = false;
+
+              var lockedChapters = await _context.Chapters
+                  .Include(c => c.Series)
+                  .Where(c => c.Series.CreatorId == creatorProfile.CreatorId && c.LockStatus == Domain.Entities.ChapterLockStatus.LOCKED)
+                  .ToListAsync(cancellationToken);
+
+              foreach (var chapter in lockedChapters)
+              {
+                  chapter.LockStatus = Domain.Entities.ChapterLockStatus.UNLOCKED;
+              }
+          }
+      }
+
+      // If Translator Role was revoked, disband teams led by this user
+      var hadTranslatorRole = currentRoles.Contains(RoleName.TRANSLATOR);
+      var hasTranslatorRoleNow = newRoles.Contains(RoleName.TRANSLATOR);
+
+      if (hadTranslatorRole && !hasTranslatorRoleNow)
+      {
+          var teamsLed = await _context.TranslationTeams
+              .Where(t => t.LeaderId == userId && t.LockStatus != Domain.Entities.TeamLockStatus.DISBANDED)
+              .ToListAsync(cancellationToken);
+
+          foreach (var team in teamsLed)
+          {
+              team.LockStatus = Domain.Entities.TeamLockStatus.DISBANDED;
+              team.IsMonetizationEnabled = false;
+              team.UnlockEnabled = false;
+              team.UpdatedAt = DateTime.UtcNow;
+
+              var teamMembers = await _context.TeamMembers.Where(m => m.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var m in teamMembers)
+              {
+                  m.IsActive = false;
+                  m.LeftAt = DateTime.UtcNow;
+              }
+
+              var translations = await _context.Translations.Where(t => t.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var t in translations)
+              {
+                  t.IsOfficial = false;
+              }
+
+              var permissions = await _context.TranslationPermissions.Where(p => p.TeamId == team.TeamId).ToListAsync(cancellationToken);
+              foreach (var p in permissions)
+              {
+                  p.Status = Domain.Entities.TranslationPermissionStatus.UNOFFICIAL;
+              }
+          }
       }
 
       await _context.SaveChangesAsync(cancellationToken);
