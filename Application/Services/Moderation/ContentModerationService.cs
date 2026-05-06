@@ -1,7 +1,9 @@
 using Application.DTOs.Moderation;
+using Application.DTOs.ReportSystem;
 using Application.Interfaces.Data;
 using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
+using Application.Interfaces.ReportSystem;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +13,16 @@ namespace Application.Services.Moderation
   {
     private readonly IMlndexDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IReputationService _reputationService;
 
-    public ContentModerationService(IMlndexDbContext context, INotificationService notificationService)
+    public ContentModerationService(
+        IMlndexDbContext context,
+        INotificationService notificationService,
+        IReputationService reputationService)
     {
       _context = context;
       _notificationService = notificationService;
+      _reputationService = reputationService;
     }
 
     public async Task<ModerationQueueDto> DecideAsync(
@@ -29,10 +36,10 @@ namespace Application.Services.Moderation
           await _context.ModerationQueues.FirstOrDefaultAsync(
               q => q.QueueId == queueId,
               cancellationToken
-          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND);
+          ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.MODERATION_QUEUE_NOT_FOUND, "Moderation queue not found", 404);
 
       if (queue.Status == QueueStatus.RESOLVED || queue.Status == QueueStatus.DISMISSED || queue.Status == QueueStatus.REJECTED)
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
+        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED, "Cannot decide on an already resolved/rejected queue", 409);
 
       var targetStatus = request.Action switch
       {
@@ -70,6 +77,13 @@ namespace Application.Services.Moderation
       );
 
       await _context.SaveChangesAsync(cancellationToken);
+
+      // ── Trừ 10 điểm uy tín khi REJECT / BAN ─────────────────────────
+      if (request.Action == ContentDecisionAction.REJECT || request.Action == ContentDecisionAction.BAN)
+      {
+        await DeductReputationForQueueAsync(queue, cancellationToken);
+      }
+      // ─────────────────────────────────────────────────────────────────
 
       // Send notification to content owner
       await SendModerationNotificationAsync(queue, targetStatus, request.Reason, cancellationToken);
@@ -128,6 +142,15 @@ namespace Application.Services.Moderation
                   cancellationToken
               ) ?? throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.TRANSLATION_NOT_FOUND);
           translation.ModerationStatus = status;
+          if (status == ModerationStatus.APPROVED)
+          {
+            translation.QualityStatus = Domain.Entities.TranslationQualityStatus.PUBLISHED;
+            translation.PublishedAt = DateTime.UtcNow;
+          }
+          else
+          {
+            translation.QualityStatus = Domain.Entities.TranslationQualityStatus.DRAFT;
+          }
           break;
         default:
           throw new ArgumentOutOfRangeException();
@@ -143,21 +166,24 @@ namespace Application.Services.Moderation
       switch (queue.ContentType)
       {
         case ModerationQueueContentType.SERIES:
-          var series = await _context.Series.FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
-          if (series != null)
+          var series = await _context.Series.Include(s => s.Creator).FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+          if (series != null && series.Creator != null)
           {
-            ownerUserId = series.CreatorId;
+            ownerUserId = series.Creator.UserId;
             contentTitle = series.Title;
             actionUrl = $"/series/{series.SeriesId}";
           }
           break;
         case ModerationQueueContentType.CHAPTER:
-          var chapter = await _context.Chapters.Include(c => c.Series).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
-          if (chapter != null)
+          var chapter = await _context.Chapters.Include(c => c.Series).ThenInclude(s => s.Creator).FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+          if (chapter != null && chapter.Series?.Creator != null)
           {
-            ownerUserId = chapter.Series.CreatorId;
+            ownerUserId = chapter.Series.Creator.UserId;
             contentTitle = $"Chapter {chapter.ChapterNumber} của {chapter.Series.Title}";
-            actionUrl = $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
+            // Rejected/Banned → link to edit page so creator can fix; Approved → link to reader
+            actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
+                ? $"/creator/chapter-upload/{chapter.ChapterId}"
+                : $"/series/{chapter.SeriesId}/chapters/{chapter.ChapterId}";
           }
           break;
         case ModerationQueueContentType.TRANSLATION:
@@ -166,7 +192,9 @@ namespace Application.Services.Moderation
           {
             ownerUserId = translation.Permission!.Team!.LeaderId;
             contentTitle = $"Bản dịch của {translation.Chapter.Series.Title}";
-            actionUrl = $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
+            actionUrl = (status == ModerationStatus.REJECTED || status == ModerationStatus.BANNED)
+                ? $"/creator/moderation-result"
+                : $"/series/{translation.Chapter.SeriesId}/chapters/{translation.ChapterId}";
           }
           break;
       }
@@ -199,6 +227,53 @@ namespace Application.Services.Moderation
             actionUrl,
             type
         );
+      }
+    }
+
+    // ── Trừ 10 điểm uy tín cho Creator/Team sở hữu nội dung bị xử lý ──
+    private async Task DeductReputationForQueueAsync(ModerationQueue queue, CancellationToken cancellationToken)
+    {
+      try
+      {
+        switch (queue.ContentType)
+        {
+          case ModerationQueueContentType.SERIES:
+            var series = await _context.Series
+                .Include(s => s.Creator)
+                .FirstOrDefaultAsync(s => s.SeriesId == queue.ContentId, cancellationToken);
+            if (series?.Creator != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Creator, series.Creator.CreatorId,
+                  -10, $"[Moderator] Nội dung vi phạm bị xử lý (Series #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+
+          case ModerationQueueContentType.CHAPTER:
+            var chapter = await _context.Chapters
+                .Include(c => c.Series).ThenInclude(s => s.Creator)
+                .FirstOrDefaultAsync(c => c.ChapterId == queue.ContentId, cancellationToken);
+            if (chapter?.Series?.Creator != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Creator, chapter.Series.Creator.CreatorId,
+                  -10, $"[Moderator] Nội dung vi phạm bị xử lý (Chapter #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+
+          case ModerationQueueContentType.TRANSLATION:
+            var translation = await _context.Translations
+                .Include(t => t.Permission).ThenInclude(p => p!.Team)
+                .FirstOrDefaultAsync(t => t.TranslationId == queue.ContentId, cancellationToken);
+            if (translation?.Permission?.Team != null)
+              await _reputationService.ModifyReputationAsync(
+                  ReputationTargetType.Team, translation.Permission.Team.TeamId,
+                  -10, $"[Moderator] Bản dịch vi phạm bị xử lý (Translation #{queue.ContentId})",
+                  ct: cancellationToken);
+            break;
+        }
+      }
+      catch (Exception)
+      {
+        // Log nhưng không fail toàn bộ request nếu reputation update lỗi
       }
     }
   }

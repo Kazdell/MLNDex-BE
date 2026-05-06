@@ -115,11 +115,11 @@ public class ChapterController : BaseController
     int? userId = null;
     var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
     if (int.TryParse(claim, out var parsed)) userId = parsed;
-    
-    // Check if the caller is an Admin or Moderator
-    bool isModOrAdmin = User.IsInRole("ADMIN") || User.IsInRole("MOD");
 
-    try
+        // Check if the caller is an Admin or Moderator
+        bool isModOrAdmin = User.IsInRole("ADMIN") || User.IsInRole("MODERATOR");
+
+        try
     {
       var result = await _service.GetChapterDetailAsync(
           id,

@@ -38,10 +38,21 @@ namespace Application.DTOs.Financial
         public decimal Withdrawn { get; set; }
     }
 
+    public class ReportTransactionDto
+    {
+        public string TxId { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string User { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string Time { get; set; } = string.Empty;
+    }
+
     public class FinancialReportResponse
     {
         public FinancialSummaryDto Summary { get; set; } = new();
         public List<CreatorRevenueDto> TopCreators { get; set; } = new();
         public List<DailyRevenueDto> DailyRevenue { get; set; } = new();
+        public List<ReportTransactionDto> Transactions { get; set; } = new();
     }
 }

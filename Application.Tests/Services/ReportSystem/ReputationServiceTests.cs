@@ -14,16 +14,18 @@ using Application.Interfaces.Moderation;
 using Application.Interfaces.Notification;
 using Moq;
 using Infrastructure.Data;
+
 namespace Application.Tests.Services.ReportSystem
 {
   [Collection("Database collection")]
-  public class TrustScoreServiceTests : IAsyncLifetime
+  public class ReputationServiceTests : IAsyncLifetime
   {
     private readonly DatabaseFixture _fixture;
     private MlndexDbContext _db = default!;
     private int _seedTeamId;
+    private int _seedCreatorId;
 
-    public TrustScoreServiceTests(DatabaseFixture fixture)
+    public ReputationServiceTests(DatabaseFixture fixture)
     {
       _fixture = fixture;
     }
@@ -37,12 +39,20 @@ namespace Application.Tests.Services.ReportSystem
       _db.Users.AddRange(
           new User { UserId = 1, Username = "user1", Email = "u1@t.com", DisplayName = "U1", PasswordHash = "h" },
           new User { UserId = 10, Username = "leader1", Email = "l1@t.com", DisplayName = "L1", PasswordHash = "h" },
-          new User { UserId = 99, Username = "moderator", Email = "mod@t.com", DisplayName = "Mod", PasswordHash = "h" }
+          new User { UserId = 99, Username = "moderator", Email = "mod@t.com", DisplayName = "Mod", PasswordHash = "h" },
+          new User { UserId = 2, Username = "violator", Email = "v@t.com", DisplayName = "V", PasswordHash = "h" }
       );
       _db.Languages.Add(new Language { LanguageId = 1, Name = "Vietnamese", Code = "vi" });
       await _db.SaveChangesAsync();
 
-      var team = new TranslationTeam { TeamName = "Locked Team", Slug = "locked-team", TrustScore = 0, LockStatus = TeamLockStatus.LOCKED, LeaderId = 10, LanguageId = 1 };
+      var creator = new CreatorProfile { CreatorId = 1, UserId = 1, PenName = "Creator U1", ReputationScore = 80 };
+      _db.CreatorProfiles.Add(creator);
+      var creator2 = new CreatorProfile { CreatorId = 2, UserId = 2, PenName = "Violator C2", ReputationScore = 30 };
+      _db.CreatorProfiles.Add(creator2);
+      await _db.SaveChangesAsync();
+      _seedCreatorId = creator.CreatorId;
+
+      var team = new TranslationTeam { TeamName = "Locked Team", Slug = "locked-team", ReputationScore = 0, LockStatus = TeamLockStatus.LOCKED, LeaderId = 10, LanguageId = 1 };
       _db.TranslationTeams.Add(team);
       await _db.SaveChangesAsync();
       _seedTeamId = team.TeamId;
@@ -56,19 +66,20 @@ namespace Application.Tests.Services.ReportSystem
     // ── Phase A: Admin Restore ──────────────────────────
 
     [Fact]
-    public async Task RestoreTrustScore_ShouldIncreaseUserScore()
+    public async Task RestoreReputation_ShouldIncreaseCreatorScore()
     {
       var db = _db;
+      var creator = await db.CreatorProfiles.FindAsync(_seedCreatorId);
+      creator!.ReputationScore = 0;
       var user = await db.Users.FindAsync(1);
-      user!.TrustScore = 0;
-      user.CannotUpload = true;
+      user!.CannotUpload = true;
       await db.SaveChangesAsync();
 
-      var service = new TrustScoreService(db);
-      var result = await service.RestoreTrustScoreAsync(new RestoreTrustScoreRequest
+      var service = new ReputationService(db);
+      var result = await service.RestoreReputationAsync(new RestoreReputationRequest
       {
-        TargetType = TrustScoreTargetType.User,
-        TargetId = 1,
+        TargetType = ReputationTargetType.Creator,
+        TargetId = _seedCreatorId,
         ScoreToRestore = 30,
         Reason = "Good behavior"
       }, moderatorId: 99);
@@ -79,26 +90,27 @@ namespace Application.Tests.Services.ReportSystem
 
       var updatedUser = await db.Users.FindAsync(1);
       updatedUser!.CannotUpload.Should().BeFalse();
-      updatedUser.TrustScore.Should().Be(30);
+      var updatedCreator = await db.CreatorProfiles.FindAsync(_seedCreatorId);
+      updatedCreator!.ReputationScore.Should().Be(30);
 
-      var history = await db.TrustScoreHistories.FirstOrDefaultAsync(h => h.UserId == 1);
+      var history = await db.ReputationHistories.FirstOrDefaultAsync(h => h.CreatorId == _seedCreatorId);
       history.Should().NotBeNull();
       history!.ScoreChange.Should().Be(30);
     }
 
     [Fact]
-    public async Task RestoreTrustScore_ShouldCapAt100()
+    public async Task RestoreReputation_ShouldCapAt100()
     {
       var db = _db;
-      var user = await db.Users.FindAsync(1);
-      user!.TrustScore = 80;
+      var creator = await db.CreatorProfiles.FindAsync(_seedCreatorId);
+      creator!.ReputationScore = 80;
       await db.SaveChangesAsync();
 
-      var service = new TrustScoreService(db);
-      var result = await service.RestoreTrustScoreAsync(new RestoreTrustScoreRequest
+      var service = new ReputationService(db);
+      var result = await service.RestoreReputationAsync(new RestoreReputationRequest
       {
-        TargetType = TrustScoreTargetType.User,
-        TargetId = 1,
+        TargetType = ReputationTargetType.Creator,
+        TargetId = _seedCreatorId,
         ScoreToRestore = 50,
         Reason = "Restore"
       }, moderatorId: 99);
@@ -107,13 +119,13 @@ namespace Application.Tests.Services.ReportSystem
     }
 
     [Fact]
-    public async Task RestoreTrustScore_ShouldUnlockTeam()
+    public async Task RestoreReputation_ShouldUnlockTeam()
     {
       var db = _db;
-      var service = new TrustScoreService(db);
-      var result = await service.RestoreTrustScoreAsync(new RestoreTrustScoreRequest
+      var service = new ReputationService(db);
+      var result = await service.RestoreReputationAsync(new RestoreReputationRequest
       {
-        TargetType = TrustScoreTargetType.Team,
+        TargetType = ReputationTargetType.Team,
         TargetId = _seedTeamId,
         ScoreToRestore = 20,
         Reason = "Appeal approved"
@@ -132,7 +144,7 @@ namespace Application.Tests.Services.ReportSystem
     public async Task CreateAppeal_ShouldCreatePendingAppeal()
     {
       var db = _db;
-      var service = new TrustScoreService(db);
+      var service = new ReputationService(db);
       var result = await service.CreateAppealAsync(1, new CreateAppealRequest
       {
         Reason = "I was wrongly penalized",
@@ -151,24 +163,24 @@ namespace Application.Tests.Services.ReportSystem
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "First appeal", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
-      var service = new TrustScoreService(db);
+      var service = new ReputationService(db);
       var act = () => service.CreateAppealAsync(1, new CreateAppealRequest { Reason = "Second appeal" });
 
-      await act.Should().ThrowAsync<Application.Exceptions.AppException>()
-          ;
+      await act.Should().ThrowAsync<Application.Exceptions.AppException>();
     }
 
     [Fact]
     public async Task ReviewAppeal_ShouldApproveAndRestoreScore()
     {
       var db = _db;
+      var creator = await db.CreatorProfiles.FindAsync(_seedCreatorId);
+      creator!.ReputationScore = 10;
       var user = await db.Users.FindAsync(1);
-      user!.TrustScore = 10;
-      user.CannotUpload = false;
+      user!.CannotUpload = false;
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "Wrong penalty", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
-      var service = new TrustScoreService(db);
+      var service = new ReputationService(db);
       var result = await service.ReviewAppealAsync(1, moderatorId: 99, new ReviewAppealRequest
       {
         IsApproved = true,
@@ -179,8 +191,8 @@ namespace Application.Tests.Services.ReportSystem
       result.Status.Should().Be("Approved");
       result.ScoreRestored.Should().Be(40);
 
-      var updatedUser = await db.Users.FindAsync(1);
-      updatedUser!.TrustScore.Should().Be(50); // 10 + 40
+      var updatedCreator = await db.CreatorProfiles.FindAsync(_seedCreatorId);
+      updatedCreator!.ReputationScore.Should().Be(50); // 10 + 40
     }
 
     [Fact]
@@ -190,7 +202,7 @@ namespace Application.Tests.Services.ReportSystem
       db.Appeals.Add(new Appeal { AppealId = 1, UserId = 1, Reason = "Wrong", Status = AppealStatus.Pending });
       await db.SaveChangesAsync();
 
-      var service = new TrustScoreService(db);
+      var service = new ReputationService(db);
       var result = await service.ReviewAppealAsync(1, 99, new ReviewAppealRequest
       {
         IsApproved = false,
@@ -206,8 +218,8 @@ namespace Application.Tests.Services.ReportSystem
     public async Task ApplyPenalty_ShouldSetCannotUpload_WhenScoreDropsToZero()
     {
       var db = _db;
-      // Add a second user as violator
-      db.Users.Add(new User { UserId = 2, Username = "violator", Email = "v@t.com", DisplayName = "V", PasswordHash = "h", TrustScore = 30 });
+      var creator2 = await db.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == 2);
+      
       db.Reports.Add(new Report
       {
         ReportId = 1,
@@ -221,7 +233,8 @@ namespace Application.Tests.Services.ReportSystem
 
       var mockAM = new Mock<IAccountModerationService>();
       var mockNotif = new Mock<INotificationService>();
-      var reportService = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object);
+      var mockPusher = new Mock<INotificationPusher>();
+      var reportService = new PlagiarismReportService(db, mockAM.Object, mockNotif.Object, mockPusher.Object);
       await reportService.ResolveReportAsync(1, 99, new ResolvePlagiarismReportRequest
       {
         NewStatus = ReportStatus.Resolved,
@@ -229,9 +242,10 @@ namespace Application.Tests.Services.ReportSystem
         ResolutionNotes = "Plagiarism confirmed"
       });
 
+      var updatedCreator2 = await db.CreatorProfiles.FirstOrDefaultAsync(c => c.UserId == 2);
+      updatedCreator2!.ReputationScore.Should().BeLessThanOrEqualTo(0);
       var userInDb = await db.Users.FindAsync(2);
-      userInDb!.TrustScore.Should().BeLessThanOrEqualTo(0);
-      userInDb.CannotUpload.Should().BeTrue();
+      userInDb!.CannotUpload.Should().BeTrue();
     }
   }
 }

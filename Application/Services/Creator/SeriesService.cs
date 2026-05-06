@@ -175,13 +175,6 @@ namespace Application.Services.Creator
         throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa bộ truyện này.");
       }
 
-      // ── Update Cooldown: 10 phút giữa 2 lần sửa ────────────────────
-      if (series.UpdatedAt.HasValue
-          && (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes < 10)
-      {
-        var remaining = 10 - (DateTime.UtcNow - series.UpdatedAt.Value).TotalMinutes;
-        throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.OPERATION_NOT_ALLOWED);
-      }
 
       if (await _context.Series.AnyAsync(s => s.Title.ToLower() == dto.Title.ToLower() && s.SeriesId != seriesId, cancellationToken))
         throw new Application.Exceptions.AppException(Application.DTOs.Common.ErrorCodes.DUPLICATE_SERIES_TITLE);
@@ -361,7 +354,7 @@ namespace Application.Services.Creator
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
 
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
+          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations.Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED))
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
           .AsSplitQuery()
@@ -441,7 +434,7 @@ namespace Application.Services.Creator
           .Include(s => s.Creator)
           .Include(s => s.SeriesGenres).ThenInclude(sg => sg.Genre)
 
-          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations)
+          .Include(s => s.Chapters.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED).OrderByDescending(c => c.ChapterNumber).Take(2)).ThenInclude(c => c.Translations.Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED))
           .Where(s => ids.Contains(s.SeriesId))
           .AsNoTracking()
           .AsSplitQuery()
@@ -535,7 +528,7 @@ namespace Application.Services.Creator
 
       // 1. Map original chapters (bản gốc) — PUBLISHED only
       var chapterDtos = series.Chapters
-.Where(c => c.Status == ChapterStatus.PUBLISHED)
+.Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
 .OrderByDescending(c => c.ChapterNumber)
 .Select(c =>
 {
@@ -576,7 +569,7 @@ namespace Application.Services.Creator
       //    Each Translation maps to the same ChapterNumber so FE can group them together
       var translationDtos = series.Chapters
 .SelectMany(c => (c.Translations as IEnumerable<Domain.Entities.Translation> ?? Array.Empty<Domain.Entities.Translation>())
-  .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED)
+  .Where(t => t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED)
   .Select(t =>
   {
     // Tính effective lock của chapter gốc
@@ -809,7 +802,7 @@ namespace Application.Services.Creator
         CreatorName = s.Creator.PenName,
         Genres = s.SeriesGenres.Select(sg => sg.Genre.Name).ToList(),
         LatestChapters = s.Chapters
-              .Where(c => c.Status == ChapterStatus.PUBLISHED)
+              .Where(c => c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
               .OrderByDescending(c => c.ChapterNumber)
               .Take(2)
               .Select(c => new SeriesChapterDto

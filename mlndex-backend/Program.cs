@@ -135,7 +135,7 @@ namespace mlndex_backend
 
             // Isolated Report & TrustScore Services
             builder.Services.AddScoped<Application.Interfaces.ReportSystem.IPlagiarismReportService, Application.Services.ReportSystem.PlagiarismReportService>();
-            builder.Services.AddScoped<Application.Interfaces.ReportSystem.ITrustScoreService, Application.Services.ReportSystem.TrustScoreService>();
+            builder.Services.AddScoped<Application.Interfaces.ReportSystem.IReputationService, Application.Services.ReportSystem.ReputationService>();
 
             // AI & Chapter Processing
             builder.Services.AddSingleton<Infrastructure.BackgroundJobs.Queue.ModerationQueue>();
@@ -155,8 +155,10 @@ namespace mlndex_backend
             builder.Services.AddScoped<IReaderTranslationService, ReaderTranslationService>();
             builder.Services.AddScoped<ITranslationPermissionService, TranslationPermissionService>();
 
-      // OCR Services — with fallback for deployments without native DLLs
-      var ocrAvailable = File.Exists(Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll"));
+      // OCR Services — check linux-x64 native libs (app runs on Ubuntu in production)
+      var ocrLinuxLib = Path.Combine(AppContext.BaseDirectory, "runtimes", "linux-x64", "native", "libOpenCvSharpExtern.so");
+      var ocrWinLib = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "paddle_inference_c.dll");
+      var ocrAvailable = File.Exists(ocrLinuxLib) || File.Exists(ocrWinLib);
       if (ocrAvailable)
       {
         builder.Services.Configure<Application.Models.OCR.OcrSettings>(builder.Configuration.GetSection("OcrSettings"));
@@ -266,7 +268,9 @@ namespace mlndex_backend
             {
                 "http://localhost:5173", "http://127.0.0.1:5173",
                 "http://localhost:5174", "http://127.0.0.1:5174",
-                "http://localhost:5175", "http://127.0.0.1:5175"
+                "http://localhost:5175", "http://127.0.0.1:5175",
+                // Production origins — always included as fallback
+                "https://mlndex-fe.vercel.app"
             };
             var extraOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
             if (!string.IsNullOrEmpty(extraOrigins))
@@ -290,12 +294,14 @@ namespace mlndex_backend
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers.Host.ToString(),
+                        partitionKey: context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                                      ?? context.Connection.RemoteIpAddress?.ToString()
+                                      ?? context.Request.Headers.Host.ToString(),
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
-                            PermitLimit = 120,
-                            QueueLimit = 10,
+                            PermitLimit = 600,
+                            QueueLimit = 20,
                             Window = TimeSpan.FromMinutes(1)
                         }));
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -324,8 +330,10 @@ namespace mlndex_backend
       app.UseAuthorization();
       app.UseStaticFiles();
 
-            app.MapHub<NotificationHub>("/hubs/notification");
-            app.MapHub<ModerationHub>("/hubs/moderation");
+            // RequireCors is mandatory for SignalR hubs:
+            // The HTTP POST /negotiate preflight must pass CORS before the WebSocket upgrade.
+            app.MapHub<NotificationHub>("/hubs/notification").RequireCors("AllowSpecificOrigin");
+            app.MapHub<ModerationHub>("/hubs/moderation").RequireCors("AllowSpecificOrigin");
 
             app.MapControllers();
             app.Run();

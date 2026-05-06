@@ -19,7 +19,6 @@ namespace Domain.Entities
     public string? GoogleId { get; set; }
     public string? FacebookId { get; set; }
     public bool IsActive { get; set; }
-    public int TrustScore { get; set; } = 100;
     public bool CannotUpload { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public string? BannerUrl { get; set; }
@@ -49,6 +48,5 @@ namespace Domain.Entities
     public ICollection<ModerationQueue> AssignedQueues { get; set; } = new List<ModerationQueue>();
     public ICollection<ModerationAction> ModerationActions { get; set; } = new List<ModerationAction>();
     public ICollection<TranslationCredit> TranslationCredits { get; set; } = new List<TranslationCredit>();
-    public ICollection<TrustScoreHistory> TrustScoreHistories { get; set; } = new List<TrustScoreHistory>();
   }
 }

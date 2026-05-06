@@ -75,6 +75,7 @@ namespace Application.Services.Moderation
     )
     {
       var items = await _context.ModerationQueues
+          .Where(q => q.Status == QueueStatus.PENDING || q.Status == QueueStatus.IN_REVIEW)
           .Include(q => q.Reports)
           .OrderByDescending(q => q.Priority)
           .ThenByDescending(q => q.FlaggedAt)

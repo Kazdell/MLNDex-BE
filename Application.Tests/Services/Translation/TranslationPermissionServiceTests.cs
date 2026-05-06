@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Application.DTOs.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -88,7 +88,7 @@ namespace Application.Tests.Services.Translation
       var (t1, _) = await SeedBaseData(db);
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
+      ex.ErrorCode.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
+      ex.ErrorCode.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 9999, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.SERIES_NOT_FOUND);
+      ex.ErrorCode.Should().Be(ErrorCodes.SERIES_NOT_FOUND);
     }
 
     [Fact(Skip = "FK constraint prevents CreatorId orphaning - this scenario is impossible with proper DB constraints")]
@@ -135,7 +135,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 99 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.LANGUAGE_NOT_FOUND);
+      ex.ErrorCode.Should().Be(ErrorCodes.LANGUAGE_NOT_FOUND);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = false };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.PERMISSION_REQUEST_PENDING);
+      ex.ErrorCode.Should().Be(ErrorCodes.PERMISSION_REQUEST_PENDING);
     }
 
     [Fact]
@@ -165,7 +165,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new RequestPermissionRequest { TeamId = t1, SeriesId = 10, LanguageId = 1, IsUnofficial = true };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).RequestPermissionAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.PERMISSION_ALREADY_GRANTED);
+      ex.ErrorCode.Should().Be(ErrorCodes.PERMISSION_ALREADY_GRANTED);
     }
 
     [Fact]
@@ -263,7 +263,7 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(456);
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(999, new ReviewPermissionRequest { IsApproved = true }));
-      ex.Message.Should().Be(ErrorCodes.PERMISSION_REQUEST_NOT_FOUND);
+      ex.ErrorCode.Should().Be(ErrorCodes.PERMISSION_REQUEST_NOT_FOUND);
     }
 
     [Fact]
@@ -276,7 +276,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).ReviewPermissionAsync(99, new ReviewPermissionRequest { IsApproved = true }));
-      ex.Message.Should().Be(ErrorCodes.CREATOR_ONLY_REVIEW);
+      ex.ErrorCode.Should().Be(ErrorCodes.CREATOR_ONLY_REVIEW);
     }
 
     [Fact]

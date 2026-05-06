@@ -6,5 +6,6 @@ namespace Application.Interfaces.Notification
   public interface INotificationPusher
   {
     Task PushNotificationAsync(int userId, NotificationDto dto);
+    Task PushReportResolvedEventAsync();
   }
 }

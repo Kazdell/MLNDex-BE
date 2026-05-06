@@ -46,7 +46,7 @@ namespace Application.Interfaces.Data
         DbSet<TeamInvitation> TeamInvitations { get; set; }
         DbSet<UserList> UserLists { get; set; }
         DbSet<UserListItem> UserListItems { get; set; }
-        DbSet<TrustScoreHistory> TrustScoreHistories { get; set; }
+        DbSet<ReputationHistory> ReputationHistories { get; set; }
         DbSet<TranslationCredit> TranslationCredits { get; set; }
         DbSet<Appeal> Appeals { get; set; }
         DbSet<SystemConfigs> SystemConfigs { get; set; }

@@ -98,6 +98,17 @@ public class TopUpService : ITopUpService
   public async Task<TransactionPagedResponseDto> GetTransactionHistoryAsync(
       int userId, int page = 1, int pageSize = 20)
   {
+    var thresholdTime = DateTime.UtcNow.AddMinutes(-15);
+    var expiredTxs = await _context.Transactions
+        .Where(t => t.UserId == userId && t.Type == TransactionType.PURCHASE_COIN && t.Status == TransactionStatus.PENDING && t.CreatedAt < thresholdTime)
+        .ToListAsync();
+
+    if (expiredTxs.Any())
+    {
+      foreach (var t in expiredTxs) t.Status = TransactionStatus.CANCELLED;
+      await _context.SaveChangesAsync();
+    }
+
     var query = _context.Transactions
         .Where(t => t.UserId == userId)
         .OrderByDescending(t => t.CreatedAt);
@@ -164,7 +175,7 @@ public class TopUpService : ITopUpService
         ?? throw new AppException(ErrorCodes.WALLET_NOT_FOUND);
 
     var txnRef = GenerateOrderCode().ToString();
-    var expiredAt = DateTime.Now.AddMinutes(15);
+    var expiredAt = DateTime.UtcNow.AddMinutes(15);
 
     var transaction = new Transaction
     {
@@ -174,7 +185,7 @@ public class TopUpService : ITopUpService
       AmountCoins = coinsWillReceive,
       Status = TransactionStatus.PENDING,
       Note = $"{method}|{txnRef}",
-      CreatedAt = DateTime.Now
+      CreatedAt = DateTime.UtcNow
     };
     _context.Transactions.Add(transaction);
     await _context.SaveChangesAsync();

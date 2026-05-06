@@ -24,6 +24,7 @@ namespace mlndex_backend.Controllers.Admin
 		}
 
 		[HttpGet]
+		[AllowAnonymous]
 		public async Task<IActionResult> Get(CancellationToken cancellationToken)
 		{
 			var config = await _service.GetAsync(cancellationToken);
@@ -43,8 +44,8 @@ namespace mlndex_backend.Controllers.Admin
       return OkResponse(updated, "Updated");
     }
 
-    /// <summary>Preview coins sẽ nhận khi nhập số VND.</summary>
     [HttpGet("rate/preview")]
+    [AllowAnonymous]
     public async Task<IActionResult> PreviewCoins([FromQuery] long amountVnd)
     {
       var coins = await _service.CalculateCoinsAsync(amountVnd);

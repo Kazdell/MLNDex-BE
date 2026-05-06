@@ -15,6 +15,7 @@ namespace Application.DTOs.Common
 		//  Auth
 		public const string UNAUTHORIZED = "UNAUTHORIZED";
 		public const string FORBIDDEN = "FORBIDDEN";
+		public const string PERMISSION_DENIED = "PERMISSION_DENIED";
 		public const string INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
 		public const string TOKEN_EXPIRED = "TOKEN_EXPIRED";
 		public const string INVALID_TOKEN = "INVALID_TOKEN";
@@ -43,6 +44,7 @@ namespace Application.DTOs.Common
     public const string COIN_PACKAGE_NOT_FOUND = "COIN_PACKAGE_NOT_FOUND";
     public const string INVALID_WITHDRAWAL_AMOUNT = "INVALID_WITHDRAWAL_AMOUNT";
     public const string WITHDRAWAL_NOT_FOUND = "WITHDRAWAL_NOT_FOUND";
+    public const string CREATOR_ONLY_WITHDRAWAL = "CREATOR_ONLY_WITHDRAWAL";
 
     public const string CHAPTER_PRICE_NOT_CONFIGURED = "CHAPTER_PRICE_NOT_CONFIGURED";
     public const string INVALID_TRANSLATION_CHAPTER = "INVALID_TRANSLATION_CHAPTER";

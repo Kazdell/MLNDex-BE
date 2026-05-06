@@ -3,6 +3,7 @@ using Application.Exceptions;
 using Application.DTOs.Financial;
 using Application.Interfaces.Data;
 using Application.Interfaces.Financial;
+using Application.Interfaces.Notification;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,11 +14,13 @@ namespace Application.Services.Financial
   {
     private readonly IMlndexDbContext _context;
     private readonly ILogger<WithdrawalService> _logger;
+    private readonly INotificationService _notificationService;
 
-    public WithdrawalService(IMlndexDbContext context, ILogger<WithdrawalService> logger)
+    public WithdrawalService(IMlndexDbContext context, ILogger<WithdrawalService> logger, INotificationService notificationService)
     {
       _context = context;
       _logger = logger;
+      _notificationService = notificationService;
     }
 
     public async Task<WithdrawalReviewListResponse> GetPendingAsync(
@@ -125,6 +128,37 @@ namespace Application.Services.Financial
       entity.Status = request.Status;
       entity.ProcessedAt = DateTime.UtcNow;
 
+      // Update related pending transaction if found
+      var pendingTx = await _context.Transactions
+          .Where(t => t.UserId == entity.UserId && t.Type == TransactionType.WITHDRAWAL && t.Status == TransactionStatus.PENDING && t.AmountCoins == entity.AmountCoins)
+          .OrderByDescending(t => t.CreatedAt)
+          .FirstOrDefaultAsync(cancellationToken);
+
+      if (pendingTx != null)
+      {
+          pendingTx.Status = request.Status == WithdrawalStatus.COMPLETED ? TransactionStatus.COMPLETED : TransactionStatus.FAILED;
+          pendingTx.Note += $"\n[Admin processed at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]";
+      }
+
+      if (request.Status == WithdrawalStatus.REJECTED)
+      {
+          var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == entity.UserId, cancellationToken);
+          if (wallet != null)
+          {
+              wallet.CoinBalance += entity.AmountCoins;
+              _context.Transactions.Add(new Transaction
+              {
+                  UserId = entity.UserId,
+                  WalletId = wallet.WalletId,
+                  Type = TransactionType.REFUND,
+                  AmountCoins = entity.AmountCoins,
+                  Status = TransactionStatus.COMPLETED,
+                  Note = $"Hoàn tiền do lệnh rút {entity.AmountCoins:N0} coins bị từ chối",
+                  CreatedAt = DateTime.UtcNow
+              });
+          }
+      }
+
       if (!string.IsNullOrWhiteSpace(request.Note))
       {
         if (string.IsNullOrWhiteSpace(entity.Note))
@@ -138,6 +172,18 @@ namespace Application.Services.Financial
       }
 
       await _context.SaveChangesAsync(cancellationToken);
+
+      string notifMessage = request.Status == WithdrawalStatus.COMPLETED
+          ? $"Yêu cầu rút {entity.AmountCoins:N0} coins của bạn đã được duyệt. Bạn sẽ nhận được {entity.AmountVnd:N0} VND trong thời gian sớm nhất."
+          : $"Yêu cầu rút {entity.AmountCoins:N0} coins của bạn đã bị từ chối." + (!string.IsNullOrWhiteSpace(request.Note) ? $" Lý do: {request.Note}" : "");
+
+      await _notificationService.CreateNotificationAsync(
+          userId: entity.UserId,
+          title: "Cập nhật yêu cầu rút tiền",
+          message: notifMessage,
+          actionUrl: "/user/wallet",
+          type: NotificationType.SYSTEM
+      );
 
       _logger.LogInformation(
           "Withdrawal {WithdrawalId} updated to {Status} by admin.",
@@ -216,7 +262,7 @@ namespace Application.Services.Financial
         Type = TransactionType.WITHDRAWAL,
         AmountCoins = amountCoins,
         Status = TransactionStatus.PENDING,
-        Note = $"Yêu cầu rút {amountCoins} coins ({dto.AmountVnd:N0} VND → nhận {amountVndAfterFee:N0} VND sau phí)",
+        Note = $"Yêu cầu rút {amountCoins:N0} coins ({dto.AmountVnd:N0} VND → nhận {amountVndAfterFee:N0} VND sau phí)",
         CreatedAt = DateTime.UtcNow
       });
 

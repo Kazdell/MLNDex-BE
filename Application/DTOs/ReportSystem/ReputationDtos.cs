@@ -6,21 +6,24 @@ using Domain.Enums;
 namespace Application.DTOs.ReportSystem
 {
   // ── Admin Restore ────────────────────────────────────
-  public class RestoreTrustScoreRequest
+  public class RestoreReputationRequest
   {
-    public TrustScoreTargetType TargetType { get; set; }
+    public ReputationTargetType TargetType { get; set; }
     public int TargetId { get; set; }
     public int ScoreToRestore { get; set; }
     public string Reason { get; set; } = string.Empty;
   }
 
-	public enum TrustScoreTargetType
+  // Alias used by IsolatedReportsController for backward compatibility
+  public class RestoreReputationScoreRequest : RestoreReputationRequest { }
+
+	public enum ReputationTargetType
 	{
-		User,
+		Creator,
 		Team
 	}
 
-	public class TrustScoreRestoreResultDto
+	public class ReputationRestoreResultDto
   {
     public string TargetName { get; set; } = string.Empty;
     public int OldScore { get; set; }
@@ -57,6 +60,28 @@ namespace Application.DTOs.ReportSystem
     public int? ScoreRestored { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? ReviewedAt { get; set; }
+  }
+
+  // ── Reputation History ────────────────────────────────
+  public class ReputationHistoryDto
+  {
+    public int Id { get; set; }
+    public int? CreatorId { get; set; }
+    public int? TranslationTeamId { get; set; }
+    public int ScoreChange { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public int? RelatedReportId { get; set; }
+    public DateTime CreatedAt { get; set; }
+  }
+
+  // ── Reputation Overview ────────────────────────────────
+  public class ReputationOverviewDto
+  {
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public int CurrentScore { get; set; }
+    public int HistoryCount { get; set; }
   }
 
   // ── Translation Portfolio ────────────────────────────

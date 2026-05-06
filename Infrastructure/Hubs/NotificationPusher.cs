@@ -18,5 +18,10 @@ namespace mlndex_backend.Hubs
     {
       await _hubContext.Clients.Group($"User_{userId}").SendAsync("ReceiveNotification", dto);
     }
+
+    public async Task PushReportResolvedEventAsync()
+    {
+      await _hubContext.Clients.All.SendAsync("ReportResolved");
+    }
   }
 }

@@ -46,9 +46,9 @@ namespace Application.Services.Creator
         }
 
         public async Task<CreateChapterResponseDto> CreateAsync(
-        int userId,
-        CreateChapterDto dto,
-        CancellationToken cancellationToken = default)
+int userId,
+CreateChapterDto dto,
+CancellationToken cancellationToken = default)
         {
             // ── 1. Kiểm tra quyền tải lên (Tác giả hoặc Nhóm dịch) ───────────
             if (dto.TeamId != null)
@@ -188,11 +188,28 @@ namespace Application.Services.Creator
 
                     await _db.SaveChangesAsync(cancellationToken);
 
-                    // Original chapter: No notification sent to author since author uploaded it.
+                    const int REPUTATION_THRESHOLD = 80; // TODO: điền ngưỡng X ở đây
 
-                    // ── Gọi AI Moderation chạy ngầm ───────────────────────────
-                    await _moderationService.EnqueueChapterForModerationAsync(
-                        chapter.ChapterId, cancellationToken);
+                    // Lấy ReputationScore của creator (creatorProfile đã được query ở bước 4)
+                    bool skipModeration = creatorProfile != null && creatorProfile.ReputationScore >= REPUTATION_THRESHOLD;
+
+                    if (skipModeration)
+                    {
+                        chapter.ModerationStatus = ModerationStatus.APPROVED;
+                        chapter.Status = ChapterStatus.PUBLISHED;
+                        chapter.PublishedAt = DateTime.UtcNow;
+                        await _db.SaveChangesAsync(cancellationToken);
+
+                        _logger.LogInformation(
+                            "Chapter {ChapterId} bypass moderation do ReputationScore={Score} >= {Threshold}.",
+                            chapter.ChapterId, creatorProfile!.ReputationScore, REPUTATION_THRESHOLD);
+                    }
+                    else
+                    {
+                        // ── Gọi AI Moderation chạy ngầm ───────────────────────────
+                        await _moderationService.EnqueueChapterForModerationAsync(
+                            chapter.ChapterId, cancellationToken);
+                    }
                 }
 
                 _logger.LogInformation(
@@ -244,137 +261,137 @@ namespace Application.Services.Creator
     int chapterId, int? userId, int? translationId = null, bool isModOrAdmin = false,
     CancellationToken cancellationToken = default)
         {
-                var chapterQuery = _db.Chapters
-                    .Include(c => c.Series)
-                        .ThenInclude(s => s.Creator)
-                    .Include(c => c.Pages.OrderBy(p => p.PageNumber))
-                    .AsNoTracking().AsSplitQuery();
-                    
-                var chapter = await chapterQuery.FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+            var chapterQuery = _db.Chapters
+                .Include(c => c.Series)
+                    .ThenInclude(s => s.Creator)
+                .Include(c => c.Pages.OrderBy(p => p.PageNumber))
+                .AsNoTracking().AsSplitQuery();
 
-                // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
-                if (chapter == null)
+            var chapter = await chapterQuery.FirstOrDefaultAsync(c => c.ChapterId == chapterId, cancellationToken);
+
+            // ── FALLBACK: If no Chapter found, try finding a Translation by TranslationId ──
+            if (chapter == null)
+            {
+                return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
+            }
+
+            // If chapter is NOT published or NOT approved, ONLY Creator or Mod can view it
+            if (chapter.Status != ChapterStatus.PUBLISHED || chapter.ModerationStatus != ModerationStatus.APPROVED)
+            {
+                bool isCreator = userId.HasValue && chapter.Series?.Creator?.UserId == userId.Value;
+                if (!isCreator && !isModOrAdmin)
                 {
-                    return await GetTranslationAsChapterDetailAsync(chapterId, cancellationToken);
+                    return null; // Deny access
                 }
-                
-                // If chapter is NOT published, ONLY Creator or Mod can view it
-                if (chapter.Status != ChapterStatus.PUBLISHED)
+            }
+
+            var chapters = await _db.Chapters
+                .Where(c => c.SeriesId == chapter.SeriesId && ((c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED) || isModOrAdmin))
+                .OrderByDescending(c => c.ChapterNumber)
+                .Select(c => new ChapterSummaryDto
                 {
-                    bool isCreator = userId.HasValue && chapter.Series?.Creator?.UserId == userId.Value;
-                    if (!isCreator && !isModOrAdmin)
-                    {
-                        return null; // Deny access
-                    }
-                }
+                    ChapterId = c.ChapterId,
+                    ChapterNumber = c.ChapterNumber,
+                    Title = c.Title,
+                    TeamId = null,
+                    TeamName = null,
+                    LanguageCode = null,
+                    LanguageName = null,
+                    IsOriginal = true
+                })
+                .ToListAsync(cancellationToken);
 
-                var chapters = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && (c.Status == ChapterStatus.PUBLISHED || isModOrAdmin))
-                    .OrderByDescending(c => c.ChapterNumber)
-                    .Select(c => new ChapterSummaryDto
-                    {
-                        ChapterId = c.ChapterId,
-                        ChapterNumber = c.ChapterNumber,
-                        Title = c.Title,
-                        TeamId = null,
-                        TeamName = null,
-                        LanguageCode = null,
-                        LanguageName = null,
-                        IsOriginal = true
-                    })
-                    .ToListAsync(cancellationToken);
+            var prevChapterId = await _db.Chapters
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
+                .OrderByDescending(c => c.ChapterNumber)
+                .Select(c => (int?)c.ChapterId)
+                .FirstOrDefaultAsync(cancellationToken);
 
-                var prevChapterId = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber < chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
-                    .OrderByDescending(c => c.ChapterNumber)
-                    .Select(c => (int?)c.ChapterId)
-                    .FirstOrDefaultAsync(cancellationToken);
+            var nextChapterId = await _db.Chapters
+                .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED && c.ModerationStatus == ModerationStatus.APPROVED)
+                .OrderBy(c => c.ChapterNumber)
+                .Select(c => (int?)c.ChapterId)
+                .FirstOrDefaultAsync(cancellationToken);
 
-                var nextChapterId = await _db.Chapters
-                    .Where(c => c.SeriesId == chapter.SeriesId && c.ChapterNumber > chapter.ChapterNumber && c.Status == ChapterStatus.PUBLISHED)
-                    .OrderBy(c => c.ChapterNumber)
-                    .Select(c => (int?)c.ChapterId)
-                    .FirstOrDefaultAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var effectiveLockStatus = chapter.LockStatus;
 
-                var now = DateTime.UtcNow;
-                var effectiveLockStatus = chapter.LockStatus;
+            // Lazy check: đã qua UnlockTime → coi như free
+            if (chapter.LockStatus == ChapterLockStatus.LOCKED
+                && chapter.UnlockTime.HasValue
+                && now >= chapter.UnlockTime.Value)
+            {
+                effectiveLockStatus = ChapterLockStatus.UNLOCKED;
+            }
 
-                // Lazy check: đã qua UnlockTime → coi như free
-                if (chapter.LockStatus == ChapterLockStatus.LOCKED
-                    && chapter.UnlockTime.HasValue
-                    && now >= chapter.UnlockTime.Value)
+            bool isUnlockedByUser = false;
+            if (userId.HasValue && effectiveLockStatus == ChapterLockStatus.LOCKED)
+            {
+                isUnlockedByUser = await _db.ChapterUnlocks
+                    .AnyAsync(u => u.ChapterId == chapterId
+                                && u.UserId == userId.Value
+                                && (
+                                    u.TranslationId == null // đã mua chapter gốc → mở tất cả
+                                    || (translationId.HasValue && u.TranslationId == translationId.Value) // hoặc đã mua đúng translation này
+                                ),
+                              cancellationToken);
+            }
+            bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
+    && chapter.Series.Creator?.UserId == userId.Value;
+
+            // 1.5 Kiểm tra xem user có thuộc Team được tác giả cấp quyền dịch bộ truyện này không
+            bool isAuthorizedTranslator = false;
+            if (userId.HasValue)
+            {
+                isAuthorizedTranslator = await _db.TranslationPermissions
+                    .Include(p => p.Team)
+                        .ThenInclude(t => t.TeamMembers)
+                    .AnyAsync(p => p.SeriesId == chapter.SeriesId
+                                && p.Status == TranslationPermissionStatus.GRANTED
+                                && (p.Team.LeaderId == userId.Value
+                                    || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value && tm.IsActive)),
+                              cancellationToken);
+            }
+            // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
+            // Nếu đã mua (isUnlockedByUser) hoặc là Creator hoặc là Translator được cấp quyền, thì status trả về PHẢI LÀ UNLOCKED
+            var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin)
+                              ? ChapterLockStatus.UNLOCKED.ToString()
+                              : ChapterLockStatus.LOCKED.ToString();
+
+            var dto = new ChapterDetailDto
+            {
+                ChapterId = chapter.ChapterId,
+                SeriesId = chapter.SeriesId,
+                SeriesTitle = chapter.Series?.Title,
+                UploaderName = chapter.Series?.Creator?.PenName,
+                CreatorUserId = chapter.Series?.Creator?.UserId,
+                TranslatorTeamName = null,
+                ChapterNumber = chapter.ChapterNumber,
+                Title = chapter.Title,
+                PrevChapterId = prevChapterId,
+                NextChapterId = nextChapterId,
+                Chapters = chapters,
+                LockStatus = finalStatus,
+                UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
+                UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
+                IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin,
+
+                // Chặn Pages nếu locked và user chưa unlock
+                Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator || isModOrAdmin)
+                ? chapter.Pages.Select(p => new ChapterPageResponseDto
                 {
-                    effectiveLockStatus = ChapterLockStatus.UNLOCKED;
-                }
+                    PageId = p.PageId,
+                    ChapterId = p.ChapterId,
+                    PageNumber = p.PageNumber,
+                    ImageUrl = p.ImageUrl
+                }).ToList()
+                : new List<ChapterPageResponseDto>(),
+            };
 
-                bool isUnlockedByUser = false;
-                if (userId.HasValue && effectiveLockStatus == ChapterLockStatus.LOCKED)
-                {
-                    isUnlockedByUser = await _db.ChapterUnlocks
-                        .AnyAsync(u => u.ChapterId == chapterId
-                                    && u.UserId == userId.Value
-                                    && (
-                                        u.TranslationId == null // đã mua chapter gốc → mở tất cả
-                                        || (translationId.HasValue && u.TranslationId == translationId.Value) // hoặc đã mua đúng translation này
-                                    ),
-                                  cancellationToken);
-                }
-                bool isSeriesCreator = userId.HasValue && chapter.Series?.CreatorId != null
-        && chapter.Series.Creator?.UserId == userId.Value;
+            // Translation Ecosystem legacy block removed — TeamId no longer on Chapter.
+            // Translation data is loaded via GetTranslationAsChapterDetailAsync(translationId).
 
-                // 1.5 Kiểm tra xem user có thuộc Team được tác giả cấp quyền dịch bộ truyện này không
-                bool isAuthorizedTranslator = false;
-                if (userId.HasValue)
-                {
-                    isAuthorizedTranslator = await _db.TranslationPermissions
-                        .Include(p => p.Team)
-                            .ThenInclude(t => t.TeamMembers)
-                        .AnyAsync(p => p.SeriesId == chapter.SeriesId
-                                    && p.Status == TranslationPermissionStatus.GRANTED
-                                    && (p.Team.LeaderId == userId.Value
-                                        || p.Team.TeamMembers.Any(tm => tm.UserId == userId.Value && tm.IsActive)),
-                                  cancellationToken);
-                }
-                // 2. QUAN TRỌNG: Ghi đè LockStatus trả về cho Frontend
-                // Nếu đã mua (isUnlockedByUser) hoặc là Creator hoặc là Translator được cấp quyền, thì status trả về PHẢI LÀ UNLOCKED
-                var finalStatus = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
-                                  ? ChapterLockStatus.UNLOCKED.ToString()
-                                  : ChapterLockStatus.LOCKED.ToString();
-
-                var dto = new ChapterDetailDto
-                {
-                    ChapterId = chapter.ChapterId,
-                    SeriesId = chapter.SeriesId,
-                    SeriesTitle = chapter.Series?.Title,
-                    UploaderName = chapter.Series?.Creator?.PenName,
-                    CreatorUserId = chapter.Series?.Creator?.UserId,
-                    TranslatorTeamName = null,
-                    ChapterNumber = chapter.ChapterNumber,
-                    Title = chapter.Title,
-                    PrevChapterId = prevChapterId,
-                    NextChapterId = nextChapterId,
-                    Chapters = chapters,
-                    LockStatus = finalStatus,
-                    UnlockPriceCoins = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockPriceCoins : null,
-                    UnlockTime = effectiveLockStatus == ChapterLockStatus.LOCKED ? chapter.UnlockTime : null,
-                    IsUnlockedByUser = isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator,
-
-                    // Chặn Pages nếu locked và user chưa unlock
-                    Pages = (effectiveLockStatus == ChapterLockStatus.UNLOCKED || isUnlockedByUser || isSeriesCreator || isAuthorizedTranslator)
-                    ? chapter.Pages.Select(p => new ChapterPageResponseDto
-                    {
-                        PageId = p.PageId,
-                        ChapterId = p.ChapterId,
-                        PageNumber = p.PageNumber,
-                        ImageUrl = p.ImageUrl
-                    }).ToList()
-                    : new List<ChapterPageResponseDto>(),
-                };
-
-                // Translation Ecosystem legacy block removed — TeamId no longer on Chapter.
-                // Translation data is loaded via GetTranslationAsChapterDetailAsync(translationId).
-
-                return dto;
+            return dto;
         }
 
         /// <summary>
@@ -412,7 +429,8 @@ namespace Application.Services.Creator
                 .Where(t => t.Chapter.SeriesId == chapter.SeriesId
                          && t.Permission != null
                          && t.Permission!.TeamId == translation.Permission!.TeamId
-                         && t.Chapter.Status == ChapterStatus.PUBLISHED)
+                         && t.Chapter.Status == ChapterStatus.PUBLISHED && t.Chapter.ModerationStatus == ModerationStatus.APPROVED
+                         && t.QualityStatus == TranslationQualityStatus.PUBLISHED && t.ModerationStatus == ModerationStatus.APPROVED)
                 .OrderByDescending(t => t.Chapter.ChapterNumber)
                 .Select(t => new ChapterSummaryDto
                 {
@@ -523,7 +541,7 @@ namespace Application.Services.Creator
                 .ToListAsync(ct);
         }
 
-       public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
+        public async Task<List<ChapterListItemDto>> GetTeamChaptersBySeriesAsync(int teamId, int seriesId, int userId, CancellationToken ct = default)
         {
             // Verify team membership
             var isMember = await _db.TeamMembers
@@ -786,6 +804,7 @@ namespace Application.Services.Creator
                     // Reset moderation status + re-queue for AI moderation
                     chapter.ModerationStatus = ModerationStatus.PENDING;
                     chapter.Status = ChapterStatus.DRAFT;
+                    chapter.AiScoresJson = null;
                 }
 
                 // ── Đánh dấu Outdated cho các bản dịch ─────────────────────────

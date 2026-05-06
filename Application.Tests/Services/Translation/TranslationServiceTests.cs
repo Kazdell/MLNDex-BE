@@ -112,7 +112,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 999, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
+      ex.ErrorCode.Should().Be(ErrorCodes.TRANSLATION_PERMISSION_NOT_FOUND);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 2 }; // Wrong language
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.LANGUAGE_MISMATCH);
+      ex.ErrorCode.Should().Be(ErrorCodes.LANGUAGE_MISMATCH);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.PERMISSION_NOT_VALID_FOR_SERIES);
+      ex.ErrorCode.Should().Be(ErrorCodes.PERMISSION_NOT_VALID_FOR_SERIES);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ namespace Application.Tests.Services.Translation
 
       var dto = new UploadTranslationRequest { PermissionId = 1, ChapterId = 100, LanguageId = 1 };
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
+      ex.ErrorCode.Should().Be(ErrorCodes.NOT_TEAM_MEMBER);
     }
 
     [Fact]
@@ -164,6 +164,8 @@ namespace Application.Tests.Services.Translation
       var db = CreateDb();
       _mockUserContext.Setup(u => u.UserId).Returns(111);
       var teamId = await SeedBaseData(db);
+      var team = await db.TranslationTeams.FindAsync(teamId);
+      team!.ReputationScore = 79; // Force moderation queue
       db.TranslationPermissions.Add(new TranslationPermission { PermissionId = 1, TeamId = teamId, SeriesId = 10, LanguageId = 1, Status = TranslationPermissionStatus.GRANTED, GrantedBy = 456 });
       await db.SaveChangesAsync();
 
@@ -248,7 +250,7 @@ namespace Application.Tests.Services.Translation
       };
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
+      ex.ErrorCode.Should().Be(ErrorCodes.UNOFFICIAL_TRANSLATION_LOCKED);
     }
 
     [Fact]
@@ -303,7 +305,7 @@ namespace Application.Tests.Services.Translation
       };
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).UploadTranslationAsync(dto));
-      ex.Message.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_TEAM);
+      ex.ErrorCode.Should().Be(ErrorCodes.DUPLICATE_TRANSLATION_LANGUAGE);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -322,7 +324,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).EditTranslationAsync(55, new EditTranslationRequest { LanguageId = 2 }));
-      ex.Message.Should().Be(ErrorCodes.UNAUTHORIZED_EDIT);
+      ex.ErrorCode.Should().Be(ErrorCodes.UNAUTHORIZED_EDIT);
     }
 
     [Fact]
@@ -373,7 +375,7 @@ namespace Application.Tests.Services.Translation
       await db.SaveChangesAsync();
 
       var ex = await Assert.ThrowsAsync<Application.Exceptions.AppException>(() => CreateService(db).DeleteTranslationAsync(55));
-      ex.Message.Should().Be(ErrorCodes.MISSING_TRANSLATION_PERMISSION);
+      ex.ErrorCode.Should().Be(ErrorCodes.MISSING_TRANSLATION_PERMISSION);
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -1,19 +1,20 @@
-namespace Application.DTOs.Creator
+﻿namespace Application.DTOs.Creator
 {
   public class CreatorRegisterDto
   {
     public string PenName { get; set; } = null!;
   }
 
-  public class CreatorProfileDto
-  {
-    public int CreatorId { get; set; }
-    public string PenName { get; set; } = null!;
-    public string ModerationStatus { get; set; } = null!;
-    public bool IsActive { get; set; }
-  }
+    public class CreatorProfileDto
+    {
+        public int CreatorId { get; set; }
+        public string PenName { get; set; } = null!;
+        public string ModerationStatus { get; set; } = null!;
+        public bool IsActive { get; set; }
+        public int ReputationScore { get; set; }
+    }
 
-  public class UpdateUnlockSettingsDto
+    public class UpdateUnlockSettingsDto
   {
     public bool UnlockEnabled { get; set; }
     public int? DefaultUnlockPriceCoins { get; set; }

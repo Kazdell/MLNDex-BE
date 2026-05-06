@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Application.DTOs.User;
 using Application.Interfaces.Data;
@@ -157,32 +158,46 @@ namespace Application.Services.Translation
       // ── DOWNLOAD IMAGE ──
       var imageBytes = await DownloadPageImageAsync(request.PageId);
 
-      // ── CROP + OCR EACH BOX ──
+      // ── CROP + OCR EACH BOX (parallel, max 4 concurrent) ──
       var ocrEngine = GetOcrService(request.OcrProvider);
-      var ocrResults = new List<(AdjustedBox Box, string Text)>();
+      var ocrResultsRaw = new (AdjustedBox Box, string Text)[request.Boxes.Count];
 
-      foreach (var box in request.Boxes)
-      {
-        string text = await ocrEngine.ExtractTextFromCroppedRegionAsync(
-            imageBytes, box.X, box.Y, box.Width, box.Height, request.SourceLanguage);
+      await Parallel.ForEachAsync(
+          request.Boxes.Select((box, idx) => (box, idx)),
+          new ParallelOptions { MaxDegreeOfParallelism = 4 },
+          async (item, ct) =>
+          {
+            string text = await ocrEngine.ExtractTextFromCroppedRegionAsync(
+                imageBytes, item.box.X, item.box.Y, item.box.Width, item.box.Height, request.SourceLanguage);
+            if (!string.IsNullOrWhiteSpace(text))
+              ocrResultsRaw[item.idx] = (item.box, text.Trim());
+          });
 
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-          ocrResults.Add((box, text.Trim()));
-        }
-      }
+      var ocrResults = ocrResultsRaw
+          .Where(r => r.Box != null && !string.IsNullOrWhiteSpace(r.Text))
+          .ToList();
 
       if (ocrResults.Count == 0)
         return new List<OverlayTranslationResponse>();
 
-      // ── BATCH TRANSLATE (route by provider) ──
+      // ── BATCH TRANSLATE (route by provider) with 80s timeout ──
       var originalTexts = ocrResults.Select(r => r.Text).ToList();
       if (!SupportedProviders.Contains(provider))
         throw new NotSupportedException($"Translation provider '{provider}' is not supported. Supported: {string.Join(", ", SupportedProviders)}");
 
-      List<string> translatedTexts = provider.Equals("Gemini", StringComparison.OrdinalIgnoreCase)
-          ? await _aiClient.TranslateTextsAsync(originalTexts, request.TargetLanguage, $"Manga translation from {request.SourceLanguage}")
-          : await _googleClient.TranslateTextsAsync(originalTexts, request.SourceLanguage, request.TargetLanguage);
+      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(80));
+      List<string> translatedTexts;
+      try
+      {
+        translatedTexts = provider.Equals("Gemini", StringComparison.OrdinalIgnoreCase)
+            ? await _aiClient.TranslateTextsAsync(originalTexts, request.TargetLanguage, $"Manga translation from {request.SourceLanguage}")
+            : await _googleClient.TranslateTextsAsync(originalTexts, request.SourceLanguage, request.TargetLanguage);
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.LogWarning("TranslateAdjustedBoxes: Translation timed out after 80s for PageId={PageId}. Returning original texts.", request.PageId);
+        translatedTexts = originalTexts; // fallback: return originals
+      }
 
       // ── DELETE OLD LAYERS FOR THIS CONFIG ──
       var existingLayers = await _context.PageTextLayers
