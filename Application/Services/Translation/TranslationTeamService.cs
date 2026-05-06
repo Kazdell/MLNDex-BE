@@ -235,7 +235,25 @@ namespace Application.Services.Translation
       }
 
       team.LockStatus = TeamLockStatus.DISBANDED;
+      team.IsMonetizationEnabled = false;
+      team.UnlockEnabled = false;
       team.UpdatedAt = DateTime.UtcNow;
+
+      var translations = await _context.Translations.Where(t => t.TeamId == teamId).ToListAsync();
+      foreach (var t in translations)
+      {
+        t.IsOfficial = false;
+      }
+
+      var permissions = await _context.TranslationPermissions.Where(p => p.TeamId == teamId).ToListAsync();
+      foreach (var p in permissions)
+      {
+        if (p.Status == TranslationPermissionStatus.GRANTED || p.Status == TranslationPermissionStatus.PENDING)
+        {
+          p.Status = TranslationPermissionStatus.UNOFFICIAL;
+          p.RevokedAt = DateTime.UtcNow;
+        }
+      }
 
       await _context.SaveChangesAsync();
 
