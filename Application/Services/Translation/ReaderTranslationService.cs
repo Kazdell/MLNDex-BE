@@ -167,8 +167,12 @@ namespace Application.Services.Translation
           new ParallelOptions { MaxDegreeOfParallelism = 4 },
           async (item, ct) =>
           {
-            string text = await ocrEngine.ExtractTextFromCroppedRegionAsync(
-                imageBytes, item.box.X, item.box.Y, item.box.Width, item.box.Height, request.SourceLanguage);
+            string text = item.box.OriginalText;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                text = await ocrEngine.ExtractTextFromCroppedRegionAsync(
+                    imageBytes, item.box.X, item.box.Y, item.box.Width, item.box.Height, request.SourceLanguage);
+            }
             if (!string.IsNullOrWhiteSpace(text))
               ocrResultsRaw[item.idx] = (item.box, text.Trim());
           });

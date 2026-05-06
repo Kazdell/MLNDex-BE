@@ -26,6 +26,7 @@ namespace Application.Services.Creator
 
     public async Task<List<SeriesDto>> GetRecommendationsAsync(int userId, int limit = 10, int? currentSeriesId = null)
     {
+      if (limit > 10) limit = 10;
       var recommendedSeriesIds = new HashSet<int>();
       var excludedIds = new HashSet<int>();
 
