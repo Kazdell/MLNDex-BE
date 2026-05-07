@@ -2,12 +2,10 @@ version=1
 
 # This file caches language service data to improve the performance of C# Dev Kit.
 # It is not intended for manual editing. It can safely be deleted and will be
-# regenerated automatically.
+# regenerated automatically. For more information, see https://aka.ms/lscache
 #
-# To exclude from version control, add *.lscache to your .gitignore file.
-#
-# To disable caching, add the following to your VS Code settings:
-#   "dotnet.projectsystem.enableLanguageServiceCache": false
+# To control where cache files are stored, use the following VS Code setting:
+#   "dotnet.projectsystem.cacheInProjectFolder": true
 
 [project]
 language=C#
@@ -120,7 +118,7 @@ DTOs/
   WalletResponseDto.cs
  ReportSystem/
   PlagiarismReportDtos.cs
-  TrustScoreDtos.cs
+  ReputationDtos.cs
  Revenue/
   Request/RevenueDto.cs
   Response/RevenueResponseDto.cs
@@ -207,7 +205,7 @@ Interfaces/
  Queue/IModerationQueue.cs
  ReportSystem/
   IPlagiarismReportService.cs
-  ITrustScoreService.cs
+  IReputationService.cs
  Revenue/IRevenueService.cs
  Services/IUserListService.cs
  System/
@@ -267,7 +265,7 @@ Services/
   TopUpService.cs
  ReportSystem/
   PlagiarismReportService.cs
-  TrustScoreService.cs
+  ReputationService.cs
  Revenue/RevenueService.cs
  System/
   LanguageService.cs
@@ -487,7 +485,7 @@ Services/
  system.security.cryptography.protecteddata/6.0.0/lib/net6.0/System.Security.Cryptography.ProtectedData.dll
 
 [analyzerReferences]
-../../../../../../usr/local/share/dotnet/sdk/10.0.103/Sdks/Microsoft.NET.Sdk/analyzers/
+<DOTNET>/sdk/10.0.103/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
 <NUGET>/
@@ -503,5 +501,5 @@ Services/
   System.Text.RegularExpressions.Generator.dll
 
 [analyzerConfigFiles]
-../../../../../../usr/local/share/dotnet/sdk/10.0.103/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_8_default.globalconfig
+<DOTNET>/sdk/10.0.103/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_8_default.globalconfig
 obj/Debug/net8.0/Application.GeneratedMSBuildEditorConfig.editorconfig

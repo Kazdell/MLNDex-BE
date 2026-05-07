@@ -26,13 +26,11 @@ namespace mlndex_backend.Controllers
 
         private int GetCurrentUserId()
         {
-            var str = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                      ?? User.FindFirstValue("UserId");
-            return int.TryParse(str, out var id) ? id : 0;
+            var str =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("UserId");
+            return int.TryParse(str, out var id) ? id : -1;
         }
 
-        // ══════════════════════════════════════════════════════
-        // REPORT ENDPOINTS (existing)
         // ══════════════════════════════════════════════════════
 
         /// <summary>Tạo một báo cáo vi phạm mới (Người dùng).</summary>
@@ -87,7 +85,7 @@ namespace mlndex_backend.Controllers
         )
         {
             var modId = GetCurrentUserId();
-            if (modId == 0)
+            if (modId < 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
@@ -109,7 +107,7 @@ namespace mlndex_backend.Controllers
         )
         {
             var modId = GetCurrentUserId();
-            if (modId == 0)
+            if (modId < 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
@@ -154,7 +152,7 @@ namespace mlndex_backend.Controllers
         )
         {
             var modId = GetCurrentUserId();
-            if (modId == 0)
+            if (modId < 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
@@ -175,11 +173,17 @@ namespace mlndex_backend.Controllers
             [FromQuery] string type = "creator",
             [FromQuery] string? search = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20
+        )
         {
             try
             {
-                var overview = await _reputationService.GetReputationOverviewAsync(type, search, page, pageSize);
+                var overview = await _reputationService.GetReputationOverviewAsync(
+                    type,
+                    search,
+                    page,
+                    pageSize
+                );
                 return OkResponse(overview);
             }
             catch (System.Exception ex)
@@ -233,7 +237,7 @@ namespace mlndex_backend.Controllers
         )
         {
             var modId = GetCurrentUserId();
-            if (modId == 0)
+            if (modId < 0)
                 return Unauthorized("Phiên đăng nhập không hợp lệ.");
 
             try
@@ -258,14 +262,20 @@ namespace mlndex_backend.Controllers
             [FromQuery] int? creatorId,
             [FromQuery] int? teamId,
             [FromQuery] int page = 1,
-            [FromQuery] int limit = 20)
+            [FromQuery] int limit = 20
+        )
         {
             if (!creatorId.HasValue && !teamId.HasValue)
                 return BadRequestResponse("Cần cung cấp creatorId hoặc teamId.");
 
             try
             {
-                var history = await _reputationService.GetReputationHistoryAsync(creatorId, teamId, page, limit);
+                var history = await _reputationService.GetReputationHistoryAsync(
+                    creatorId,
+                    teamId,
+                    page,
+                    limit
+                );
                 return OkResponse(history);
             }
             catch (System.Exception ex)
