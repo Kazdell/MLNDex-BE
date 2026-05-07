@@ -320,9 +320,13 @@ public class ModerationWorker : BackgroundService
                 chapterId, result.Flagged);
 
             // ── Push result via SignalR ─────────────────────────────────
+            var moderationService2 = scope.ServiceProvider.GetRequiredService<IModerationService>();
+            var verifiedResult = await moderationService2.GetResultAsync(chapterId, ct)
+                ?? result; // fallback về result gốc nếu query lỗi
+
             await hubContext.Clients
                 .Group($"chapter_{chapterId}")
-                .SendAsync("ModerationCompleted", new { chapterId, result }, ct);
+                .SendAsync("ModerationCompleted", new { chapterId, result = verifiedResult }, ct);
 
             // ── Create notification for creator ────────────────────────
             var chapter = await db.Chapters

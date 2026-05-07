@@ -297,9 +297,19 @@ namespace Application.Services.AIModeration
             };
             if (aiResult.PerPageResults?.Count > 0)
                 scoresData["perPageResults"] = aiResult.PerPageResults;
-            chapter.AiScoresJson = JsonSerializer.Serialize(scoresData);
 
+            chapter.AiScoresJson = JsonSerializer.Serialize(scoresData);
             await _db.SaveChangesAsync();
+
+            // FIX: sync aiResult.Flagged với quyết định thực tế của scoring engine
+            // aiResult.Flagged chỉ phản ánh AI image client — không bao gồm FlagForReview từ scoring
+            if (chapter.ModerationStatus == ModerationStatus.REJECTED)
+            {
+                aiResult.Flagged = true;
+                if (string.IsNullOrEmpty(aiResult.FlaggedReason) && analysis.WorstCategory != null)
+                    aiResult.FlaggedReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+            }
+
             return aiResult;
         }
 
@@ -679,8 +689,15 @@ namespace Application.Services.AIModeration
             if (aiResult.PerPageResults?.Count > 0)
                 scoresData["perPageResults"] = aiResult.PerPageResults;
             translation.AiScoresJson = JsonSerializer.Serialize(scoresData);
-
             await _db.SaveChangesAsync();
+
+            // FIX: sync aiResult.Flagged
+            if (translation.ModerationStatus == ModerationStatus.REJECTED)
+            {
+                aiResult.Flagged = true;
+                if (string.IsNullOrEmpty(aiResult.FlaggedReason) && analysis.WorstCategory != null)
+                    aiResult.FlaggedReason = $"{analysis.WorstCategory} (Score: {analysis.WorstScore:F2})";
+            }
 
             return aiResult;
         }
