@@ -329,7 +329,7 @@ namespace mlndex_backend
       app.UseAuthentication();
       app.UseAuthorization();
       app.UseStaticFiles();
-
+            app.UseWebSockets();
             // RequireCors is mandatory for SignalR hubs:
             // The HTTP POST /negotiate preflight must pass CORS before the WebSocket upgrade.
             app.MapHub<NotificationHub>("/hubs/notification").RequireCors("AllowSpecificOrigin");
